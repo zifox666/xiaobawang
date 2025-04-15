@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVE物品价格查询 - {{ word }}</title>
+    <script src="./tailwindcss.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            100: '#e5e7eb',
+                            200: '#9ca3af',
+                            300: '#6b7280',
+                            400: '#4b5563',
+                            500: '#374151',
+                            600: '#2a2f3a',
+                            700: '#1f2937',
+                            800: '#1a1e2b',
+                            900: '#111827',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chart-container {
+            position: relative;
+            height: 100px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-dark-900 text-gray-200 p-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- 搜索信息 -->
+        <div class="flex justify-between bg-dark-800 p-3 rounded-md mb-5">
+            <div><span class="font-medium">关键字:</span> {{ word }}{% if num > 1 %} x {{ num }}{% endif %}</div>
+            <div><span class="font-medium">结果数:</span> {{ pagination.total_count }}</div>
+        </div>
+
+        <!-- 项目网格 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for item in items %}
+            <div class="bg-dark-800 rounded-lg p-4 shadow-md">
+                <!-- 项目头部 -->
+                <div class="flex items-center pb-3 mb-3 border-b border-dark-600">
+                    {% if item.typeID %}
+                    <img src="https://images.evetech.net/types/{{ item.typeID }}/icon?size=32"
+                         alt="{{ item.name }}"
+                         class="mr-2"
+                         onerror="this.style.display='none'">
+                    {% endif %}
+                    <h3 class="font-bold flex-1 truncate">{{ item.name }}</h3>
+                </div>
+
+                <!-- 价格信息 -->
+                <div class="space-y-2">
+                    {% if num > 1 %}
+                    <!-- 多数量模式的紧凑布局 -->
+                    <div class="grid grid-cols-2 gap-x-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">单价</p>
+                            <div class="grid grid-cols-3 gap-1 mt-1 text-sm">
+                                <div class="text-gray-400">卖:</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.sell_price) }}</div>
+
+                                <div class="text-gray-400">买:</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.buy_price) }}</div>
+
+                                <div class="text-gray-400">中:</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.mid_price) }}</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="text-gray-400 text-sm">总价 (x{{ num }})</p>
+                            <div class="grid grid-cols-3 gap-1 mt-1 text-sm">
+                                <div class="text-gray-400">卖:</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.total_sell) }}</div>
+
+                                <div class="text-gray-400">买:</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.total_buy) }}</div>
+
+                                <div class="text-gray-400">中:</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.total_mid) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- 单数量模式 - 价格右对齐 -->
+                    <div class="grid grid-cols-4 gap-y-2 text-sm">
+                        <div class="text-gray-400">卖单价:</div>
+                        <div class="col-span-3 font-mono js-isk text-right">{{ "%.2f"|format(item.sell_price) }}</div>
+
+                        <div class="text-gray-400">买单价:</div>
+                        <div class="col-span-3 font-mono js-isk text-right">{{ "%.2f"|format(item.buy_price) }}</div>
+
+                        <div class="text-gray-400">中间价:</div>
+                        <div class="col-span-3 font-mono js-isk text-right">{{ "%.2f"|format(item.mid_price) }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- 剩余数量信息 -->
+                <div class="mt-3 pt-3 border-t border-dark-600">
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <span class="text-gray-400">卖单:</span>
+                            <span class="font-mono ml-1">{{ "{:,}".format(item.sell_volume_remain) }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">买单:</span>
+                            <span class="font-mono ml-1">{{ "{:,}".format(item.buy_volume_remain) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 总计价格 -->
+        {% if group_total is defined %}
+        <div class="bg-dark-700 rounded-lg p-4 mt-6 shadow-md">
+            <h3 class="font-bold border-b border-dark-500 pb-2 mb-3">总计价格</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
+                <div class="text-gray-400">总卖价:</div>
+                <div class="font-mono js-isk text-right">{{ "%.2f"|format(group_total.sell) }}</div>
+
+                <div class="text-gray-400">总买价:</div>
+                <div class="font-mono js-isk text-right">{{ "%.2f"|format(group_total.buy) }}</div>
+
+                <div class="text-gray-400">总中间价:</div>
+                <div class="font-mono js-isk text-right">{{ "%.2f"|format(group_total.mid) }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 分页 -->
+        <div class="mt-6 text-center">
+            {% if pagination.has_prev %}
+            <a href="#" onclick="sendPreviousPage()" class="px-3 py-1 bg-dark-700 rounded hover:bg-dark-600">上一页</a>
+            {% else %}
+            <span class="px-3 py-1 bg-dark-800 text-gray-500 rounded cursor-not-allowed">上一页</span>
+            {% endif %}
+
+            <span class="mx-3">{{ pagination.current_page }} / {{ pagination.total_pages }}</span>
+
+            {% if pagination.has_next %}
+            <a href="#" onclick="sendNextPage()" class="px-3 py-1 bg-dark-700 rounded hover:bg-dark-600">下一页</a>
+            {% else %}
+            <span class="px-3 py-1 bg-dark-800 text-gray-500 rounded cursor-not-allowed">下一页</span>
+            {% endif %}
+        </div>
+
+        <!-- 页脚 -->
+        <footer class="mt-8 text-center text-xs text-gray-500">
+            数据来源: EVE Online 市场数据 | 查询时间: {{ now.strftime("%Y-%m-%d %H:%M:%S") }}
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 格式化ISK价格显示
+            document.querySelectorAll('.js-isk').forEach(el => {
+                const value = parseFloat(el.textContent);
+                if (value >= 1e9) {
+                    el.textContent = (value / 1e9).toFixed(2) + " B ISK";
+                } else if (value >= 1e6) {
+                    el.textContent = (value / 1e6).toFixed(2) + " M ISK";
+                } else if (value >= 1e3) {
+                    el.textContent = (value / 1e3).toFixed(2) + " K ISK";
+                } else {
+                    el.textContent = value.toFixed(2) + " ISK";
+                }
+            });
+        });
+
+        // 分页导航函数
+        function sendNextPage() { console.log("请求下一页"); }
+        function sendPreviousPage() { console.log("请求上一页"); }
+    </script>
+</body>
+</html>

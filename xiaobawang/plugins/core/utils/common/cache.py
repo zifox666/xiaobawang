@@ -1,0 +1,225 @@
+import json
+import pickle
+from typing import Any, TypeVar
+from functools import wraps
+import redis.asyncio as redis
+
+from nonebot import logger
+from ...config import plugin_config
+
+T = TypeVar('T')
+
+# Redis 缓存前缀
+CACHE_PREFIX = "xiaobawang:core:"
+
+# 默认的缓存过期时间（1天）
+DEFAULT_EXPIRE_TIME = 1 * 24 * 60 * 60
+
+
+class RedisCache:
+    """SDE Redis缓存管理类"""
+
+    _instance = None
+    _redis: redis.Redis = None
+    _initialized = False
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(RedisCache, cls).__new__(cls)
+        return cls._instance
+
+    async def init(self):
+        """初始化Redis连接"""
+        if not self._initialized:
+            try:
+                redis_url = plugin_config.REDIS_URL
+                self._redis = redis.from_url(redis_url)
+                await self._redis.ping()
+                logger.info("SDE Redis缓存连接成功")
+                self._initialized = True
+            except Exception as e:
+                logger.error(f"SDE Redis缓存连接失败: {e}")
+                raise e
+
+    @property
+    def redis(self) -> redis.Redis:
+        """获取Redis客户端实例"""
+        if not self._initialized:
+            raise RuntimeError("Redis缓存尚未初始化")
+        return self._redis
+
+    @classmethod
+    def _get_key(cls, key: str) -> str:
+        """获取带前缀的缓存键名"""
+        return f"{CACHE_PREFIX}{key}"
+
+    async def set(self, key: str, value: Any, expire: int = DEFAULT_EXPIRE_TIME) -> bool:
+        """
+        设置缓存
+        :param key: 缓存键名
+        :param value: 缓存值
+        :param expire: 过期时间（秒）
+        :return: 是否成功
+        """
+        try:
+            cache_key = self._get_key(key)
+
+            # 尝试使用JSON序列化，失败则使用pickle
+            try:
+                serialized = json.dumps(value)
+                use_pickle = False
+            except (TypeError, OverflowError):
+                serialized = pickle.dumps(value)
+                use_pickle = True
+
+            # 存储序列化方式的标记
+            await self.redis.set(f"{cache_key}:type", "pickle" if use_pickle else "json")
+            await self.redis.set(cache_key, serialized)
+
+            if expire > 0:
+                await self.redis.expire(cache_key, expire)
+                await self.redis.expire(f"{cache_key}:type", expire)
+
+            return True
+        except Exception as e:
+            logger.error(f"设置缓存失败 {key}: {e}")
+            return False
+
+    async def get(self, key: str, default: Any = None) -> Any:
+        """
+        获取缓存
+        :param key: 缓存键名
+        :param default: 默认返回值
+        :return: 缓存值或默认值
+        """
+        try:
+            cache_key = self._get_key(key)
+
+            # 获取序列化类型
+            serialization_type = await self.redis.get(f"{cache_key}:type")
+            if not serialization_type:
+                return default
+
+            data = await self.redis.get(cache_key)
+            if data is None:
+                return default
+
+            # 根据序列化类型反序列化
+            if serialization_type.decode() == "pickle":
+                return pickle.loads(data)
+            else:
+                return json.loads(data)
+        except Exception as e:
+            logger.error(f"获取缓存失败 {key}: {e}")
+            return default
+
+    async def delete(self, key: str) -> bool:
+        """
+        删除缓存
+        :param key: 缓存键名
+        :return: 是否成功
+        """
+        try:
+            cache_key = self.get_key(key)
+            await self.redis.delete(cache_key, f"{cache_key}:type")
+            return True
+        except Exception as e:
+            logger.error(f"删除缓存失败 {key}: {e}")
+            return False
+
+    async def clear_all_sde_cache(self) -> bool:
+        """
+        清除所有SDE相关缓存
+        :return: 是否成功
+        """
+        try:
+            keys = await self.redis.keys(f"{CACHE_PREFIX}*")
+            if keys:
+                await self.redis.delete(*keys)
+            logger.info("已清除所有SDE缓存")
+            return True
+        except Exception as e:
+            logger.error(f"清除所有SDE缓存失败: {e}")
+            return False
+
+    async def exists(self, key: str) -> bool:
+        """
+        检查缓存是否存在
+        :param key: 缓存键名
+        :return: 是否存在
+        """
+        try:
+            cache_key = self._get_key(key)
+            return await self.redis.exists(cache_key) > 0
+        except Exception as e:
+            logger.error(f"检查缓存是否存在失败 {key}: {e}")
+            return False
+
+    async def mset(self, mapping: dict, expire: int = DEFAULT_EXPIRE_TIME) -> bool:
+        """
+        批量设置缓存
+        :param mapping: 键值映射字典 {key: value, ...}
+        :param expire: 过期时间（秒）
+        :return: 是否成功
+        """
+        try:
+            pipeline = self.redis.pipeline()
+
+            for key, value in mapping.items():
+                cache_key = self._get_key(key)
+
+                # 尝试使用JSON序列化，失败则使用pickle
+                try:
+                    serialized = json.dumps(value)
+                    use_pickle = False
+                except (TypeError, OverflowError):
+                    serialized = pickle.dumps(value)
+                    use_pickle = True
+
+                # 存储序列化方式的标记
+                await pipeline.set(f"{cache_key}:type", "pickle" if use_pickle else "json")
+                await pipeline.set(cache_key, serialized)
+
+                if expire > 0:
+                    await pipeline.expire(cache_key, expire)
+                    await pipeline.expire(f"{cache_key}:type", expire)
+
+            await pipeline.execute()
+            return True
+        except Exception as e:
+            logger.error(f"批量设置缓存失败: {e}")
+            return False
+
+
+cache = RedisCache()
+
+
+def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclude_args: list = None):
+    """
+    缓存装饰器，用于缓存函数调用结果
+    :param expire_time: 过期时间（秒）
+    :param prefix: 缓存键前缀
+    :param exclude_args: 排除在缓存键计算之外的参数索引列表
+    :return: 装饰器
+    """
+    exclude_args = exclude_args or []
+
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            cache_args = [arg for i, arg in enumerate(args) if i not in exclude_args]
+            cache_key = f"{prefix}{func.__name__}:{hash(str(cache_args))}"
+
+            result = await cache.get(cache_key)
+            if result is not None:
+                return result
+
+            result = await func(*args, **kwargs)
+
+            await cache.set(cache_key, result, expire_time)
+
+            return result
+
+        return wrapper
+
+    return decorator
