@@ -1,0 +1,159 @@
+from .cache import cache, cache_result
+from .models import TrnTranslations, TC_TYPES_ID, InvTypes
+from .utils import text_processor
+from .config import plugin_config
+from .db import get_session
+
+from nonebot import logger
+from sqlalchemy import or_, and_, select
+
+
+class SDESearch:
+    def __init__(self):
+        self.default_lang = plugin_config.sde_default_language
+
+    @cache_result(prefix="type_search_", exclude_args=[0])
+    async def search_item_by_name(
+            self,
+            name: str,
+            market: bool = True,
+            limit: int = 1000
+    ):
+        """
+        按物品名称搜索，支持中英文模糊查询
+        """
+        async with await get_session() as session:
+            conditions = await self._build_search_conditions(name)
+            logger.debug(f"conditions: {conditions}")
+
+            trans_query = select(TrnTranslations).where(
+                and_(
+                    TrnTranslations.tcID == TC_TYPES_ID,
+                    or_(
+                        and_(TrnTranslations.languageID == self.default_lang, conditions),
+                        and_(TrnTranslations.languageID == "en", conditions)
+                    )
+                )
+            )
+            trans_results = await session.execute(trans_query)
+            translations = trans_results.scalars().all()
+
+            matched_type_ids = [trans.keyID for trans in translations]
+
+            if not matched_type_ids:
+                return {"total": 0, "items": []}
+
+            types_query = select(InvTypes).where(InvTypes.typeID.in_(matched_type_ids))
+
+            if market:
+                types_query = types_query.where(
+                    and_(
+                        InvTypes.marketGroupID.is_not(None),
+                        InvTypes.published == True
+                    )
+                )
+
+            types_results = await session.execute(types_query)
+            types = types_results.scalars().all()
+
+            translations_map = {}
+            for trans in translations:
+                if trans.languageID == self.default_lang:
+                    translations_map[trans.keyID] = trans.text
+
+            items = []
+            for type_item in types:
+                items.append({
+                    "typeID": type_item.typeID,
+                    "typeName": type_item.typeName,
+                    "transName": translations_map.get(type_item.typeID, type_item.typeName),
+                    "marketGroupID": type_item.marketGroupID,
+                    "groupID": type_item.groupID,
+                })
+
+            total = len(items)
+            items = items[:limit]
+            print(items)
+
+            return {
+                "total": total,
+                "items": items
+            }
+
+    @classmethod
+    async def _build_search_conditions(cls, text: str):
+        """构建搜索条件，使用分词后的关键词进行模糊匹配"""
+        tokens = await text_processor.tokenize(text)
+        logger.debug(f"分词结果: {tokens}")
+
+        if not tokens:
+            return TrnTranslations.text.ilike(f"%{text}%")
+
+        conditions = and_(*[TrnTranslations.text.ilike(f"%{token}%") for token in tokens])
+        return conditions
+
+    @classmethod
+    @cache_result(prefix="inv_flags_", exclude_args=[0])
+    async def get_inv_flags(cls):
+        """获取所有槽位关系表"""
+        async with await get_session() as session:
+            query = select(InvTypes)
+            result = await session.execute(query)
+            return result.scalars().all()
+
+    @classmethod
+    @cache_result(prefix="type_name_", exclude_args=[0, 1])
+    async def _get_type_name(cls, session, type_id: int | str) -> str | None:
+        """获取物品名称"""
+        query = select(InvTypes).where(InvTypes.typeID == type_id)
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+    @classmethod
+    @cache_result(prefix="type_trans_", exclude_args=[0, 1])
+    async def _get_type_translation(cls, session, type_id: int | str, language: str) -> str | None:
+        """获取指定语言的物品名称翻译"""
+        query = select(TrnTranslations.text).where(
+            and_(
+                TrnTranslations.tcID == TC_TYPES_ID,
+                TrnTranslations.keyID == type_id,
+                TrnTranslations.languageID == language
+            )
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_type_names(
+            self,
+            type_ids: list[int | str],
+            language_id: str = None
+    )-> dict[int, dict[str, str]]:
+        """
+        获取多个物品的名称
+
+        Args:
+            type_ids: 物品ID列表
+            language_id: 语言代码，如 'zh', 'en'，默认使用 self.default_lang
+
+        Returns:
+            物品ID到名称及翻译的映射字典
+        """
+        if language_id is None:
+            language_id = self.default_lang
+
+        result = {}
+        async with await get_session() as session:
+            for type_id in type_ids:
+                inv_type = await self._get_type_name(session, type_id)
+                translation = await self._get_type_translation(session, type_id, language_id)
+
+                if inv_type:
+                    result[int(type_id)] = {
+                        "typeName": inv_type.typeName,
+                        "translation": translation or inv_type.typeName
+                    }
+
+        return result
+
+
+sde_search = SDESearch()
