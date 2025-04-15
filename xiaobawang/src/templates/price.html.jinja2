@@ -49,12 +49,15 @@
                 <!-- 项目头部 -->
                 <div class="flex items-center pb-3 mb-3 border-b border-dark-600">
                     {% if item.typeID %}
-                    <img src="https://images.evetech.net/types/{{ item.typeID }}/icon?size=32"
+                    <img src="https://img.evetools.org/sdeimages/types/{{ item.typeID }}/icon?size=32"
                          alt="{{ item.name }}"
                          class="mr-2"
                          onerror="this.style.display='none'">
                     {% endif %}
                     <h3 class="font-bold flex-1 truncate">{{ item.name }}</h3>
+                    <div class="ml-2 h-6 w-24 flex items-center">
+                        <img src="{{ item.history_line }}" alt="价格走势图" class="w-full h-full rounded-md"></img>
+                    </div>
                 </div>
 
                 <!-- 价格信息 -->

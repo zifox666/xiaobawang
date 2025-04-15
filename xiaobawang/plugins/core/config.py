@@ -13,6 +13,8 @@ class Config(BaseModel):
 
     REDIS_URL: str = "redis://nas.newdoublex.space:6379/4"
 
+    proxy: str = None
+
 plugin_config = get_plugin_config(Config)
 
 ROOT_PATH = Path(__name__).parent.absolute()

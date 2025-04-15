@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "xiaobawang"
 readme = "README.md"
 requires-python = ">=3.11, <4.0"
-dependencies = ["httpx==0.25.1", "jieba>=0.42.1", "nonebot-plugin-orm[sqlite]>=0.7.7", "redis>=5.2.1", "tqdm>=4.67.1", "pillow>=11.2.1"]
+dependencies = ["httpx==0.25.1", "jieba>=0.42.1", "nonebot-plugin-orm[sqlite]>=0.7.7", "redis>=5.2.1", "tqdm>=4.67.1", "pillow>=11.2.1", "matplotlib>=3.10.1", "numpy>=2.2.4"]
 
 [tool.nonebot]
 adapters = [

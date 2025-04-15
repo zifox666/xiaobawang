@@ -6,6 +6,7 @@ from .alias import AliasHelper
 from ..api.esi.market import market
 from ..db.models.alias import TypeAlias
 from ..utils.common.cache import cache
+from ..utils.common.line import generate_minimal_chart
 
 require("xiaobawang.plugins.sde")
 
@@ -204,10 +205,10 @@ class PriceHelper:
 
         prices = await market.get_price(type_ids=type_ids)
 
-        histories = {}
+        histories_line = {}
         for type_id in type_ids:
-            # history_data = await market.get_history(type_id)
-            histories[type_id] = {}
+            history_data = await market.get_history(type_id)
+            histories_line[type_id] = generate_minimal_chart(history_data["history"]) if history_data else None
 
         formatted_items = []
         total_sell = 0
@@ -218,7 +219,7 @@ class PriceHelper:
         for item in items:
             type_id = item["typeID"]
             price_data = prices.get(str(type_id)) or prices.get(type_id, {})
-            history_data = histories.get(type_id, {})
+            history_line = histories_line.get(type_id, None)
 
             highest_buy = price_data.get("highest_buy", {})
             lowest_sell = price_data.get("lowest_sell", {})
@@ -250,7 +251,7 @@ class PriceHelper:
                 "total_mid": item_mid,
                 "buy_volume_remain": buy_volume_remain,
                 "sell_volume_remain": sell_volume_remain,
-                "history": history_data
+                "history_line": history_line
             }
             formatted_items.append(formatted_item)
 
