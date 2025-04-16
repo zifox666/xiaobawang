@@ -23,6 +23,10 @@ class RedisCache:
     _redis: redis.Redis = None
     _initialized = False
 
+    TIME_MIN = 60
+    TIME_HOUR = 60 * TIME_MIN
+    TIME_DAY = 24 * TIME_MIN
+
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super(RedisCache, cls).__new__(cls)
