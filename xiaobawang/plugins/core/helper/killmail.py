@@ -3,6 +3,7 @@ import asyncio
 import json
 import time
 import websockets
+import traceback
 from datetime import datetime
 
 from nonebot import logger
@@ -271,25 +272,6 @@ class KillmailHelper:
         except Exception as e:
             logger.error(f"发送 killmail 失败: {e}")
 
-    @cache_result(expire_time=86400, prefix="inv_flags_", exclude_args=[0])  # 缓存1天
-    async def get_flag_info(self) -> Dict[int, str]:
-        """
-        获取所有槽位标识和名称
-
-        Returns:
-            槽位ID到名称的映射
-        """
-        try:
-            async with get_session() as session:
-                result = await session.execute(select(InvFlags))
-                flags = result.scalars().all()
-
-                return {flag.flagID: flag.flagName for flag in flags}
-
-        except Exception as e:
-            logger.error(f"获取槽位信息失败: {e}")
-            return {}
-
     async def _create_killmail_details(self, killmail_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         生成详细km数据，处理嵌套物品、计算距离并格式化数据以符合Jinja2模板要求
@@ -370,6 +352,9 @@ class KillmailHelper:
                             "name": name
                         }
 
+            if type_ids_to_query:
+                item_names = await sde_search.get_type_names(list(type_ids_to_query))
+
             if solar_system_id:
                 system_info = await esi_client.get_system_info(solar_system_id)
 
@@ -389,6 +374,7 @@ class KillmailHelper:
             drop_value = zkb_data.get("droppedValue", 0)
             formatted_total_value = f"{total_value:,.0f}"
             formatted_drop_value = f"{drop_value:,.0f}"
+            slot_list = self._format_items(victim.get("items", []), item_names, await sde_search.get_flag_info())
 
             result = {
                 "killmail_id": killmail_data.get("killmail_id"),
@@ -396,7 +382,7 @@ class KillmailHelper:
                 "time": formatted_time,
                 "time_difference": time_difference,
                 "solar_system_id": solar_system_id,
-                "solar_system": system_info.get("name", "未知星系"),
+                "solar_system": system_info.get("system_name", "未知星系"),
                 "constellation": system_info.get("constellation_name", "未知星座"),
                 "region": system_info.get("region_name", "未知区域"),
                 "sec_color": sec_color,
@@ -404,16 +390,16 @@ class KillmailHelper:
                 "victim": await self._format_victim(victim, entity_names, item_names),
                 "attacker_number": attacker_number,
                 "attackMember": self._format_attackers(attackers, entity_names, item_names),
-                "items": self._format_items(victim.get("items", []), item_names, await self.get_flag_info()),
+                "slot_list": slot_list.get("slotList", []),
                 "zkb": killmail_data.get("zkb", {}),
                 "total_value": formatted_total_value,
                 "drop_value": formatted_drop_value,
                 "position": killmail_data.get("position", {})
             }
 
-            if "position" in killmail_data and "zkb" in killmail_data:
+            if killmail_data.get("victim").get("position"):
                 result["nearest_celestial"] = await self._calculate_nearest_celestial(
-                    killmail_data["position"],
+                    killmail_data.get("victim").get("position"),
                     killmail_data["zkb"].get("locationID", 0)
                 )
                 result["location_name"] = result["nearest_celestial"].get("location_name", "未知位置")
@@ -436,6 +422,7 @@ class KillmailHelper:
         alliance_id = victim.get("alliance_id", 0)
         ship_type_id = victim.get("ship_type_id", 0)
         ship_group_name = await sde_search.get_type_group(victim.get("ship_type_id", 0))
+        damage_taken = victim.get("damage_taken", 0)
 
         result = {"victim_id": victim_id, "victim_name": entity_names.get(victim_id, {}).get("name", "Unknown"),
                   "victim_corp_id": corp_id, "victim_corp": entity_names.get(corp_id, {}).get("name", "Unknown"),
@@ -443,7 +430,7 @@ class KillmailHelper:
                   "victim_alliance_name": entity_names.get(alliance_id, {}).get("name", ""),
                   "ship_type_id": ship_type_id,
                   "ship_type_name": item_names.get(ship_type_id, {}).get("translation", "Unknown Ship"),
-                  "damage_taken": victim.get("damage_taken", 0), "ship_group_name": ship_group_name}
+                  "damage_taken": f"{damage_taken:,.0f}", "ship_group_name": ship_group_name}
 
         return result
 
@@ -480,10 +467,9 @@ class KillmailHelper:
                 "ship_type_name": item_names.get(ship_type_id, {}).get("translation", "Unknown Ship"),
                 "weapon_type_id": weapon_type_id,
                 "weapon_type_name": item_names.get(weapon_type_id, {}).get("translation", "Unknown Weapon"),
-                "damage_done": damage_done,
+                "damage_done": f"{damage_done:,.0f}",
                 "damage_percent": round((damage_done / total_damage * 100) if total_damage else 0, 2),
                 "final_blow": attacker.get("final_blow", False),
-                "margin_top": 2 if alliance_id else 8 # TODO: 优化掉
             }
 
             formatted_attackers.append(formatted_attacker)
@@ -495,102 +481,121 @@ class KillmailHelper:
 
         return formatted_attackers
 
-    def _format_items(self, items: List[Dict], item_names: Dict[int, Dict], flag_info: Dict[int, str]) -> Dict[
-        str, Any]:
-        """
-        格式化物品信息，按槽位类型分类并处理嵌套物品
+    def _format_items(self, items: List[Dict], item_names: Dict[int, Dict], flag_info: Dict[int, str]) -> Dict[str, Any]:
+            """
+            格式化物品信息，按槽位类型分类并处理嵌套物品
+            """
+            slot_type_groups = {}
 
-        Return：
-            {
-                "slotList": [
-                    {
-                        "slotName": "改装件",
-                        "slotPng": "rig",
-                        "items": [
-                            {
-                                "item_id": 123,
-                                "item_name": "物品名称",
-                                "item_number": 2,
-                                "drop": "dropped",
-                                "nested_items": [...]  # 嵌套物品列表
-                            },
-                            ...
-                        ]
-                    },
-                    ...
-                ]
+            # 临时存储，用于按物品ID和状态(drop/destroyed)合并相同物品
+            # 结构: {slot_type: {item_id: {"drop": {}, "destroyed": {}}}}
+            item_tracking = {}
+
+            for item in items:
+                flag = item.get("flag", 0)
+                item_type_id = item.get("item_type_id", 0)
+                quantity_dropped = item.get("quantity_dropped", 0)
+                quantity_destroyed = item.get("quantity_destroyed", 0)
+
+                flag_name = flag_info.get(flag, f"Flag: {flag}")
+
+                slot_type = self._get_slot_type(flag_name)
+                slot_image = self._get_slot_image_name(slot_type)
+                slot_display_name = self._get_slot_display_name(slot_type)
+
+                if slot_type not in slot_type_groups:
+                    slot_type_groups[slot_type] = {
+                        "slotName": slot_display_name,
+                        "slotPng": slot_image,
+                        "slot_items": [],
+                        "slotType": slot_type
+                    }
+                    item_tracking[slot_type] = {}
+
+                item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
+
+                nested_items = []
+                has_nested = "items" in item
+                if has_nested:
+                    nested_items = self._process_nested_items(item["items"], item_names, "drop" if quantity_dropped > 0 else "destroyed")
+
+                    if quantity_dropped > 0:
+                        slot_type_groups[slot_type]["slot_items"].append({
+                            "item_id": item_type_id,
+                            "item_name": item_name,
+                            "item_number": quantity_dropped,
+                            "drop": "drop",
+                            "nested_items": nested_items
+                        })
+
+                    if quantity_destroyed > 0:
+                        slot_type_groups[slot_type]["slot_items"].append({
+                            "item_id": item_type_id,
+                            "item_name": item_name,
+                            "item_number": quantity_destroyed,
+                            "drop": "destroyed",
+                            "nested_items": nested_items
+                        })
+                else:
+                    if item_type_id not in item_tracking[slot_type]:
+                        item_tracking[slot_type][item_type_id] = {
+                            "drop": {"count": 0, "name": item_name},
+                            "destroyed": {"count": 0, "name": item_name}
+                        }
+
+                    if quantity_dropped > 0:
+                        item_tracking[slot_type][item_type_id]["drop"]["count"] += quantity_dropped
+
+                    if quantity_destroyed > 0:
+                        item_tracking[slot_type][item_type_id]["destroyed"]["count"] += quantity_destroyed
+
+            for slot_type, items_map in item_tracking.items():
+                for item_id, states in items_map.items():
+                    if states["drop"]["count"] > 0:
+                        slot_type_groups[slot_type]["slot_items"].append({
+                            "item_id": item_id,
+                            "item_name": states["drop"]["name"],
+                            "item_number": states["drop"]["count"],
+                            "drop": "drop",
+                            "nested_items": None
+                        })
+
+                    if states["destroyed"]["count"] > 0:
+                        slot_type_groups[slot_type]["slot_items"].append({
+                            "item_id": item_id,
+                            "item_name": states["destroyed"]["name"],
+                            "item_number": states["destroyed"]["count"],
+                            "drop": "destroyed",
+                            "nested_items": None
+                        })
+
+            # 按优先级排序槽位组
+            slot_order = {
+                "high": 1,
+                "med": 2,
+                "low": 3,
+                "rig": 4,
+                "subsystem": 5,
+                "drone": 6,
+                "fighter": 7,
+                "cargo": 8
             }
-        """
-        slot_type_groups = {}
 
-        for item in items:
-            flag = item.get("flag", 0)
-            item_type_id = item.get("item_type_id", 0)
-            quantity_dropped = item.get("quantity_dropped", 0)
-            quantity_destroyed = item.get("quantity_destroyed", 0)
+            slot_list = list(slot_type_groups.values())
+            slot_list.sort(key=lambda x: slot_order.get(x["slotType"], 999))
 
-            flag_name = flag_info.get(flag, f"Flag: {flag}")
+            return {
+                "slotList": slot_list,
+            }
 
-            slot_type = self._get_slot_type(flag_name)
-            slot_image = self._get_slot_image_name(slot_type)
-            slot_display_name = self._get_slot_display_name(slot_type)
-
-            if slot_type not in slot_type_groups:
-                slot_type_groups[slot_type] = {
-                    "slotName": slot_display_name,
-                    "slotPng": slot_image,
-                    "items": []
-                }
-
-            item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
-
-            nested_items = []
-            if "items" in item:
-                nested_items = self._process_nested_items(item["items"], item_names)
-
-            if quantity_dropped > 0:
-                slot_type_groups[slot_type]["items"].append({
-                    "item_id": item_type_id,
-                    "item_name": item_name,
-                    "item_number": quantity_dropped,
-                    "drop": "dropped",
-                    "nested_items": nested_items if nested_items else None
-                })
-
-            if quantity_destroyed > 0:
-                slot_type_groups[slot_type]["items"].append({
-                    "item_id": item_type_id,
-                    "item_name": item_name,
-                    "item_number": quantity_destroyed,
-                    "drop": "destroyed",
-                    "nested_items": nested_items if nested_items else None
-                })
-
-        slot_order = {
-            "high": 1,
-            "med": 2,
-            "low": 3,
-            "rig": 4,
-            "subsystem": 5,
-            "drone": 6,
-            "fighter": 7,
-            "cargo": 8
-        }
-
-        slot_list = list(slot_type_groups.values())
-        slot_list.sort(key=lambda x: slot_order.get(x["slotPng"], 999))
-
-        return {
-            "slotList": slot_list,
-        }
-
-    def _process_nested_items(self, nested_items: List[Dict], item_names: Dict) -> List[Dict]:
+    def _process_nested_items(self, nested_items: List[Dict], item_names: Dict, drop: str = "destroyed") -> List[Dict]:
         """
         递归处理嵌套物品，返回嵌套物品列表
 
         Args:
             nested_items: 嵌套物品列表
             item_names: 物品名称字典
+            drop: 物品状态（"dropped" 或 "destroyed"）
 
         Returns:
             处理后的嵌套物品列表
@@ -613,7 +618,7 @@ class KillmailHelper:
                     "item_id": item_type_id,
                     "item_name": item_name,
                     "item_number": quantity_dropped,
-                    "drop": "dropped",
+                    "drop": drop,
                     "nested_items": sub_items if sub_items else None
                 })
 
@@ -622,7 +627,7 @@ class KillmailHelper:
                     "item_id": item_type_id,
                     "item_name": item_name,
                     "item_number": quantity_destroyed,
-                    "drop": "destroyed",
+                    "drop": drop,
                     "nested_items": sub_items if sub_items else None
                 })
 
@@ -645,8 +650,7 @@ class KillmailHelper:
             包含最近天体信息的字典
         """
         try:
-            celestial = await esi_client.get_universe_id(location_id)
-            celestial_name = celestial if celestial else "Unknown"
+            celestial_name = await esi_client.get_moon(location_id)
 
             x1 = position.get("x", 0)
             y1 = position.get("y", 0)
@@ -655,9 +659,9 @@ class KillmailHelper:
             # 计算与原点(0,0,0)的距离
             distance_meters = (x1 ** 2 + y1 ** 2 + z1 ** 2) ** 0.5
 
-            if distance_meters > 149597870700:
+            if distance_meters > 1495978707:
                 distance_au = distance_meters / 149597870700
-                distance_str = f"{distance_au:.6f} AU"
+                distance_str = f"{distance_au:.2f} AU"
             else:
                 distance_km = distance_meters / 1000
                 distance_str = f"{distance_km:,.2f} km"
@@ -702,7 +706,7 @@ class KillmailHelper:
         elif "subsystem" in flag_name:
             return "EVE_SubIcon"
         elif "fighter" in flag_name:
-            return "f/f6/Icon_drone_bandwidth.png/30px-Icon_drone_bandwidth"
+            return "thumb/f/f6/Icon_drone_bandwidth.png/30px-Icon_drone_bandwidth"
         else:
             return "thumb/8/82/Icon_capacity.png/48px-Icon_capacity"
 
@@ -807,39 +811,50 @@ class KillmailHelper:
 
     @classmethod
     def _format_time_difference(cls, past_time: datetime, current_time: datetime) -> str:
-        """
-        计算并格式化两个时间之间的差异
+            """
+            计算并格式化两个时间之间的差异
 
-        Args:
-            past_time: 过去的时间
-            current_time: 当前时间
+            Args:
+                past_time: 过去的时间
+                current_time: 当前时间
 
-        Returns:
-            格式化的时间差字符串
-        """
-        time_diff = current_time - past_time
+            Returns:
+                格式化的时间差字符串
+            """
+            # 确保两个日期时间对象都是同样的类型（要么都有时区，要么都没有）
+            if past_time.tzinfo is not None and current_time.tzinfo is None:
+                from datetime import timezone
+                current_time = current_time.replace(tzinfo=timezone.utc)
+            elif past_time.tzinfo is None and current_time.tzinfo is not None:
+                from datetime import timezone
+                past_time = past_time.replace(tzinfo=timezone.utc)
 
-        # 转换为秒
-        seconds = int(time_diff.total_seconds())
+            time_diff = current_time - past_time
 
-        if seconds < 60:
-            return f"{seconds}秒前"
+            # 剩余代码保持不变
+            seconds = int(time_diff.total_seconds())
 
-        minutes = seconds // 60
-        if minutes < 60:
-            return f"{minutes}分钟前"
+            if seconds < 60:
+                return f"{seconds}秒前"
 
-        hours = minutes // 60
-        if hours < 24:
-            return f"{hours}小时前"
+            minutes = seconds // 60
+            if minutes < 60:
+                return f"{minutes}分钟前"
 
-        days = hours // 24
-        if days < 30:
-            return f"{days}天前"
+            hours = minutes // 60
+            if hours < 24:
+                return f"{hours}小时前"
 
-        months = days // 30
-        if months < 12:
-            return f"{months}个月前"
+            days = hours // 24
+            if days < 30:
+                return f"{days}天前"
 
-        years = months // 12
-        return f"{years}年前"
+            months = days // 30
+            if months < 12:
+                return f"{months}个月前"
+
+            years = months // 12
+            return f"{years}年前"
+
+
+km = KillmailHelper()

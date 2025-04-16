@@ -1,5 +1,5 @@
 from .cache import cache, cache_result
-from .models import TrnTranslations, TC_TYPES_ID, InvTypes, TC_GROUP_ID
+from .models import TrnTranslations, TC_TYPES_ID, InvTypes, TC_GROUP_ID, InvFlags
 from .utils import text_processor
 from .config import plugin_config
 from .db import get_session
@@ -94,12 +94,23 @@ class SDESearch:
 
     @classmethod
     @cache_result(prefix="inv_flags_", exclude_args=[0])
-    async def get_inv_flags(cls):
-        """获取所有槽位关系表"""
-        async with await get_session() as session:
-            query = select(InvTypes)
-            result = await session.execute(query)
-            return result.scalars().all()
+    async def get_flag_info(cls) -> dict | None:
+        """
+        获取所有槽位标识和名称
+
+        Returns:
+            槽位ID到名称的映射
+        """
+        try:
+            async with await get_session() as session:
+                result = await session.execute(select(InvFlags))
+                flags = result.scalars().all()
+
+                return {flag.flagID: flag.flagName for flag in flags}
+
+        except Exception as e:
+            logger.error(f"获取槽位信息失败: {e}")
+            return None
 
     @classmethod
     @cache_result(prefix="type_name_", exclude_args=[0, 1])
@@ -127,9 +138,9 @@ class SDESearch:
             self,
             type_ids: list[int | str],
             language_id: str = None
-    )-> dict[int, dict[str, str]]:
+    ) -> dict[int, dict[str, str]]:
         """
-        获取多个物品的名称
+        批量获取多个物品的名称
 
         Args:
             type_ids: 物品ID列表
@@ -141,16 +152,33 @@ class SDESearch:
         if language_id is None:
             language_id = self.default_lang
 
+        if not type_ids:
+            return {}
+
+        int_type_ids = [int(type_id) for type_id in type_ids]
+
         result = {}
         async with await get_session() as session:
-            for type_id in type_ids:
-                inv_type = await self._get_type_name(session, type_id)
-                translation = await self._get_type_translation(session, type_id, language_id)
+            inv_types_query = select(InvTypes).where(InvTypes.typeID.in_(int_type_ids))
+            inv_types_result = await session.execute(inv_types_query)
+            inv_types = {item.typeID: item for item in inv_types_result.scalars().all()}
 
-                if inv_type:
-                    result[int(type_id)] = {
+            translations_query = select(TrnTranslations).where(
+                and_(
+                    TrnTranslations.tcID == TC_TYPES_ID,
+                    TrnTranslations.keyID.in_(int_type_ids),
+                    TrnTranslations.languageID == language_id
+                )
+            )
+            translations_result = await session.execute(translations_query)
+            translations = {item.keyID: item.text for item in translations_result.scalars().all()}
+
+            for type_id in int_type_ids:
+                if type_id in inv_types:
+                    inv_type = inv_types[type_id]
+                    result[type_id] = {
                         "typeName": inv_type.typeName,
-                        "translation": translation or inv_type.typeName
+                        "translation": translations.get(type_id, inv_type.typeName)
                     }
 
         return result

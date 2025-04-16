@@ -156,7 +156,8 @@ async def render_template(
         template_path: Path,
         template_name: str,
         data: Dict[str, Any],
-        viewport_width: int = 550
+        width: int = 550,
+        height: int = 10,
 ) -> bytes | str:
     """通用模板渲染函数"""
     return await template_to_pic(
@@ -164,7 +165,7 @@ async def render_template(
         template_name=template_name,
         templates=data,
         pages={
-            "viewport": {"width": viewport_width, "height": 10},
+            "viewport": {"width": width, "height": height},
             "base_url": f"file://{template_path}",
         },
     )

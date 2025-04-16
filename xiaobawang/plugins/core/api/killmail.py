@@ -4,7 +4,7 @@ from ..utils.common.cache import cache_result, cache
 from ..utils.common.http_client import get_client
 
 
-@cache_result(expire_time=cache.TIME_HOUR, prefix="killmail:get_zkb_killmail")
+@cache_result(expire_time=cache.TIME_HOUR)
 async def get_zkb_killmail(
         kill_id: int,
 ) -> Dict:
@@ -23,7 +23,7 @@ async def get_zkb_killmail(
     except Exception as e:
         raise e
     zkb = r.json()[0].get("zkb")
-    esi_url = f"https://esi.evetech.net/latest/killmails/{kill_id}/{zkb.get("hash")}/"
+    esi_url = f"https://esi.evetech.net/latest/killmails/{kill_id}/{zkb.get('hash')}/"
     try:
         r = await client.get(esi_url)
         r.raise_for_status()
