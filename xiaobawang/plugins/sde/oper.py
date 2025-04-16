@@ -1,5 +1,5 @@
 from .cache import cache, cache_result
-from .models import TrnTranslations, TC_TYPES_ID, InvTypes
+from .models import TrnTranslations, TC_TYPES_ID, InvTypes, TC_GROUP_ID
 from .utils import text_processor
 from .config import plugin_config
 from .db import get_session
@@ -155,5 +155,36 @@ class SDESearch:
 
         return result
 
+    @cache_result(prefix="type_group_", exclude_args=[0])
+    async def get_type_group(self, type_id: int | str, language: str = 'zh') -> str | None:
+        """
+        从物品ID获取GROUP名称
+        Args:
+            type_id: 物品ID
+            language: 语言 默认 zh
+        Returns:
+            GROUP名称 str 或 None
+        """
+        async with await get_session() as session:
+            # 获取物品对应的组ID
+            types_query = select(InvTypes.groupID).where(InvTypes.typeID == type_id)
+            group_id_result = await session.execute(types_query)
+            group_id = group_id_result.scalar_one_or_none()
+
+            if group_id is None:
+                return None
+
+            # 获取组名称的翻译
+            tns_query = select(TrnTranslations.text).where(
+                and_(
+                    TrnTranslations.tcID == TC_GROUP_ID,
+                    TrnTranslations.keyID == group_id,
+                    TrnTranslations.languageID == language
+                )
+            )
+            group_name_result = await session.execute(tns_query)
+            group_name = group_name_result.scalar_one_or_none()
+
+            return group_name
 
 sde_search = SDESearch()
