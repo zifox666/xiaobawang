@@ -11,6 +11,7 @@ from arclet.alconna import (
 from nonebot import logger, require
 from nonebot.internal.adapter import Event, Bot
 from nonebot.plugin.on import on_command
+from nonebot_plugin_alconna.builtins.extensions import ReplyRecordExtension
 from nonebot_plugin_orm import AsyncSession
 
 from ..api.esi.market import market
@@ -41,12 +42,16 @@ query_price = on_alconna(
     auto_send_output=True,
     use_cmd_start=True
 )
-"""next_page = on_alconna(
+next_page = on_alconna(
     Alconna("next"),
-    extensions=[ReplyRecordExtension()]
-)"""
-next_page = on_command("next", aliases={"下一页"})
-prev_page = on_command("last", aliases={"上一页", "prev"})
+    aliases={"下一页"},
+    use_cmd_start=True
+)
+prev_page = on_alconna(
+    Alconna("prev"),
+    aliases={"上一页"},
+    use_cmd_start=True
+)
 update_market_cache = on_command("更新市场数据", aliases={"更新市场", "更新市场数据"}, priority=5)
 
 
@@ -56,7 +61,6 @@ async def handle_query_price(
         session: AsyncSession,
         event: Event
 ):
-
     # 参数解析部分
     args = result.args
     args = ' '.join(args)
@@ -69,20 +73,13 @@ async def handle_query_price(
         logger.debug(r)
 
         if r["success"]:
-            r["now"] = datetime.now()
-            msg_id = await query_price.send(
-                UniMessage.image(raw=await render_template(
-                    template_path=templates_path,
-                    template_name="price.html.jinja2",
-                    data=r,
-                ))
-            )
-            msg_id = msg_id.msg_ids[0]["message_id"]
-            cache_key = f"query_price_{event.get_session_id()}_{msg_id}"
-            await cache.set(
-                cache_key,
-                {"word": r["word"], "num": r["num"], "current_page": 1, "total_pages": r["pagination"]["total_pages"]},
-                6 * 3600
+            await send_price_image_and_cache(
+                handler=query_price,
+                word=word,
+                num=num,
+                current_page=1,
+                event=event,
+                data=r
             )
         else:
             await query_price.finish(f"未找到[{args}]")
@@ -96,7 +93,6 @@ async def handle_next_page(
 ):
     msg_id = await get_reply_message_id(bot, event)
     if msg_id:
-
         cache_key = f"query_price_{event.get_session_id()}_{msg_id}"
         cache_data = await cache.get(cache_key)
         if cache_data:
@@ -109,8 +105,14 @@ async def handle_next_page(
             async with session:
                 r = await price_helper.next(session=session, word=word, num=num, current_page=cache_data["current_page"])
                 if r["success"]:
-                    await next_page.send(f'{r["items"]}')
-                    await cache.set(cache_key, {"word": word, "num": num, "current_page": cache_data["current_page"] + 1, "total_pages": r["pagination"]["total_pages"]}, 6 * 3600)
+                    await send_price_image_and_cache(
+                        handler=query_price,
+                        word=word,
+                        num=num,
+                        current_page=cache_data["current_page"] + 1,
+                        event=event,
+                        data=r
+                    )
 
 
 @prev_page.handle()
@@ -133,11 +135,59 @@ async def handle_prev_page(
             async with session:
                 r = await price_helper.prev(session=session, word=word, num=num, current_page=cache_data["current_page"])
                 if r["success"]:
-                    await prev_page.send(f'{r["items"]}')
-                    await cache.set(cache_key, {"word": word, "num": num, "current_page": cache_data["current_page"] - 1, "total_pages": r["pagination"]["total_pages"]}, 6 * 3600)
+                    await send_price_image_and_cache(
+                        handler=query_price,
+                        word=word,
+                        num=num,
+                        current_page=cache_data["current_page"] - 1,
+                        event=event,
+                        data=r
+                    )
 
 
 @update_market_cache.handle()
 async def _():
     await market.refresh()
 
+
+
+async def send_price_image_and_cache(
+    handler,
+    word,
+    num,
+    current_page,
+    event,
+    data
+):
+    """发送价格图片并缓存会话信息
+
+    Args:
+        handler: 处理程序句柄
+        session: 数据库会话
+        word: 查询关键词
+        num: 数量
+        current_page: 当前页码
+        event: 事件对象
+        data: 要渲染的数据
+    """
+    data["now"] = datetime.now()
+    msg_id = await handler.send(
+        UniMessage.image(raw=await render_template(
+            template_path=templates_path,
+            template_name="price.html.jinja2",
+            data=data,
+        ))
+    )
+    msg_id = msg_id.msg_ids[0]["message_id"]
+    cache_key = f"query_price_{event.get_session_id()}_{msg_id}"
+    await cache.set(
+        cache_key,
+        {
+            "word": word,
+            "num": num,
+            "current_page": current_page,
+            "total_pages": data["pagination"]["total_pages"]
+        },
+        6 * 3600
+    )
+    return msg_id

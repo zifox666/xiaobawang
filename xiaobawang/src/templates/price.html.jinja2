@@ -56,7 +56,11 @@
                     {% endif %}
                     <h3 class="font-bold flex-1 truncate">{{ item.name }}</h3>
                     <div class="ml-2 h-6 w-24 flex items-center">
-                        <img src="{{ item.history_line }}" alt="价格走势图" class="w-full h-full rounded-md"></img>
+                        <img src="{{ item.history_line }}"
+                             alt="价格走势图"
+                             class="w-full h-full rounded-md"
+                             onerror="this.style.display='none'"
+                        />
                     </div>
                 </div>
 
