@@ -160,7 +160,7 @@ cache = RedisCache()
 
 def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclude_args: list = None):
     """
-    缓存装饰器，用于缓存函数调用结果
+    简化版缓存装饰器，用于缓存函数调用结果
     :param expire_time: 过期时间（秒）
     :param prefix: 缓存键前缀
     :param exclude_args: 排除在缓存键计算之外的参数索引列表
@@ -169,19 +169,43 @@ def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclu
     exclude_args = exclude_args or []
 
     def decorator(func):
+        # 获取函数名，用于构建缓存键
+        func_name = func.__qualname__
+
         @wraps(func)
         async def wrapper(*args, **kwargs):
+            # 准备用于缓存键生成的参数
             cache_args = [arg for i, arg in enumerate(args) if i not in exclude_args]
-            cache_key = f"{prefix}{func.__name__}:{hash(str(cache_args))}"
 
+            # 构建简单的缓存键
+            key_parts = [prefix, func_name]
+
+            # 添加参数到键中
+            if cache_args:
+                try:
+                    key_parts.append(str(cache_args))
+                except:
+                    key_parts.append("args")
+
+            # 添加关键字参数
+            if kwargs:
+                try:
+                    sorted_kwargs = sorted([(k, v) for k, v in kwargs.items()])
+                    key_parts.append(str(sorted_kwargs))
+                except:
+                    key_parts.append("kwargs")
+
+            # 简单拼接成缓存键
+            cache_key = ":".join(key_parts)
+
+            # 查询缓存
             result = await cache.get(cache_key)
             if result is not None:
                 return result
 
+            # 执行函数并缓存结果
             result = await func(*args, **kwargs)
-
             await cache.set(cache_key, result, expire_time)
-
             return result
 
         return wrapper
