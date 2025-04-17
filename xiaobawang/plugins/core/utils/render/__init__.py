@@ -169,3 +169,61 @@ async def render_template(
             "base_url": f"file://{template_path}",
         },
     )
+
+
+async def html2pic_br(
+        html_content: str = None,
+        url: str = None,
+        element: str = None,
+        hide_elements: list = None
+) -> bytes | str:
+    async with get_new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1) as page:
+        if url:
+            await page.goto(url)
+            await page.wait_for_load_state("networkidle")
+        else:
+            await page.set_content(html_content)
+
+        if hide_elements:
+            await page.evaluate("""
+                (selectors) => {
+                    selectors.forEach(selector => {
+                        const elements = document.querySelectorAll(selector);
+                        elements.forEach(element => {
+                            element.style.display = 'none';
+                        });
+                    });
+                }
+            """, hide_elements)
+
+        # 等待并选择要截图的元素
+        element_handle = await page.wait_for_selector(element)
+        if element_handle is None:
+            raise ValueError(f"Element '{element}' not found on the page.")
+
+        # 获取元素的大小和位置
+        bounding_box = await element_handle.bounding_box()
+        element_width = bounding_box['width']
+        element_height = bounding_box['height']
+
+        # 调整视口大小以适应整个元素
+        await page.set_viewport_size({"width": int(element_width), "height": int(element_height)})
+
+        await page.wait_for_load_state("networkidle")
+
+        # 截图整个元素
+        screenshot = await page.screenshot(
+            clip={
+                "x": bounding_box['x'],
+                "y": bounding_box['y'],
+                "width": element_width,
+                "height": element_height
+            }
+        )
+
+        # 保存图片
+        stitched_image = Image.open(BytesIO(screenshot))
+        stitched_image.save("./html2pic.png")
+        with BytesIO() as output:
+            stitched_image.save(output, format="PNG")
+            return output.getvalue()

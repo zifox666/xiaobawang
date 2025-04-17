@@ -15,7 +15,15 @@ class Config(BaseModel):
 
     proxy: str = None
 
+    user_agent: str = None
+
+    zkb_listener_method: str = "websocket"
+    zkb_listener_url: str = "ws://127.0.0.1:8080"
+
 plugin_config = get_plugin_config(Config)
+
+if not plugin_config.user_agent:
+    raise RuntimeError("请在配置文件中设置 user_agent")
 
 ROOT_PATH = Path(__name__).parent.absolute()
 
@@ -24,3 +32,7 @@ DATA_PATH = ROOT_PATH / "data"
 PLUGIN_PATH = Path(__file__).resolve().parent
 
 SRC_PATH = ROOT_PATH / "xiaobawang" / "src"
+
+HEADERS = {
+    'user_agent': f'Nonebot2/XiaoBaWang(https://github.com/zifox666/xiaobawang) zifox666@gmail.com Deployed by {plugin_config.user_agent}'
+}

@@ -24,6 +24,7 @@ class KillmailPushRecord(Model):
     sender: Mapped[int] = mapped_column()
     send_type: Mapped[str] = mapped_column()
     killmail_id: Mapped[int] = mapped_column()
+    reason: Mapped[str] = mapped_column()
     time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from nonebot.internal.adapter import Bot, Event
 from nonebot_plugin_alconna.uniseg import reply_fetch
 
@@ -22,11 +24,20 @@ def parse_session_id(session_id: str) -> dict:
         # 私聊消息: user_id
         result["type"] = "private"
         result["user_id"] = session_id
-
     return result
+
 
 async def get_reply_message_id(bot: Bot, event: Event) -> str | None:
     reply = await reply_fetch(event, bot)
     if reply:
         return reply.id
     return None
+
+
+def convert_time(killmail_time: str) -> str:
+    """格式化时间"""
+    dt = datetime.strptime(killmail_time, "%Y-%m-%dT%H:%M:%SZ")
+    rounded_hour = dt.hour
+    rounded_minute = (dt.minute // 10) * 10
+    return dt.strftime(f"%Y%m%d{rounded_hour:02d}{rounded_minute:02d}")
+

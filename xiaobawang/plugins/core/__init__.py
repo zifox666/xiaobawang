@@ -1,7 +1,8 @@
 from nonebot import get_driver, logger, require
 
+from .command.subscription import _start_km_listen
 from .config import plugin_config
-from .utils.common.cache import cache
+from .utils.common.cache import cache as c
 from .utils.common.command_record import HelperExtension
 from .command import *
 from .utils.hook import *
@@ -30,12 +31,14 @@ TITLE = """
 @driver.on_startup
 async def init():
     print(TITLE)
-    await cache.init()
+    await c.init()
 
     if plugin_config.EVE_JANICE_API_KEY == "G9KwKq3465588VPd6747t95Zh94q3W2E":
         logger.warning("请向JANICE作者申请专用API KEY，临时API有严重速率限制")
 
     add_global_extension(HelperExtension())
+
+    await _start_km_listen()
 
 
 @driver.on_shutdown

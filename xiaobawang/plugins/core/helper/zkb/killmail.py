@@ -1,33 +1,25 @@
-from typing import List, Dict, Any, Optional, Set, Tuple, Union
+from typing import List, Dict, Any, Optional, Tuple
 import asyncio
-import json
-import time
-import websockets
-import traceback
+
 from datetime import datetime
 
 from nonebot import logger
+from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_orm import get_session
-from sqlalchemy import select, or_, and_
 
-from .subscription import KillmailSubscriptionManager
-from ..api.killmail import get_zkb_killmail
-from ..utils.common.http_client import get_client
-from ..utils.common.cache import cache, cache_result
-from ..api.esi.universe import esi_client
+from ...utils.common.cache import save_msg_cache
+from ...helper.subscription import KillmailSubscriptionManager
+from ...api.killmail import get_zkb_killmail
+from ...api.esi.universe import esi_client
+from ...utils.render import templates_path, render_template
 
-from xiaobawang.plugins.sde.models import InvFlags
 from xiaobawang.plugins.sde.oper import sde_search
 
 
 class KillmailHelper:
     def __init__(self):
-        self.WEBSOCKET_URL = "wss://zkillboard.com/websocket/"
-        self.running = False
-        self.reconnect_delay = 5  # 初始重连延迟（秒）
-        self.max_reconnect_delay = 300  # 最大重连延迟（秒）
-        self.subscription_manager = KillmailSubscriptionManager(get_session())
         self.session = get_session()
+        self.subscription_manager = KillmailSubscriptionManager(self.session)
 
     async def get(self, kill_id: int) -> Dict:
         """
@@ -39,62 +31,14 @@ class KillmailHelper:
             await get_zkb_killmail(kill_id)
         )
 
-    async def start(self):
-        """启动 Killmail Websocket 监听器"""
-        self.running = True
-
-        while self.running:
-            try:
-                logger.info("正在连接到 zkillboard websocket...")
-                async with websockets.connect(self.WEBSOCKET_URL) as websocket:
-                    logger.info("已连接到 zkillboard websocket")
-                    await websocket.send(json.dumps({"action": "sub", "channel": "killstream"}))
-
-                    self.reconnect_delay = 5
-
-                    while self.running:
-                        try:
-                            message = await websocket.recv()
-                            data = json.loads(message)
-
-                            asyncio.create_task(self._subscription_check(data))
-                        except (websockets.exceptions.ConnectionClosed,
-                                websockets.exceptions.ConnectionClosedError,
-                                websockets.exceptions.ConnectionClosedOK) as e:
-                            logger.warning(f"Websocket 连接关闭: {e}")
-                            break
-                        except Exception as e:
-                            logger.error(f"处理 killmail 时出错: {e}")
-                            continue
-
-            except (websockets.exceptions.WebSocketException,
-                    ConnectionRefusedError,
-                    ConnectionError) as e:
-                if not self.running:
-                    break
-
-                logger.error(f"Websocket 连接失败: {e}, {self.reconnect_delay}秒后重试")
-                await asyncio.sleep(self.reconnect_delay)
-
-                self.reconnect_delay = min(self.reconnect_delay * 2, self.max_reconnect_delay)
-
-            except Exception as e:
-                logger.error(f"未知错误: {e}, {self.reconnect_delay}秒后重试")
-                await asyncio.sleep(self.reconnect_delay)
-                self.reconnect_delay = min(self.reconnect_delay * 2, self.max_reconnect_delay)
-
-    async def stop(self):
-        """停止 Killmail Websocket 监听器"""
-        self.running = False
-        logger.info("正在停止 Killmail Websocket 监听器...")
-
-    async def _subscription_check(self, data: Dict[str, Any]):
+    async def check(self, data: Dict[str, Any]):
         """
         处理接收到的 killmail 数据并检查是否需要推送
 
         Args:
             data: zkillboard websocket 推送的 killmail 数据
         """
+        print(data)
         killmail_id = data.get("killmail_id")
         try:
             if not killmail_id:
@@ -102,138 +46,211 @@ class KillmailHelper:
                 return
             logger.debug(f"[{killmail_id}] https://zkillboard.com/kill/{killmail_id}/")
 
-            zkb_data = data.get("zkb", {})
-            total_value = float(zkb_data.get("totalValue", 0))
-
-            min_subscription_value = 1_000_000
-            if total_value < min_subscription_value:
-                logger.trace(f"击杀价值过低，忽略 killmail: {killmail_id}, 价值: {total_value:,.2f} ISK")
+            # 检查击杀价值
+            if not await self._check_killmail_value(data):
                 return
 
-            high_value_subs = await self.subscription_manager.get_high_value_subscriptions()
-            condition_subs = await self.subscription_manager.get_condition_subscriptions()
-
+            # 获取活跃的订阅
+            high_value_subs, condition_subs = await self._get_active_subscriptions()
             if not high_value_subs and not condition_subs:
-                logger.trace(f"没有活跃的订阅，忽略 killmail: {killmail_id}")
+                logger.debug(f"没有活跃的订阅，忽略 killmail: {killmail_id}")
                 return
 
-            victim = data.get("victim", {})
-            victim_character_id = self._ensure_int(victim.get("character_id", 0))
-            victim_corporation_id = self._ensure_int(victim.get("corporation_id", 0))
-            victim_alliance_id = self._ensure_int(victim.get("alliance_id", 0))
-            victim_ship_type_id = self._ensure_int(victim.get("ship_type_id", 0))
-            solar_system_id = self._ensure_int(data.get("solar_system_id", 0))
+            # 提取击杀相关信息
+            victim_info, attacker_info = self._extract_kill_info(data)
 
-            attackers = data.get("attackers", [])
-            final_blow_attacker = next((a for a in attackers if a.get("final_blow")), attackers[0] if attackers else {})
-
-            final_blow_character_id = self._ensure_int(final_blow_attacker.get("character_id", 0))
-            final_blow_corporation_id = self._ensure_int(final_blow_attacker.get("corporation_id", 0))
-            final_blow_alliance_id = self._ensure_int(final_blow_attacker.get("alliance_id", 0))
-            final_blow_ship_type_id = self._ensure_int(final_blow_attacker.get("ship_type_id", 0))
-
-            attacker_character_ids = set()
-            attacker_corporation_ids = set()
-            attacker_alliance_ids = set()
-
-            matched_sessions = {}  # {(platform, bot_id, session_id, session_type): [reasons]}
-
-            for sub in high_value_subs:
-                if total_value >= sub["min_value"]:
-                    session_key = (sub["platform"], sub["bot_id"], sub["session_id"], sub["session_type"])
-                    reason = f"高价值击杀: {total_value:,.2f} ISK 超过阈值 {sub['min_value']:,.2f} ISK"
-                    matched_sessions.setdefault(session_key, []).append(reason)
-
-            # 预留参与攻击对象
-            need_all_attackers = any(
-                not sub["is_victim"] and not sub["is_final_blow"]
-                for sub in condition_subs
+            # 匹配订阅条件
+            matched_sessions = await self._match_subscriptions(
+                data, victim_info, attacker_info, high_value_subs, condition_subs
             )
 
-            if need_all_attackers:
-                for attacker in attackers:
-                    char_id = self._ensure_int(attacker.get("character_id", 0))
-                    if char_id:
-                        attacker_character_ids.add(char_id)
-
-                    corp_id = self._ensure_int(attacker.get("corporation_id", 0))
-                    if corp_id:
-                        attacker_corporation_ids.add(corp_id)
-
-                    alliance_id = self._ensure_int(attacker.get("alliance_id", 0))
-                    if alliance_id:
-                        attacker_alliance_ids.add(alliance_id)
-
-            for sub in condition_subs:
-                if total_value < sub["min_value"]:
-                    continue
-
-                target_id = self._ensure_int(sub["target_id"])
-                target_type = sub["target_type"]
-                matched = False
-                reason = ""
-
-                if sub["is_victim"]:
-                    if target_type == "character" and victim_character_id == target_id:
-                        matched = True
-                        reason = f"[Char]损失: {sub['target_name']}"
-                    elif target_type == "corporation" and victim_corporation_id == target_id:
-                        matched = True
-                        reason = f"[Corp]损失: {sub['target_name']}"
-                    elif target_type == "alliance" and victim_alliance_id == target_id:
-                        matched = True
-                        reason = f"[Alliance]损失: {sub['target_name']}"
-                    elif target_type == "system" and solar_system_id == target_id:
-                        matched = True
-                        reason = f"[System]损失: {sub['target_name']}"
-                    elif target_type == "ship" and victim_ship_type_id == target_id:
-                        matched = True
-                        reason = f"[Ship]损失: {sub['target_name']}"
-
-                elif not sub["is_victim"]:
-                    if sub["is_final_blow"]:
-                        if target_type == "character" and final_blow_character_id == target_id:
-                            matched = True
-                            reason = f"[Char]最后一击: {sub['target_name']}"
-                        elif target_type == "corporation" and final_blow_corporation_id == target_id:
-                            matched = True
-                            reason = f"[Corp]最后一击: {sub['target_name']}"
-                        elif target_type == "alliance" and final_blow_alliance_id == target_id:
-                            matched = True
-                            reason = f"[Alliance]最后一击: {sub['target_name']}"
-                        elif target_type == "ship" and final_blow_ship_type_id == target_id:
-                            matched = True
-                            reason = f"[Ship]最后一击: {sub['target_name']}"
-                    else:
-                        if target_type == "character" and target_id in attacker_character_ids:
-                            matched = True
-                            reason = f"[Char]参与击杀: {sub['target_name']}"
-                        elif target_type == "corporation" and target_id in attacker_corporation_ids:
-                            matched = True
-                            reason = f"[Corp]参与击杀: {sub['target_name']}"
-                        elif target_type == "alliance" and target_id in attacker_alliance_ids:
-                            matched = True
-                            reason = f"[Alliance]参与击杀: {sub['target_name']}"
-
-                if matched:
-                    session_key = (sub["platform"], sub["bot_id"], sub["session_id"], sub["session_type"])
-                    matched_sessions.setdefault(session_key, []).append(reason)
-
+            # 如果有匹配的会话，发送击杀邮件
             if matched_sessions:
-                logger.info(f"[{killmail_id}] 将推送到 {len(matched_sessions)} 个会话")
-
-                tasks = []
-                for (platform, bot_id, session_id, session_type), reasons in matched_sessions.items():
-                    reason = " | ".join(reasons)
-                    tasks.append(
-                        self.send_killmail(session_id, session_type, data, reason)
-                    )
-
-                if tasks:
-                    await asyncio.gather(*tasks, return_exceptions=True)
+                await self._send_matched_killmail(killmail_id, data, matched_sessions)
 
         except Exception as e:
             logger.exception(f"[{killmail_id}]处理 Killmail 失败: {e}")
+
+    @classmethod
+    async def _check_killmail_value(cls, data: Dict[str, Any]) -> bool:
+        """检查击杀价值是否符合最低要求"""
+        zkb_data = data.get("zkb", {})
+        total_value = float(zkb_data.get("totalValue", 0))
+
+        min_subscription_value = 1_000_000
+        if total_value < min_subscription_value:
+            logger.debug(f"击杀价值过低，忽略 killmail: {data.get('killmail_id')}, 价值: {total_value:,.2f} ISK")
+            return False
+        return True
+
+    async def _get_active_subscriptions(self):
+        """获取活跃的订阅"""
+        high_value_subs = await self.subscription_manager.get_high_value_subscriptions()
+        condition_subs = await self.subscription_manager.get_condition_subscriptions()
+        return high_value_subs, condition_subs
+
+    def _extract_kill_info(self, data: Dict[str, Any]):
+        """提取击杀和受害者信息"""
+        victim = data.get("victim", {})
+        victim_info = {
+            "character_id": self._ensure_int(victim.get("character_id", 0)),
+            "corporation_id": self._ensure_int(victim.get("corporation_id", 0)),
+            "alliance_id": self._ensure_int(victim.get("alliance_id", 0)),
+            "ship_type_id": self._ensure_int(victim.get("ship_type_id", 0)),
+        }
+
+        solar_system_id = self._ensure_int(data.get("solar_system_id", 0))
+        victim_info["solar_system_id"] = solar_system_id
+
+        attackers = data.get("attackers", [])
+        final_blow_attacker = next((a for a in attackers if a.get("final_blow")), attackers[0] if attackers else {})
+
+        attacker_info = {
+            "final_blow_character_id": self._ensure_int(final_blow_attacker.get("character_id", 0)),
+            "final_blow_corporation_id": self._ensure_int(final_blow_attacker.get("corporation_id", 0)),
+            "final_blow_alliance_id": self._ensure_int(final_blow_attacker.get("alliance_id", 0)),
+            "final_blow_ship_type_id": self._ensure_int(final_blow_attacker.get("ship_type_id", 0)),
+            "attackers": attackers
+        }
+
+        return victim_info, attacker_info
+
+    async def _match_subscriptions(
+        self,
+        data: Dict[str, Any],
+        victim_info: Dict[str, Any],
+        attacker_info: Dict[str, Any],
+        high_value_subs: List[Dict],
+        condition_subs: List[Dict]
+    ) -> Dict[Tuple, List[str]]:
+        """匹配订阅条件并返回匹配的会话信息"""
+        matched_sessions = {}  # {(platform, bot_id, session_id, session_type): [reasons]}
+
+        # high
+        total_value = float(data.get("zkb", {}).get("totalValue", 0))
+        for sub in high_value_subs:
+            if total_value >= sub["min_value"]:
+                session_key = (sub["platform"], sub["bot_id"], sub["session_id"], sub["session_type"])
+                reason = f"高价值击杀"
+                matched_sessions.setdefault(session_key, []).append(reason)
+
+        # 预处理参与攻击信息
+        attacker_character_ids = set()
+        attacker_corporation_ids = set()
+        attacker_alliance_ids = set()
+
+        need_all_attackers = any(
+            not sub["is_victim"] and not sub["is_final_blow"]
+            for sub in condition_subs
+        )
+
+        if need_all_attackers:
+            for attacker in attacker_info["attackers"]:
+                char_id = self._ensure_int(attacker.get("character_id", 0))
+                if char_id:
+                    attacker_character_ids.add(char_id)
+
+                corp_id = self._ensure_int(attacker.get("corporation_id", 0))
+                if corp_id:
+                    attacker_corporation_ids.add(corp_id)
+
+                alliance_id = self._ensure_int(attacker.get("alliance_id", 0))
+                if alliance_id:
+                    attacker_alliance_ids.add(alliance_id)
+
+        for sub in condition_subs:
+            print(sub)
+            print(sub["min_value"])
+            if total_value < sub["min_value"]:
+                continue
+
+            target_id = self._ensure_int(sub["target_id"])
+            target_type = sub["target_type"]
+            matched = False
+            reason = ""
+            is_victim = sub.get("is_victim", False)
+
+            if is_victim:
+                matched, reason = self._match_victim_condition(sub, target_id, target_type, victim_info)
+
+            if not is_victim:
+                if sub["is_final_blow"]:
+                    matched, reason = self._match_final_blow_condition(sub, target_id, target_type, attacker_info)
+                else:
+                    matched, reason = self._match_attacker_condition(
+                        sub, target_id, target_type,
+                        attacker_character_ids, attacker_corporation_ids, attacker_alliance_ids
+                    )
+
+            if matched:
+                session_key = (sub["platform"], sub["bot_id"], sub["session_id"], sub["session_type"])
+                logger.debug(f"符合条件\n{session_key}\n{reason}")
+                matched_sessions.setdefault(session_key, []).append(reason)
+
+        return matched_sessions
+
+    @classmethod
+    def _match_victim_condition(cls, sub, target_id, target_type, victim_info):
+        """匹配受害者条件"""
+        logger.debug("判断损失")
+        if target_type == "character" and victim_info["character_id"] == target_id:
+            return True, f"[Char]损失: {sub['target_name']}"
+        elif target_type == "corporation" and victim_info["corporation_id"] == target_id:
+            return True, f"[Corp]损失: {sub['target_name']}"
+        elif target_type == "alliance" and victim_info["alliance_id"] == target_id:
+            return True, f"[Alliance]损失: {sub['target_name']}"
+        elif target_type == "system" and victim_info["solar_system_id"] == target_id:
+            return True, f"[System]损失: {sub['target_name']}"
+        elif target_type == "inventory_type" and victim_info["ship_type_id"] == target_id:
+            return True, f"[Ship]损失: {sub['target_name']}"
+        return False, ""
+
+    @classmethod
+    def _match_final_blow_condition(cls, sub, target_id, target_type, attacker_info):
+        """匹配最后一击条件"""
+        logger.debug("判断最后一击")
+        if target_type == "character" and attacker_info["final_blow_character_id"] == target_id:
+            return True, f"[Char]最后一击: {sub['target_name']}"
+        elif target_type == "corporation" and attacker_info["final_blow_corporation_id"] == target_id:
+            return True, f"[Corp]最后一击: {sub['target_name']}"
+        elif target_type == "alliance" and attacker_info["final_blow_alliance_id"] == target_id:
+            return True, f"[Alliance]最后一击: {sub['target_name']}"
+        elif target_type == "ship" and attacker_info["final_blow_ship_type_id"] == target_id:
+            return True, f"[Ship]最后一击: {sub['target_name']}"
+        return False, ""
+
+    @classmethod
+    def _match_attacker_condition(cls, sub, target_id, target_type, character_ids, corporation_ids, alliance_ids):
+        """匹配参与攻击者条件"""
+        if target_type == "character" and target_id in character_ids:
+            return True, f"[Char]参与击杀: {sub['target_name']}"
+        elif target_type == "corporation" and target_id in corporation_ids:
+            return True, f"[Corp]参与击杀: {sub['target_name']}"
+        elif target_type == "alliance" and target_id in alliance_ids:
+            return True, f"[Alliance]参与击杀: {sub['target_name']}"
+        return False, ""
+
+    async def _send_matched_killmail(self, killmail_id, data, matched_sessions):
+        """向匹配的会话发送击杀邮件"""
+        logger.info(f"[{killmail_id}] 将推送到 {len(matched_sessions)} 个会话")
+        html_data = await self._create_killmail_details(data)
+        pic = await render_template(
+            template_path=templates_path / "killmail",
+            template_name="killmail.html.jinja2",
+            data=html_data,
+            width=665,
+            height=900,
+        )
+
+        tasks = []
+        for (platform, bot_id, session_id, session_type), reasons in matched_sessions.items():
+            reason = " | ".join(reasons)
+            tasks.append(
+                self.send_killmail(platform, bot_id, session_id, session_type, pic, reason, killmail_id)
+            )
+
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     @classmethod
     def _ensure_int(cls, value) -> Optional[int]:
@@ -245,29 +262,34 @@ class KillmailHelper:
         except (ValueError, TypeError):
             return None
 
-    async def send_killmail(self, session_id: str, session_type: str, data: Dict[str, Any], message: str):
+    @classmethod
+    async def send_killmail(
+            cls,
+            platform: str,
+            bot_id: str,
+            session_id: str,
+            session_type: str,
+            pic: bytes,
+            reason: str,
+            kill_id: str,
+    ):
         """发送击杀邮件到指定会话"""
         try:
-            # 这里只做日志记录，实际发送由其他模块完成
-            logger.info(f"向 {session_type}:{session_id} 发送 killmail {data.get('killmail_id')}: {message}")
+            logger.info(f"{session_type}:{session_id}: {reason}")
 
-            # 格式化一些基本信息用于日志
-            victim_name = data.get("victim", {}).get("character_name", "Unknown")
-            ship_type_id = data.get("victim", {}).get("ship_type_id", 0)
-
-            # 由于真实实现需要获取详细信息，这里只做简单处理
-            log_message = f"{message} - {victim_name} 失去了 ship_type_id:{ship_type_id}"
-            logger.info(log_message)
-
-            # 在实际实现中，可能需要:
-            # 1. 获取更详细的 killmail 信息
-            # 2. 根据 session_type 调用不同的发送函数
-            # 3. 记录推送历史
-            # 例如:
-            # if session_type == "group":
-            #     await bot.call_api("send_group_msg", group_id=int(session_id), message=formatted_message)
-            # else:
-            #     await bot.call_api("send_private_msg", user_id=int(session_id), message=formatted_message)
+            if pic:
+                send_event = await Target(
+                    self_id=bot_id,
+                    id=session_id,
+                    platform=platform,
+                    private=True if session_type == "private" else False,
+                ).send(
+                    message=UniMessage.text(reason) + UniMessage.image(raw=pic)
+                )
+                await save_msg_cache(
+                    send_event,
+                    f'https://zkillboard.com/kill/{kill_id}/'
+                )
 
         except Exception as e:
             logger.error(f"发送 killmail 失败: {e}")
@@ -391,7 +413,7 @@ class KillmailHelper:
                 "attacker_number": attacker_number,
                 "attackMember": self._format_attackers(attackers, entity_names, item_names),
                 "slot_list": slot_list.get("slotList", []),
-                "zkb": killmail_data.get("zkb", {}),
+                "zkb": killmail_data.get("", {}),
                 "total_value": formatted_total_value,
                 "drop_value": formatted_drop_value,
                 "position": killmail_data.get("position", {})

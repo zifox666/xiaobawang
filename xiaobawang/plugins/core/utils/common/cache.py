@@ -1,6 +1,6 @@
 import json
 import pickle
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Dict
 from functools import wraps
 import redis.asyncio as redis
 
@@ -124,7 +124,7 @@ class RedisCache:
         :return: 是否成功
         """
         try:
-            cache_key = self.get_key(key)
+            cache_key = self._get_key(key)
             await self.redis.delete(cache_key, f"{cache_key}:type")
             return True
         except Exception as e:
@@ -251,3 +251,25 @@ def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclu
         return wrapper
 
     return decorator
+
+
+async def save_msg_cache(send_event, value_: str | Dict):
+    """
+    储存消息缓存
+    :param value_: 要储存的信息
+    :param send_event: 发送事件
+    """
+    msg_id = send_event.msg_ids[0]["message_id"]
+    await cache.set(
+        f"send_msg_id:{msg_id}",
+        value_
+    )
+
+
+async def get_msg_cache(msg_id: str) -> str | Dict | None:
+    """
+    获取消息缓存
+    :param msg_id: 消息ID
+    :return: 缓存的值
+    """
+    return await cache.get(f"send_msg_id:{msg_id}")

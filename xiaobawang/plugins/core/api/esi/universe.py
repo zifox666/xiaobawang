@@ -55,7 +55,7 @@ class ESIClient:
         try:
             response = await self._client.post(url, json=data)
             logger.debug(f"[{endpoint}]{response.status_code} {response.url}\ndata: {data}")
-            logger.debug(f"响应内容: {response.text}")
+            logger.debug(f"响应内容: {response.json()}")
             response.raise_for_status()
             return response.json()
         except Exception as e:

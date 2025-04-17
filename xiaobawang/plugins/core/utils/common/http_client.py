@@ -6,7 +6,7 @@ from typing import Optional
 from httpx import AsyncClient
 from nonebot import logger
 
-from ...config import plugin_config
+from ...config import plugin_config, HEADERS
 
 # 全局客户端实例
 _client: Optional[httpx.AsyncClient] = None
@@ -25,7 +25,7 @@ async def init_client(
         logger.warning("HTTP客户端已经初始化，将重新初始化")
         await close_client()
 
-    logger.info(f"初始化HTTP异步客户端 (timeout={timeout}s, max_connections={max_connections})， proxy=({plugin_config.proxy})")
+    logger.info(f"初始化HTTP异步客户端 (timeout={timeout}s, max_connections={max_connections}, proxy={plugin_config.proxy}, headers={HEADERS})")
     limits = httpx.Limits(
         max_connections=max_connections,
         max_keepalive_connections=max_keepalive_connections
@@ -36,6 +36,7 @@ async def init_client(
         limits=limits,
         proxies=plugin_config.proxy,
         follow_redirects=True,
+        headers=HEADERS,
         **kwargs
     )
 

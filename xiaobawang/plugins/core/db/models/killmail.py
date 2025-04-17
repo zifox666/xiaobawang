@@ -31,7 +31,7 @@ class KillmailConditionSubscription(Model):
     session_id: Mapped[str] = mapped_column()
     session_type: Mapped[str] = mapped_column()
 
-    target_type: Mapped[str] = mapped_column()  # character, corporation, alliance, system
+    target_type: Mapped[str] = mapped_column()  # character, corporation, alliance, system, inventory_type
     target_id: Mapped[int] = mapped_column()
     target_name: Mapped[str] = mapped_column()
 
