@@ -3,8 +3,8 @@ import asyncio
 
 from datetime import datetime
 
-from nonebot import logger
-from nonebot_plugin_alconna import Target, UniMessage
+from nonebot import logger, Bot
+from nonebot_plugin_alconna import Target, UniMessage, get_bot
 from nonebot_plugin_orm import get_session
 
 from ...utils.common.cache import save_msg_cache
@@ -38,7 +38,6 @@ class KillmailHelper:
         Args:
             data: zkillboard websocket 推送的 killmail 数据
         """
-        print(data)
         killmail_id = data.get("killmail_id")
         try:
             if not killmail_id:
@@ -46,25 +45,20 @@ class KillmailHelper:
                 return
             logger.debug(f"[{killmail_id}] https://zkillboard.com/kill/{killmail_id}/")
 
-            # 检查击杀价值
             if not await self._check_killmail_value(data):
                 return
 
-            # 获取活跃的订阅
             high_value_subs, condition_subs = await self._get_active_subscriptions()
             if not high_value_subs and not condition_subs:
-                logger.debug(f"没有活跃的订阅，忽略 killmail: {killmail_id}")
+                # logger.debug(f"没有活跃的订阅，忽略 killmail: {killmail_id}")
                 return
 
-            # 提取击杀相关信息
             victim_info, attacker_info = self._extract_kill_info(data)
 
-            # 匹配订阅条件
             matched_sessions = await self._match_subscriptions(
                 data, victim_info, attacker_info, high_value_subs, condition_subs
             )
 
-            # 如果有匹配的会话，发送击杀邮件
             if matched_sessions:
                 await self._send_matched_killmail(killmail_id, data, matched_sessions)
 
@@ -79,7 +73,7 @@ class KillmailHelper:
 
         min_subscription_value = 1_000_000
         if total_value < min_subscription_value:
-            logger.debug(f"击杀价值过低，忽略 killmail: {data.get('killmail_id')}, 价值: {total_value:,.2f} ISK")
+            # logger.debug(f"击杀价值过低，忽略 killmail: {data.get('killmail_id')}, 价值: {total_value:,.2f} ISK")
             return False
         return True
 
@@ -159,8 +153,6 @@ class KillmailHelper:
                     attacker_alliance_ids.add(alliance_id)
 
         for sub in condition_subs:
-            print(sub)
-            print(sub["min_value"])
             if total_value < sub["min_value"]:
                 continue
 
@@ -192,7 +184,7 @@ class KillmailHelper:
     @classmethod
     def _match_victim_condition(cls, sub, target_id, target_type, victim_info):
         """匹配受害者条件"""
-        logger.debug("判断损失")
+        # logger.debug("判断损失")
         if target_type == "character" and victim_info["character_id"] == target_id:
             return True, f"[Char]损失: {sub['target_name']}"
         elif target_type == "corporation" and victim_info["corporation_id"] == target_id:
@@ -208,7 +200,7 @@ class KillmailHelper:
     @classmethod
     def _match_final_blow_condition(cls, sub, target_id, target_type, attacker_info):
         """匹配最后一击条件"""
-        logger.debug("判断最后一击")
+        # logger.debug("判断最后一击")
         if target_type == "character" and attacker_info["final_blow_character_id"] == target_id:
             return True, f"[Char]最后一击: {sub['target_name']}"
         elif target_type == "corporation" and attacker_info["final_blow_corporation_id"] == target_id:
@@ -278,14 +270,19 @@ class KillmailHelper:
             logger.info(f"{session_type}:{session_id}: {reason}")
 
             if pic:
-                send_event = await Target(
-                    self_id=bot_id,
-                    id=session_id,
-                    platform=platform,
-                    private=True if session_type == "private" else False,
+                logger.info(f"{platform}:{bot_id}:{session_id}")
+                bot = await get_bot(adapter=platform, bot_id=bot_id)
+
+                send_event = await UniMessage(
+                    UniMessage.text(reason) + UniMessage.image(raw=pic)
                 ).send(
-                    message=UniMessage.text(reason) + UniMessage.image(raw=pic)
+                    bot=bot,
+                    target=Target(
+                        id=session_id,
+                        private=True if session_type == "private" else False,
+                    )
                 )
+
                 await save_msg_cache(
                     send_event,
                     f'https://zkillboard.com/kill/{kill_id}/'

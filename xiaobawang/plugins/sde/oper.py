@@ -73,7 +73,6 @@ class SDESearch:
 
             total = len(items)
             items = items[:limit]
-            print(items)
 
             return {
                 "total": total,

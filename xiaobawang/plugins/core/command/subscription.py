@@ -28,7 +28,7 @@ start_km_listen = on_alconna(
 
 @start_km_listen.assign("start")
 async def _start_km_listen():
-    # _ = asyncio.create_task(zkb_listener.start())
+    _ = asyncio.create_task(zkb_listener.start())
     logger.info("开始监听zkb")
 
 

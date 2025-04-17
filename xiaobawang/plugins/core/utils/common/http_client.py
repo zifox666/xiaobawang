@@ -34,7 +34,7 @@ async def init_client(
     _client = httpx.AsyncClient(
         timeout=timeout,
         limits=limits,
-        proxies=plugin_config.proxy,
+        proxy=plugin_config.proxy,
         follow_redirects=True,
         headers=HEADERS,
         **kwargs

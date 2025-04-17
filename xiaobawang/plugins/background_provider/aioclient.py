@@ -9,7 +9,7 @@ client: httpx.AsyncClient | None = None
 
 async def create_client():
     global client
-    client = httpx.AsyncClient(timeout=plugin_config.req_timeout, proxies=plugin_config.proxy, follow_redirects=True)
+    client = httpx.AsyncClient(timeout=plugin_config.req_timeout, proxy=plugin_config.proxy, follow_redirects=True)
     logger.debug("已初始化httpxAsyncClient")
 
 

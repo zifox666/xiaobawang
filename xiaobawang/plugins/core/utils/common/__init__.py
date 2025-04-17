@@ -21,9 +21,12 @@ def parse_session_id(session_id: str) -> dict:
             result["group_id"] = parts[1]
             result["user_id"] = parts[2]
     else:
-        # 私聊消息: user_id
+        # 私聊消息: user_id 或 private_{user_id}
         result["type"] = "private"
-        result["user_id"] = session_id
+        if session_id.startswith("private_"):
+            result["user_id"] = session_id[8:] # Telegram
+        else:
+            result["user_id"] = session_id
     return result
 
 
