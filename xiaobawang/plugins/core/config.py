@@ -11,7 +11,7 @@ class Config(BaseModel):
     EVE_JANICE_API_KEY: str = "G9KwKq3465588VPd6747t95Zh94q3W2E"
     EVE_MARKET_API: str = "esi_cache"
 
-    REDIS_URL: str = "redis://nas.newdoublex.space:6379/4"
+    redis_url: str = "redis://127.0.0.1:6379/4"
 
     proxy: str = None
 

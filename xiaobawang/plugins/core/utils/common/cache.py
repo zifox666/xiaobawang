@@ -36,7 +36,7 @@ class RedisCache:
         """初始化Redis连接"""
         if not self._initialized:
             try:
-                redis_url = plugin_config.REDIS_URL
+                redis_url = plugin_config.redis_url
                 self._redis = redis.from_url(redis_url)
                 await self._redis.ping()
                 logger.info("SDE Redis缓存连接成功")

@@ -93,7 +93,6 @@ class SDESearch:
         return conditions
 
     @classmethod
-    @cache_result(prefix="inv_flags_", exclude_args=[0])
     async def get_flag_info(cls) -> dict | None:
         """
         获取所有槽位标识和名称
