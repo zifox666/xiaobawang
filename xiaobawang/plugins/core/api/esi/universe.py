@@ -163,16 +163,16 @@ class ESIClient:
             return {}
 
     @cache_result(expire_time=cache.TIME_DAY, exclude_args=[0])
-    async def get_moon(self, moon_id: int) -> str | None:
+    async def get_moon_info(self, moon_id: int) -> Dict | None:
         """
-        获取卫星名称
+        获取卫星信息
         :param moon_id: 卫星id
-        :return: 卫星名称
+        :return: 卫星信息
         """
         try:
             endpoint = f"/universe/moons/{str(moon_id)}/?datasource=tranquility"
             data = await self._get(endpoint)
-            return data['name']
+            return data
         except Exception as e:
             logger.error(f"获取卫星名称失败: {e}")
             return None

@@ -1,7 +1,8 @@
+import math
 from typing import List, Dict, Any, Optional, Tuple
 import asyncio
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from nonebot import logger, Bot
 from nonebot_plugin_alconna import Target, UniMessage, get_bot
@@ -270,7 +271,6 @@ class KillmailHelper:
             logger.info(f"{session_type}:{session_id}: {reason}")
 
             if pic:
-                logger.info(f"{platform}:{bot_id}:{session_id}")
                 bot = await get_bot(adapter=platform, bot_id=bot_id)
 
                 send_event = await UniMessage(
@@ -669,24 +669,22 @@ class KillmailHelper:
             包含最近天体信息的字典
         """
         try:
-            celestial_name = await esi_client.get_moon(location_id)
+            data = await esi_client.get_moon_info(location_id)
 
-            x1 = position.get("x", 0)
-            y1 = position.get("y", 0)
-            z1 = position.get("z", 0)
+            dx = math.fabs(position['x'] - data['position']['x'])
+            dy = math.fabs(position['y'] - data['position']['y'])
+            dz = math.fabs(position['z'] - data['position']['z'])
+            distance = math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
 
-            # 计算与原点(0,0,0)的距离
-            distance_meters = (x1 ** 2 + y1 ** 2 + z1 ** 2) ** 0.5
-
-            if distance_meters > 1495978707:
-                distance_au = distance_meters / 149597870700
+            if distance > 149597870700 * 0.1:
+                distance_au = distance / 149597870700
                 distance_str = f"{distance_au:.2f} AU"
             else:
-                distance_km = distance_meters / 1000
+                distance_km = distance / 1000
                 distance_str = f"{distance_km:,.2f} km"
 
             return {
-                "location_name": celestial_name,
+                "location_name": data.get("name", "Unknown"),
                 "distance_str": distance_str,
             }
 
@@ -840,17 +838,15 @@ class KillmailHelper:
             Returns:
                 格式化的时间差字符串
             """
-            # 确保两个日期时间对象都是同样的类型（要么都有时区，要么都没有）
-            if past_time.tzinfo is not None and current_time.tzinfo is None:
-                from datetime import timezone
-                current_time = current_time.replace(tzinfo=timezone.utc)
-            elif past_time.tzinfo is None and current_time.tzinfo is not None:
-                from datetime import timezone
+            if past_time.tzinfo is None:
                 past_time = past_time.replace(tzinfo=timezone.utc)
 
+            if current_time.tzinfo is None:
+                current_time = current_time.astimezone()
+
+            past_time = past_time.astimezone(current_time.tzinfo)
             time_diff = current_time - past_time
 
-            # 剩余代码保持不变
             seconds = int(time_diff.total_seconds())
 
             if seconds < 60:
