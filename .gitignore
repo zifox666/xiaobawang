@@ -109,13 +109,14 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+.env.prod
+.env.local
 
 # Spyder project settings
 .spyderproject
@@ -144,3 +145,4 @@ dmypy.json
 .idea/
 
 .DS_Store
+/html2pic.png
