@@ -24,7 +24,7 @@
 
 ```bash
 # 获取代码
-git clone gh repo clone zifox666/xiaobawang
+git clone https://github.com/zifox666/xiaobawang.git
 
 # 进入目录
 cd xiaobawang

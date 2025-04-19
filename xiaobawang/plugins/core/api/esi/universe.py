@@ -64,9 +64,9 @@ class ESIClient:
     @cache_result(expire_time=cache.TIME_DAY, prefix="esi:get_universe_id", exclude_args=[0])
     async def get_universe_id(
             self,
-            type_: ALLOW_CATEGORY,
             name: str,
             lang: str = "en",
+            type_: ALLOW_CATEGORY=None,
     ) -> Dict[str, str | int] | Any:
         """
         获取TYPE_ID
@@ -82,6 +82,8 @@ class ESIClient:
         r = await self._post(endpoint, data)
         if type_:
             return r.get(type_, [])[0]
+        else:
+            return r
 
     @cache_result(expire_time=cache.TIME_DAY, prefix="esi:get_names", exclude_args=[0])
     async def get_names(
@@ -175,6 +177,23 @@ class ESIClient:
             return data
         except Exception as e:
             logger.error(f"获取卫星名称失败: {e}")
+            return None
+
+    async def get_trans_name(
+            self,
+            _id: int,
+            type_: str,
+            lang: str = "zh",
+    ) -> str | None:
+        try:
+            endpoint = f"/universe/{type_}/{_id}/?datasource&language={lang}"
+            data = await self._get(endpoint)
+            if "name" in data:
+                return data["name"]
+            else:
+                return None
+        except Exception as e:
+            logger.error(f"获取{type_}名称失败: {e}")
             return None
 
 

@@ -44,3 +44,15 @@ def convert_time(killmail_time: str) -> str:
     rounded_minute = (dt.minute // 10) * 10
     return dt.strftime(f"%Y%m%d{rounded_hour:02d}{rounded_minute:02d}")
 
+
+def is_chinese(text: str) -> bool:
+    """
+    判断字符串是否包含中文字符
+    :param text: 输入字符串
+    :return: 如果包含中文字符，返回True；否则返回False
+    """
+    for char in text:
+        if '\u4e00' <= char <= '\u9fff':
+            return True
+    return False
+

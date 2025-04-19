@@ -213,4 +213,104 @@ class SDESearch:
 
             return group_name
 
+    @cache_result(prefix="fuzzy_search_", exclude_args=[0])
+    async def trans_items(
+            self,
+            search_item: str,
+            limit: int = 10,
+            source_lang: str = None,
+            target_lang: str = "en"
+    ) -> tuple[list[dict], int]:
+        """
+        根据输入词查找最相似的物品，支持中英文互转
+
+        Args:
+            search_item: 搜索词
+            limit: 返回结果数量限制
+            source_lang: 源语言，默认为None，自动检测
+            target_lang: 目标语言，默认英文
+
+        Returns:
+            最相似物品列表，包含原文和翻译
+        """
+        if not search_item:
+            return [], 0
+
+        if source_lang is None:
+            source_lang = "zh" if text_processor._contains_chinese(search_item) else "en"
+
+        if target_lang == source_lang:
+            target_lang = "en" if source_lang == "zh" else "zh"
+
+        tokens = await text_processor.tokenize(search_item)
+
+        async with await get_session() as session:
+            conditions = and_(*[TrnTranslations.text.ilike(f"%{token}%") for token in tokens])
+
+            source_query = select(TrnTranslations).where(
+                and_(
+                    TrnTranslations.tcID == TC_TYPES_ID,
+                    TrnTranslations.languageID == source_lang,
+                    conditions
+                )
+            )
+            source_results = await session.execute(source_query)
+            source_translations = source_results.scalars().all()
+
+            if not source_translations:
+                return [], 0
+
+            matched_type_ids = [trans.keyID for trans in source_translations]
+
+            source_map = {trans.keyID: trans.text for trans in source_translations}
+
+            target_query = select(TrnTranslations).where(
+                and_(
+                    TrnTranslations.tcID == TC_TYPES_ID,
+                    TrnTranslations.languageID == target_lang,
+                    TrnTranslations.keyID.in_(matched_type_ids)
+                )
+            )
+            target_results = await session.execute(target_query)
+            target_translations = target_results.scalars().all()
+
+            target_map = {trans.keyID: trans.text for trans in target_translations}
+
+            types_query = select(InvTypes).where(
+                and_(
+                    InvTypes.typeID.in_(matched_type_ids),
+                    InvTypes.published == True
+                )
+            )
+            types_results = await session.execute(types_query)
+            types = types_results.scalars().all()
+
+            results = []
+            for type_item in types:
+                type_id = type_item.typeID
+                source_text = source_map.get(type_id)
+                target_text = target_map.get(type_id)
+
+                if source_text and target_text:
+                    score = sum(1 for token in tokens if token.lower() in source_text.lower())
+
+                    results.append({
+                        "typeID": type_id,
+                        "typeName": type_item.typeName,
+                        "source": {
+                            "lang": source_lang,
+                            "text": source_text
+                        },
+                        "translation": {
+                            "lang": target_lang,
+                            "text": target_text
+                        },
+                        "score": score,
+                    })
+
+
+            results.sort(key=lambda x: x["score"], reverse=True)
+            total = len(results)
+            return results[:limit], total
+
 sde_search = SDESearch()
