@@ -1,0 +1,195 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="">
+    <link rel="stylesheet" href="killmail.css" />
+</head>
+
+<body>
+    <div class="container">
+        <div style="margin-top: -10px; margin-left: -10px;">
+            <img src="https://wiki.eveuniversity.org/images/thumb/e/eb/Killreport.png/48px-Killreport.png" style="height: 25px; width: 25px;"/>
+            <span class="chinese">{{ title }}</span>
+        </div>
+        <div style="margin-top: 10px;" class="clear">
+            <img src="https://images.evetech.net/characters/{{ victim.victim_id }}/portrait?size=128" />
+            <img src="https://images.evetech.net/types/{{ victim.ship_type_id }}/render?size=128" />
+        </div>
+        <div style="margin-left: 11px; margin-top: 10px;">
+            <div><span style="font-size: 18px; margin-top: 2px">
+                {% if victim.victim_name %}
+                    {{ victim.victim_name }}
+                {% else %}
+                    {{ victim.ship_type_name }} <span style="margin-left: 0.5ex; font-weight: 500;">({{ victim.ship_group_name }})</span>
+                {% endif %}
+            </span></div>
+            <br class="clear" />
+            <div>
+                <img src="https://images.evetech.net/corporations/{{ victim.victim_corp_id }}/logo?size=32" />
+                <img src="https://images.evetech.net/alliances/{{ victim.victim_alliance_id }}/logo?size=32" />
+                <span>
+                    {{ victim.victim_corp }} <br/>
+                    {{ victim.victim_alliance_name }}
+                </span>
+                <div class="clear" style="font-size: 13px;">
+                    {% if victim.victim_name %}
+                    <div class="clear" style="margin-top: 12px;"><span>{{ victim.ship_type_name }} </span><span style="margin-left: 0.5ex; font-weight: 500;">({{ victim.ship_group_name }})</span></div>
+                    {% endif %}
+                    <div class="clear" style="position: absolute; left: 287px; top: 142px; font-weight: 500;">{{ time }} ({{ time_difference }})</div>
+                    <div class="clear" style="position: absolute; left: 287px; top: 157px; font-weight: 500;"><span>{{ solar_system }} </span><span style="margin-left: 0.5ex; color:var({{ sec_color }})">{{ sec }}</span><span style="margin-left: 0.5ex;">&lt; {{ constellation }} &lt; {{ region }}</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="line clear" style="margin: 10px 0;"></div>
+        <div class="clear" style="width: 256px; font-weight: 500;">
+            <span class="clear chinese" style="font-size: 16px;">参与者 ({{ attacker_number }})</span>
+            <span class="clear chinese" style="color: var(--dmg-color);font-size: 14px; ">共受到伤害: {{ victim.damage_taken }}</span>
+            <span class="clear chinese" style="font-size: 14px; margin-top: 6px;">最后一击</span>
+
+            <div class="clear" style="font-weight: 900;">
+                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" />
+                <div>
+                    <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" />
+                    <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" />
+                </div>
+                <div style="font-size: 11px; margin-left: 5px;">
+                    <div>
+                        <span>{{ attackMember[0].attacker_name[:20] }}</span>
+                        <span class="clear" style="margin-top: 1px;">{{ attackMember[0].attacker_corp[:20] }}</span>
+                        <span class="clear" style="margin-top: 0;">{{ attackMember[0].attacker_alliance[:20] }}</span>
+                    </div>
+                    <span class="clear" style="font-weight: 500;">{{ attackMember[0].damage_done }} ({{ attackMember[0].damage_percent }}%)</span>
+                </div>
+            </div>
+
+            <span class="clear chinese" style="font-size: 14px; margin-top: 10px;">造成伤害最多</span>
+
+            <div class="clear" style="font-weight: 900;">
+                {% if attackMember|length > 1 %}
+                <img src="https://images.evetech.net/characters/{{ attackMember[1].attacker_id }}/portrait?size=64" />
+                <div style="display: flex; align-items: flex-end;">
+                    <div>
+                        <img src="https://images.evetech.net/types/{{ attackMember[1].ship_type_id }}/icon?size=32" />
+                        <img class="clear" src="https://images.evetech.net/types/{{ attackMember[1].weapon_type_id }}/icon?size=32" />
+                    </div>
+                    <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
+                        <div>
+                            <span>{{ attackMember[1].attacker_name[:20] }}</span>
+                            <span class="clear" style="margin-top: 1px;">{{ attackMember[1].attacker_corp[:20] }}</span>
+                            <span class="clear" style="margin-top: 0;">{{ attackMember[1].attacker_alliance[:20] }}</span>
+                        </div>
+                        <span class="clear" style="font-weight: 500;">{{ attackMember[1].damage_done }} ({{ attackMember[1].damage_percent }}%)</span>
+                    </div>
+                </div>
+                {% else %}
+                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" />
+                <div style="display: flex; align-items: flex-end;">
+                    <div>
+                        <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" />
+                        <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" />
+                    </div>
+                    <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
+                        <div>
+                            <span>{{ attackMember[0].attacker_name[:20] }}</span>
+                            <span class="clear" style="margin-top: 1px;">{{ attackMember[0].attacker_corp[:20] }}</span>
+                            <span class="clear" style="margin-top: 0;">{{ attackMember[0].attacker_alliance[:20] }}</span>
+                        </div>
+                        <span class="clear" style="font-weight: 500;">{{ attackMember[0].damage_done }} ({{ attackMember[0].damage_percent }}%)</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="line clear" style="margin: 10px 0 5px;"></div>
+            <div style="height:680px; overflow-y:auto">
+
+                {% if attackMember|length > 1 %}
+                {% for attack in attackMember[2:] %}
+                    <div class="clear" style="font-weight: 900; margin-bottom: 5px;">
+                        <img src="https://images.evetech.net/characters/{{ attack.attacker_id }}/portrait?size=64" />
+                        <div style="display: flex; align-items: flex-end;">
+                            <div>
+                                <img src="https://images.evetech.net/types/{{ attack.ship_type_id }}/icon?size=32" />
+                                <img class="clear" src="https://images.evetech.net/types/{{ attack.weapon_type_id }}/icon?size=32" />
+                            </div>
+                            <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
+                                <div>
+                                    <span>{{ attack.attacker_name[:20] }}</span>
+                                    <span class="clear" style="margin-top: 1px;">{{ attack.attacker_corp[:20] }}</span>
+                                    <span class="clear" style="margin-top: 0;">{{ attack.attacker_alliance[:20] }}</span>
+                                </div>
+                                <span class="clear" style="font-weight: 500;">{{ attack.damage_done }} ({{ attack.damage_percent }}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% endif %}
+
+            </div>
+
+        </div>
+        <div style="margin-left:11px; font-weight: 500; height: 100%;">
+            <span class="chinese" style="font-size: 16px;">装备与明细</span><br>
+            <div style="height:880px;overflow-y:auto; margin-top: 8px">
+            {% if slot_list %}
+                {% for slot in slot_list %}
+                    <div class="clear slot-line chinese">
+                        <img src="https://wiki.eveuniversity.org/images/{{ slot.slotPng }}.png">
+                        <span class="chinese">{{ slot.slotName }}</span>
+                    </div>
+                    {% for slotEquipment in slot.slot_items %}
+                        <div class="clear equip-line {{ slotEquipment.drop }}">
+                            <img src="https://images.evetech.net/types/{{ slotEquipment.item_id }}/icon?size=32">
+                            <span class="chinese">{{ slotEquipment.item_name }}</span>
+                            <span class="pull-right">{{ slotEquipment.item_number }}</span>
+                        </div>
+
+                        {% if slotEquipment.nested_items %}
+                            {% for nested_item in slotEquipment.nested_items %}
+                                <div class="clear equip-line {{ nested_item.drop }}">
+                                    <span style="margin: 0 5px;">&ensp;</span>
+                                    <img src="https://images.evetech.net/types/{{ nested_item.item_id }}/icon?size=32">
+                                    <span class="chinese">{{ nested_item.item_name }}</span>
+                                    <span class="pull-right">{{ nested_item.item_number }}</span>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            {% endif %}
+            </div>
+        </div>
+
+        <div class="line clear" style="margin: 10px 0 5px;"></div>
+        <div class="clear">
+            <div class="value-summary">
+                <div class="value-group">
+                    <div class="value-column-left">
+                        <div class="value-row">
+                            <span class="chinese">地点：</span>
+                            <span style="text-align: right;">{{ location_name }}</span>
+                        </div>
+                        <div class="value-row">
+                            <span class="chinese">距离：</span>
+                            <span style="text-align: right;">{{ distance_str }}</span>
+                        </div>
+                    </div>
+                    <div class="value-column-right">
+                        <div class="value-row">
+                            <span class="chinese">总价值：</span>
+                            <span class="value-amount">{{ total_value }} 星币</span>
+                        </div>
+                        <div class="value-row">
+                            <span class="chinese">总掉落：</span>
+                            <span class="value-amount" style="color:var(--dropisk-color)">{{ drop_value }} 星币</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</body>
+
+</html>

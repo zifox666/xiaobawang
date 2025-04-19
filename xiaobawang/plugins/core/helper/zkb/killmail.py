@@ -391,8 +391,8 @@ class KillmailHelper:
             zkb_data = killmail_data.get("zkb", {})
             total_value = zkb_data.get("totalValue", 0)
             drop_value = zkb_data.get("droppedValue", 0)
-            formatted_total_value = f"{total_value:,.0f}"
-            formatted_drop_value = f"{drop_value:,.0f}"
+            formatted_total_value = f"{total_value:,.2f}"
+            formatted_drop_value = f"{drop_value:,.2f}"
             slot_list = self._format_items(victim.get("items", []), item_names, await sde_search.get_flag_info())
 
             result = {

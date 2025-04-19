@@ -55,7 +55,6 @@ class PriceHelper:
             word = "伊甸币"
             logger.info(f"查询价格:{word}*{num}")
 
-        # 查询别名
         alias_results = await self.alias_helper.check(session, word)
         all_items = []
 
