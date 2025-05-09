@@ -62,8 +62,9 @@ class MarketHandle:
 
             other_pages_data = await asyncio.gather(*tasks, return_exceptions=True)
 
-            all_data = other_pages_data
-            all_data.extend(first_page_data)
+            all_data = first_page_data
+            for page_data in other_pages_data:
+                all_data.extend(page_data)
 
             return all_data
 
@@ -98,38 +99,47 @@ class MarketHandle:
         :param orders: 市场订单列表
         :return: 按type_id分类的市场数据字典
         """
-        result = {}
+        result: Dict = {}
+
         for order in orders:
             type_id = order["type_id"]
 
             if type_id not in result:
                 result[type_id] = {
-                    "highest_buy": {"price": 0, "volume_remain": 0, "buy_volume_remain": 0},
-                    "lowest_sell": {"price": float('inf'), "volume_remain": 0, "sell_volume_remain": 0},
+                    "buy_orders": [],
+                    "sell_orders": [],
+                    "highest_buy": None,
+                    "lowest_sell": None,
                     "buy_volume": 0,
                     "sell_volume": 0
                 }
 
             if order["is_buy_order"]:
-                result[type_id]["buy_volume"] += order["volume_remain"]
-                if order["price"] > result[type_id]["highest_buy"]["price"]:
-                    result[type_id]["highest_buy"] = {
-                        "price": order["price"],
-                        "volume_remain": order["volume_remain"],
-                        "buy_volume_remain": result[type_id]["buy_volume"]
-                    }
+                result[type_id]["buy_orders"].append(order)
+                result[type_id]["buy_volume"] = order["volume_remain"]
             else:
-                result[type_id]["sell_volume"] += order["volume_remain"]
-                if order["price"] < result[type_id]["lowest_sell"]["price"]:
-                    result[type_id]["lowest_sell"] = {
-                        "price": order["price"],
-                        "volume_remain": order["volume_remain"],
-                        "sell_volume_remain": result[type_id]["sell_volume"]
-                    }
+                result[type_id]["sell_orders"].append(order)
+                result[type_id]["sell_volume"] = order["volume_remain"]
 
-        for data in result.values():
-            if data["lowest_sell"]["price"] == float('inf'):
-                data["lowest_sell"] = None
+        for type_id, data in result.items():
+            if data["buy_orders"]:
+                data["buy_orders"].sort(key=lambda x: x["price"], reverse=True)
+                data["highest_buy"] = {
+                    "price": data["buy_orders"][0]["price"],
+                    "volume_remain": data["buy_orders"][0]["volume_remain"],
+                    "buy_volume_remain": data["buy_volume"]
+                }
+
+            if data["sell_orders"]:
+                data["sell_orders"].sort(key=lambda x: x["price"])
+                data["lowest_sell"] = {
+                    "price": data["sell_orders"][0]["price"],
+                    "volume_remain": data["sell_orders"][0]["volume_remain"],
+                    "sell_volume_remain": data["sell_volume"]
+                }
+
+            data.pop("buy_orders")
+            data.pop("sell_orders")
 
         return result
 
@@ -225,7 +235,7 @@ class MarketHandle:
             return result
 
         except Exception as e:
-            logger.error(f"获取市场历史数据失败 type_id: {type_id}, region_id: {region_id}\n {e}")
+            logger.error(f"获取市场历史数据失败 type_id: {type_id}, region_id: {region_id}\n {e.__traceback__}")
             return None
 
 
