@@ -34,7 +34,6 @@ class BaseClient:
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            logger.error(f"[{endpoint}]{e}\n{response.text}")
             raise e
 
     async def _post(
@@ -56,5 +55,4 @@ class BaseClient:
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            logger.error(f"[{endpoint}]{e}\n{response.text}")
             raise e
