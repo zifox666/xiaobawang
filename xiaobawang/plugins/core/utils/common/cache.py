@@ -5,6 +5,9 @@ from functools import wraps
 import redis.asyncio as redis
 
 from nonebot import logger
+from nonebot_plugin_alconna.uniseg import Receipt
+
+from .command_record import get_msg_id
 from ...config import plugin_config
 
 T = TypeVar('T')
@@ -253,16 +256,13 @@ def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclu
     return decorator
 
 
-async def save_msg_cache(send_event, value_: str | Dict):
+async def save_msg_cache(send_event: Receipt, value_: str | Dict):
     """
     储存消息缓存
     :param value_: 要储存的信息
     :param send_event: 发送事件
     """
-    if msg_id := send_event.get("message_id", None):
-        pass
-    else:
-        msg_id = send_event.msg_ids[0]["message_id"]
+    msg_id = get_msg_id(send_event)
     await cache.set(
         f"send_msg_id:{msg_id}",
         value_
