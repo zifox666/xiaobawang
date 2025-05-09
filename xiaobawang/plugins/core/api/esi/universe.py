@@ -34,6 +34,7 @@ class ESIClient(BaseClient):
         endpoint = f"/universe/ids/?language={lang}"
         data = [ name ]
         r = await self._post(endpoint, data)
+        print(type_)
         if type_:
             return r.get(type_, [])[0]
         else:

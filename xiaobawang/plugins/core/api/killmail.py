@@ -1,5 +1,7 @@
 from typing import Dict
 
+from nonebot import logger
+
 from ..utils.common.cache import cache_result, cache
 from ..utils.common.http_client import get_client
 
@@ -28,7 +30,8 @@ async def get_zkb_killmail(
         r = await client.get(esi_url)
         r.raise_for_status()
     except Exception as e:
-        raise e
+        logger.error(e)
+        return {}
     data = r.json()
     data["zkb"] = zkb
 

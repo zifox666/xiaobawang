@@ -71,3 +71,26 @@ def type_word(args: str) -> str:
         converted_text += '\t'.join(fields) + '\n'
     return converted_text
 
+
+def format_value(value: str | int | float) -> str:
+    """
+    根据数值大小自动转换为 K、M、B、T 格式
+
+    :param value: 需要格式化的数值
+    :return: 格式化后的字符串
+    """
+    value = float(value)
+    if value is None:
+        return "0"
+
+    if value >= 1_000_000_000_000:  # 万亿及以上用 T
+        return f"{value / 1_000_000_000_000:.2f}T"
+    elif value >= 1_000_000_000:  # 十亿及以上用 B
+        return f"{value / 1_000_000_000:.2f}B"
+    elif value >= 1_000_000:  # 百万及以上用 M
+        return f"{value / 1_000_000:.2f}M"
+    elif value >= 1_000:  # 千及以上用 K
+        return f"{value / 1_000:.2f}K"
+    else:
+        return f"{value:.2f}"
+

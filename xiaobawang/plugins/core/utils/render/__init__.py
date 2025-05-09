@@ -145,7 +145,7 @@ async def capture_element(
 async def render_template(
         template_path: Path,
         template_name: str,
-        data: Dict[str, Any],
+        data: Dict[str, Any] | Any,
         width: int = 550,
         height: int = 10,
 ) -> bytes | str:

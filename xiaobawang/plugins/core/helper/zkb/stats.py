@@ -1,5 +1,14 @@
+import traceback
 from datetime import datetime
 from typing import Optional
+
+from nonebot import logger
+
+from ...api.zkillboard import zkb_api
+from ...api.esi.universe import esi_client
+from ...api.killmail import get_zkb_killmail
+from ...utils.common import format_value
+from ...utils.render import render_template, templates_path
 
 
 class ZkbStats:
@@ -48,18 +57,149 @@ class ZkbStats:
         self.activity: dict = data.get("activity", {})
 
         self.top_lists: list = data.get("topLists", [])
+        for item in self.top_lists:
+            if item.get("type") == "shipType":
+                self.top_ships = item.get("values", [])
+            if item.get("type") == "character":
+                self.top_characters = item.get("values", [])
 
-    async def make(self):
-        """
-        处理数据
-        :return:
-        """
-        query_ids = set()
+        self.query_names: dict[int, str] = {}
+
+    async def _query_names(self, query_ids: set[int]):
+        data = await esi_client.get_names(list(query_ids))
+        if not data:
+            return
+
+        for category, id_name_map in data.items():
+            for item_id, name in id_name_map.items():
+                self.query_names[int(item_id)] = name
+
+    async def _query_info(self):
+        query_ids: set[int] = set()
         if self._type == "characterID":
             query_ids.add(self.corporation_id)
             query_ids.add(self.alliance_id)
         elif self._type == "corporationID":
             query_ids.add(self.alliance_id)
+            query_ids.add(self.ceo_id)
+
+        await self._query_names(query_ids)
+
+        if self._type == "characterID":
+            self.corporation_name = self.query_names.get(self.corporation_id, "")
+            self.alliance_name = self.query_names.get(self.alliance_id, "")
+        elif self._type == "corporationID":
+            self.alliance_name = self.query_names.get(self.alliance_id, "")
+            self.ceo_name = self.query_names.get(self.ceo_id, "")
+
+    async def _handle_killmail(self, data: dict) -> dict:
+        """
+        处理击杀数据
+        :param data:
+        :return:
+        """
+        try:
+            query_ids: set[int] = set()
+            if not data:
+                return {}
+            victim = data.get("victim", {})
+            attackers = data.get("attackers", [])
+            zkb_data = data.get("zkb", {})
+            final_attacker = {}
+            for attacker in attackers:
+                if attacker.get("final_blow", False):
+                    final_attacker = attacker
+                    break
+            print(final_attacker)
+
+            final_attacker_character_id = final_attacker.get("character_id", 0)
+            final_attacker_corporation_id = final_attacker.get("corporation_id", 0)
+            final_attacker_alliance_id = final_attacker.get("alliance_id", 0)
+            query_ids.add(final_attacker_character_id)
+            query_ids.add(final_attacker_corporation_id)
+            query_ids.add(final_attacker_alliance_id)
+
+            query_ids.add(victim.get("character_id", 0))
+            query_ids.add(victim.get("corporation_id", 0))
+            query_ids.add(victim.get("alliance_id", 0))
+            query_ids.add(victim.get("ship_type_id", 0))
+            query_ids.add(data.get("solar_system_id", 0))
+
+            await self._query_names(query_ids)
+            result = {
+                "killmail_id": data.get("killmail_id", 0),
+                "killmail_time": data.get("killmail_time", ""),
+                "ship_type_id": victim.get("ship_type_id", 0),
+                "victim": {
+                    "character_id": victim.get("character_id", 0),
+                    "corporation_id": victim.get("corporation_id", 0),
+                    "alliance_id": victim.get("alliance_id", 0),
+                    "character_name": self.query_names.get(victim.get("character_id", 0), "unknown"),
+                    "corporation_name": self.query_names.get(victim.get("corporation_id", 0), "unknown"),
+                    "alliance_name": self.query_names.get(victim.get("alliance_id", 0), "unknown"),
+                },
+                "attacker": {
+                    "character_id": final_attacker_character_id,
+                    "corporation_id": final_attacker_corporation_id,
+                    "alliance_id": final_attacker_alliance_id,
+                    "character_name": self.query_names.get(final_attacker_character_id, "unknown"),
+                    "corporation_name": self.query_names.get(final_attacker_corporation_id, "unknown"),
+                    "alliance_name": self.query_names.get(final_attacker_alliance_id, "unknown"),
+                },
+                "solar_system_id": data.get("solar_system_id", 0),
+                "solar_system_name": self.query_names.get(data.get("solar_system_id", 0), "unknown"),
+                "total_value": format_value(zkb_data.get("totalValue", 0)),
+                "solo": zkb_data.get("solo", False),
+                "total_attackers": len(attackers),
+                "lose": True if victim.get("character_id", 0) == self._id else False,
+            }
+
+            return result
+        except Exception as e:
+            logger.error(f"处理killmail失败\n{traceback.format_exc()}")
+            return {}
+
+
+    async def _handle_recent_killmail(self):
+        self.killmail_data = []
+        killmails = await zkb_api.get_killmail_list(
+            type_=self._type[:-2],
+            id_=self._id,
+        )
+        if not killmails:
+            self.recent_killmails = []
+            return
+        for killmail in killmails[:3]:
+            killmail_id = killmail.get("killmail_id")
+            if killmail_id:
+                data = await get_zkb_killmail(killmail_id)
+                result = await self._handle_killmail(data=data)
+                print(result)
+                if result:
+                    self.killmail_data.append(result)
+
+    async def _make(self):
+        """
+        处理数据
+        :return:
+        """
+        await self._query_info()
+        await self._handle_recent_killmail()
+
+
+    async def render(self) -> bytes:
+        """
+        渲染图片
+        :return:
+        """
+        await self._make()
+        return await render_template(
+            template_path=templates_path / "zkb",
+            template_name="zkb.html.jinja2",
+            data={"stats": self},
+            width=1080,
+            height=900,
+        )
 
 
 
