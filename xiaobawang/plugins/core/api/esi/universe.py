@@ -1,65 +1,19 @@
 import traceback
-from typing import Optional, Dict, Any, Literal, get_origin
+from typing import Optional, Dict, Any, Literal
 from nonebot import logger
 
+from ..base import BaseClient
 from ...utils.common.cache import cache_result, cache
-from ...utils.common.http_client import get_client
 
 
 ALLOW_CATEGORY = Literal["agents", "corporations", "characters", "alliances", "systems", "constellations", "regions", "stations"]
 
 
-class ESIClient:
+class ESIClient(BaseClient):
     def __init__(self):
-        self._client = get_client()
+        super().__init__()
         self.base_url = "https://esi.evetech.net/latest"
-        self.batch_size = 300  # ESI API 批量请求的最大限制
-
-    async def _get(
-            self,
-            endpoint: str,
-            params: Optional[Dict[str, Any]] = None
-    ) -> Dict:
-        """
-        GET
-        Res:
-            endpoint: ESI接口地址
-            params: 请求参数
-        Return:
-            ESI数据
-        """
-        url = f"{self.base_url}{endpoint}"
-
-        try:
-            response = await self._client.get(url, params=params)
-            logger.debug(f"[{endpoint}]{response.status_code} {response.url}")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            raise e
-
-    async def _post(
-            self,
-            endpoint: str,
-            data: Optional[Dict[str, Any] | list] = None,
-    ) -> Dict:
-        """
-        POST
-        Res:
-            endpoint: ESI接口地址
-            data: 请求参数
-        Return:
-            ESI数据
-        """
-        url = f"{self.base_url}{endpoint}"
-        try:
-            response = await self._client.post(url, json=data)
-            logger.debug(f"[{endpoint}]{response.status_code} {response.url}\ndata: {data}")
-            logger.debug(f"响应内容: {response.json()}")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            raise e
+        self.batch_size = 500
 
     @cache_result(expire_time=cache.TIME_DAY, prefix="esi:get_universe_id", exclude_args=[0])
     async def get_universe_id(
@@ -185,6 +139,13 @@ class ESIClient:
             type_: str,
             lang: str = "zh",
     ) -> str | None:
+        """
+        获取翻译名称
+        :param _id:
+        :param type_:
+        :param lang:
+        :return:
+        """
         try:
             endpoint = f"/universe/{type_}/{_id}/?datasource&language={lang}"
             data = await self._get(endpoint)

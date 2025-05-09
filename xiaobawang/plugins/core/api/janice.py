@@ -41,9 +41,8 @@ class JaniceAppraisal:
         response = await self.client.post(
             self.url,
             headers=self.headers,
-            data=contract.encode('utf-8'),
+            content=contract.encode('utf-8'),
         )
-        print(response.text)
         response.raise_for_status()
         return response.json()
 
