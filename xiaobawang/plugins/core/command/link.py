@@ -51,7 +51,6 @@ async def _(
         bot: Bot,
         event: Event,
 ):
-    await emoji_action(event)
     msg_id = await get_reply_message_id(bot, event)
     if not msg_id:
         return
@@ -64,10 +63,14 @@ async def _(
 
 @br.handle()
 async def _(
+        bot: Bot,
         event: Event,
 ):
-    msg_id = event.message_id
+    msg_id = await get_reply_message_id(bot, event)
     save_link = await get_msg_cache(msg_id)
+    if not save_link or not isinstance(save_link, str):
+        print(save_link)
+        await br.finish("未找到相关链接或链接格式不正确")
     matched = re.search(r"https://zkillboard\.com/kill/(\d+)/", save_link)
     kill_id = matched.group(1)
     data = await km.get(kill_id)

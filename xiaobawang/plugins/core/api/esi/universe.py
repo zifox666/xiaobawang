@@ -12,7 +12,7 @@ ALLOW_CATEGORY = Literal["agents", "corporations", "characters", "alliances", "s
 class ESIClient(BaseClient):
     def __init__(self):
         super().__init__()
-        self.base_url = "https://esi.evetech.net/latest"
+        self._base_url = "https://esi.evetech.net/latest"
         self.batch_size = 500
 
     @cache_result(expire_time=cache.TIME_DAY, prefix="esi:get_universe_id", exclude_args=[0])
