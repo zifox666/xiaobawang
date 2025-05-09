@@ -2,6 +2,7 @@ import traceback
 
 from arclet.alconna import Arparma
 from nonebot import require, logger
+from nonebot_plugin_alconna.uniseg import Receipt
 
 from ...db.models.record import CommandRecord
 
@@ -34,17 +35,15 @@ class HelperExtension(Extension):
             await session.commit()
 
 
-def get_msg_id(send_event) -> str | int:
+def get_msg_id(send_event: Receipt) -> str | int:
     """
     获取消息ID
     :param send_event: 发送事件
     :return: 消息ID
     """
     try:
-       try:
-            msg_id = send_event.msg_ids[0]["message_id"]
-       except:
-            msg_id = send_event.get("message_id", 0)
+        logger.debug(send_event)
+        msg_id = send_event.msg_ids[0]["message_id"]
     except Exception as e:
         logger.error(f"h获取消息id失败\n{traceback.format_exc()}")
         return 0
