@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
@@ -68,7 +69,7 @@ class MarketHandle:
             return all_data
 
         except Exception as e:
-            logger.error(f"获取市场数据失败: {e}\n{e.__traceback__}")
+            logger.error(f"获取市场数据失败: {e}\n{traceback.format_exc()}")
             return []
 
     async def _get_market_page(self, url: str, params: dict) -> List[Dict[str, Any]]:

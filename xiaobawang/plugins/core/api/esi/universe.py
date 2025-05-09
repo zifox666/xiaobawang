@@ -196,5 +196,47 @@ class ESIClient:
             logger.error(f"获取{type_}名称失败: {e}")
             return None
 
+    async def get_api_status(self) -> Optional[Dict[str, str]]:
+        """
+        获取ESI API状态
+        :return: API状态
+        """
+        try:
+            endpoint = "https://esi.evetech.net/status.json?version=latest"
+            r = await self._client.get(url=endpoint)
+            r.raise_for_status()
+            data = r.json()
+            green, yellow, red = 0, 0, 0
+            for i in data:
+                status = i.get("status")
+                if status == "green":
+                    green += 1
+                elif status == "yellow":
+                    yellow += 1
+                else:
+                    red += 1
+
+            return {
+                "green": green,
+                "yellow": yellow,
+                "red": red,
+                "total": len(data),
+            }
+        except Exception as e:
+            logger.error(f"获取API状态失败: {e}")
+            return {}
+
+    async def get_server_status(self) -> Optional[Dict[str, str]]:
+        """
+        获取EVE服务器状态
+        :return: 服务器状态
+        """
+        try:
+            endpoint = "/status/?datasource=tranquility"
+            return await self._get(endpoint)
+        except Exception as e:
+            logger.error(f"获取服务器状态失败: {e}")
+            return {}
+
 
 esi_client = ESIClient()

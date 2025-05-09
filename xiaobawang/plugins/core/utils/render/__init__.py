@@ -66,7 +66,6 @@ async def capture_element(
             viewport={"width": viewport_width, "height": viewport_height},
             device_scale_factor=1
     ) as page:
-        # 加载页面
         if url:
             await page.goto(url)
             await page.wait_for_load_state("networkidle")
@@ -75,7 +74,6 @@ async def capture_element(
         else:
             raise ValueError("必须提供 url 或 html_content 其中之一")
 
-        # 隐藏指定元素
         if hide_elements:
             await page.evaluate("""
                 (selectors) => {
@@ -88,12 +86,10 @@ async def capture_element(
                 }
             """, hide_elements)
 
-        # 等待并选择元素
         element_handle = await page.wait_for_selector(element)
         if element_handle is None:
             raise ValueError(f"未找到元素 '{element}'")
 
-        # 获取元素位置和尺寸
         bounding_box = await element_handle.bounding_box()
         if not bounding_box:
             raise ValueError(f"无法获取元素 '{element}' 的边界框")
@@ -102,14 +98,12 @@ async def capture_element(
         element_height = bounding_box['height']
 
         if full_page:
-            # 多次滚动截图模式
             screenshots = []
             viewport_height = min(viewport_height, 1080)
 
             for offset in range(0, int(element_height), viewport_height):
-                # 滚动到元素的指定部分
                 await page.evaluate(f"window.scrollTo(0, {offset})")
-                await page.wait_for_timeout(500)  # 确保滚动动作完成
+                await page.wait_for_timeout(500)
 
                 screenshot = await page.screenshot(
                     clip={
@@ -121,7 +115,6 @@ async def capture_element(
                 )
                 screenshots.append(screenshot)
 
-            # 拼接截图
             stitched_image = Image.new('RGB', (int(element_width), int(element_height)))
             current_height = 0
             for screenshot in screenshots:
@@ -129,8 +122,6 @@ async def capture_element(
                 stitched_image.paste(img, (0, current_height))
                 current_height += img.height
         else:
-            # 单次截图模式
-            # 调整视口大小以适应整个元素
             await page.set_viewport_size({"width": int(viewport_width), "height": int(element_height)})
             await page.wait_for_load_state("networkidle")
 
@@ -145,7 +136,6 @@ async def capture_element(
             )
             stitched_image = Image.open(BytesIO(screenshot))
 
-        # 保存图片
         stitched_image.save(output_file)
         with BytesIO() as output:
             stitched_image.save(output, format="PNG")
@@ -196,22 +186,18 @@ async def html2pic_br(
                 }
             """, hide_elements)
 
-        # 等待并选择要截图的元素
         element_handle = await page.wait_for_selector(element)
         if element_handle is None:
             raise ValueError(f"Element '{element}' not found on the page.")
 
-        # 获取元素的大小和位置
         bounding_box = await element_handle.bounding_box()
         element_width = bounding_box['width']
         element_height = bounding_box['height']
 
-        # 调整视口大小以适应整个元素
         await page.set_viewport_size({"width": int(element_width), "height": int(element_height)})
 
         await page.wait_for_load_state("networkidle")
 
-        # 截图整个元素
         screenshot = await page.screenshot(
             clip={
                 "x": bounding_box['x'],
@@ -221,9 +207,9 @@ async def html2pic_br(
             }
         )
 
-        # 保存图片
         stitched_image = Image.open(BytesIO(screenshot))
         stitched_image.save("./html2pic.png")
         with BytesIO() as output:
             stitched_image.save(output, format="PNG")
             return output.getvalue()
+

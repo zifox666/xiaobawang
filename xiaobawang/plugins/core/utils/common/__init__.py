@@ -56,3 +56,18 @@ def is_chinese(text: str) -> bool:
             return True
     return False
 
+
+def type_word(args: str) -> str:
+    """
+    整理合同内容
+    :param args: 合同内容
+    :return: 整理后的合同内容
+    """
+    args = args.replace('\r', '\n')
+    lines = args.split('\n')
+    converted_text = ''
+    for line in lines:
+        fields = line.split('\t')
+        converted_text += '\t'.join(fields) + '\n'
+    return converted_text
+

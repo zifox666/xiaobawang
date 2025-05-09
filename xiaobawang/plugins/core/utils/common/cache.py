@@ -259,7 +259,10 @@ async def save_msg_cache(send_event, value_: str | Dict):
     :param value_: 要储存的信息
     :param send_event: 发送事件
     """
-    msg_id = send_event.msg_ids[0]["message_id"]
+    if msg_id := send_event.get("message_id", None):
+        pass
+    else:
+        msg_id = send_event.msg_ids[0]["message_id"]
     await cache.set(
         f"send_msg_id:{msg_id}",
         value_

@@ -61,7 +61,6 @@ async def handle_query_price(
         session: AsyncSession,
         event: Event
 ):
-    # 参数解析部分
     args = result.args
     args = ' '.join(args)
     word = args if "*" not in args else args.split("*")[0].strip()

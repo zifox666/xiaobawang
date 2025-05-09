@@ -1,20 +1,20 @@
 from arclet.alconna import Arparma
-from nonebot import Bot
 from nonebot.internal.adapter import Event
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
     CommandMeta,
     on_alconna,
-    message_reaction,
     UniMessage
 )
 
-from ..utils.common import get_reply_message_id
 from ..helper.zkb.killmail import km
 from ..api.killmail import get_zkb_killmail
+from ..utils.common.emoji import emoji_action
 from ..utils.common.cache import save_msg_cache
 from ..utils.render import render_template, templates_path
+
+__all__ = ["km_handler", "km_sub_push_test"]
 
 km_handler = on_alconna(
     Alconna(
@@ -44,7 +44,7 @@ async def handle_km(
         result: Arparma,
         event: Event,
 ):
-    await message_reaction(event=event, emoji="424")
+    await emoji_action(event)
     kill_id = result["kill_id"]
     data = await km.get(kill_id)
     data["title"] = "击毁报告"

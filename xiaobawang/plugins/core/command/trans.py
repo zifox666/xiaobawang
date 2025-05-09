@@ -1,9 +1,11 @@
-from arclet.alconna import Alconna, Args, MultiVar, Option
+from arclet.alconna import Alconna, Args, MultiVar, Option, Arparma
 from nonebot_plugin_alconna import on_alconna
 
 from ..api.esi.universe import esi_client
 from ..utils.common import is_chinese
 from xiaobawang.plugins.sde.oper import sde_search
+
+__all__ = ["trans"]
 
 trans = on_alconna(
     Alconna(
@@ -18,10 +20,10 @@ trans = on_alconna(
 
 @trans.handle()
 async def _trans(
-        args:  tuple,
-        limit: int,
+        arp: Arparma,
 ):
-    args = " ".join(args)
+    args = " ".join(arp.main_args.get("args"))
+    limit = arp.other_args.get("limit", 10)
     lang = is_chinese(args)
     name_data = await esi_client.get_universe_id(
         name=args,

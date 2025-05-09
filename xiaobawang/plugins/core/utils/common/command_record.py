@@ -1,5 +1,7 @@
+import traceback
+
 from arclet.alconna import Arparma
-from nonebot import require
+from nonebot import require, logger
 
 from ...db.models.record import CommandRecord
 
@@ -30,3 +32,20 @@ class HelperExtension(Extension):
                 )
             )
             await session.commit()
+
+
+def get_msg_id(send_event) -> str | int:
+    """
+    获取消息ID
+    :param send_event: 发送事件
+    :return: 消息ID
+    """
+    try:
+       try:
+            msg_id = send_event.msg_ids[0]["message_id"]
+       except:
+            msg_id = send_event.get("message_id", 0)
+    except Exception as e:
+        logger.error(f"h获取消息id失败\n{traceback.format_exc()}")
+        return 0
+    return msg_id

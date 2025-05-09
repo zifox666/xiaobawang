@@ -7,6 +7,7 @@ from nonebot.internal.adapter import Event
 
 from ..helper.zkb.killmail import km
 from ..utils.common import get_reply_message_id, convert_time
+from ..utils.common.emoji import emoji_action
 from ..utils.common.cache import get_msg_cache
 from ..utils.render import html2pic_br
 
@@ -50,6 +51,7 @@ async def _(
         bot: Bot,
         event: Event,
 ):
+    await emoji_action(event)
     msg_id = await get_reply_message_id(bot, event)
     if not msg_id:
         return
@@ -62,12 +64,9 @@ async def _(
 
 @br.handle()
 async def _(
-        bot: Bot,
         event: Event,
 ):
-    msg_id = await get_reply_message_id(bot, event)
-    if not msg_id:
-        return
+    msg_id = event.message_id
     save_link = await get_msg_cache(msg_id)
     matched = re.search(r"https://zkillboard\.com/kill/(\d+)/", save_link)
     kill_id = matched.group(1)

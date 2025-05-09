@@ -1,5 +1,3 @@
-import asyncio
-
 from arclet.alconna import Alconna, Subcommand, Args, MultiVar, Option, CommandMeta, Arparma
 from nonebot.internal.adapter import Event
 
@@ -11,7 +9,10 @@ from ..api.esi.universe import esi_client
 from ..helper.subscription import KillmailSubscriptionManager
 from ..helper.zkb.listener import zkb_listener
 from ..utils.common import parse_session_id
-from ...sde.db import get_session
+
+
+__all__ = ["start_km_listen", "sub", "sub_high", "_start_km_listen", "_stop_km_listen"]
+
 
 start_km_alc = Alconna(
     "wss",
@@ -28,7 +29,8 @@ start_km_listen = on_alconna(
 
 @start_km_listen.assign("start")
 async def _start_km_listen():
-    _ = asyncio.create_task(zkb_listener.start())
+    # TODO: 记得删
+    # _ = asyncio.create_task(zkb_listener.start())
     logger.info("开始监听zkb")
 
 
