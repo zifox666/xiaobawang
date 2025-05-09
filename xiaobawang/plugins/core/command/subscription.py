@@ -1,3 +1,4 @@
+import asyncio
 from arclet.alconna import Alconna, Subcommand, Args, MultiVar, Option, CommandMeta, Arparma
 from nonebot.internal.adapter import Event
 
@@ -29,8 +30,7 @@ start_km_listen = on_alconna(
 
 @start_km_listen.assign("start")
 async def _start_km_listen():
-    # TODO: 记得删
-    # _ = asyncio.create_task(zkb_listener.start())
+    _ = asyncio.create_task(zkb_listener.start())
     logger.info("开始监听zkb")
 
 
