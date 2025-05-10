@@ -1,0 +1,18 @@
+{
+  "version.label": {
+    "message": "下一页",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.deploy": {
+    "message": "部署机器人",
+    "description": "部署属于自己的小霸王机器人"
+  },
+  "sidebar.tutorialSidebar.category.features": {
+    "message": "机器人功能",
+    "description": "查看机器人拥有的功能"
+  },
+  "sidebar.tutorialSidebar.category.quick_start": {
+    "message": "快速开始",
+    "description": "开始使用机器人"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.deploy": {
+    "message": "Deploy",
+    "description": "The label for category deploy in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.features": {
+    "message": "Features",
+    "description": "The label for category features in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.quick_start": {
+    "message": "Quick Start",
+    "description": "The label for category quick_start in sidebar tutorialSidebar"
+  }
+}
