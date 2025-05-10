@@ -8,11 +8,11 @@ No need for self-deployment, you can directly use the following pre-deployed Xia
 
 ## QQ Bot
 
-Add QQ friend: `123456789`
+Add QQ friend: `2382766384`
 
 ## Telegram Bot
 
-Visit [https://t.me/bot](https://t.me/bot) to start using
+Visit [https://t.me/bot](https://t.me/xiaobawang777bot) to start using
 
 ## How to Use
 

@@ -8,11 +8,11 @@ sidebar_position: 1
 
 ## QQ机器人
 
-添加QQ好友: `123456789`
+添加QQ好友: `2382766384`
 
 ## Telegram机器人
 
-访问 [https://t.me/bot](https://t.me/bot) 开始使用
+访问 [https://t.me/bot](https://t.me/xiaobawang777bot) 开始使用
 
 ## 使用方法
 
