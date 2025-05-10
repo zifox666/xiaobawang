@@ -1,6 +1,6 @@
 import re
 
-from arclet.alconna import Alconna, Args
+from arclet.alconna import Alconna, Arparma
 from nonebot_plugin_alconna import on_alconna, UniMessage
 from nonebot import Bot
 from nonebot.internal.adapter import Event
@@ -26,23 +26,20 @@ br = on_alconna(
     use_cmd_start=True,
 )
 
-br_preview = on_alconna(
+br_preview_time = on_alconna(
     Alconna(
-        "br_preview",
-        Args["br_link", str]
+        "{:.*}https://br.evetools.org/related/{system_id:int}/{timestamp:int}}{:.*}",
+        separators=["\x04", "\n"],
     ),
-    use_cmd_start=True
+    use_cmd_start=False
 )
 
-br_preview.shortcut(
-    r"https://br.evetools.org/related/([0-9]{8})/([0-9]{12})",
-    command="/br_preview https://br.evetools.org/related/{0}/{1}",
-    fuzzy=True
-)
-br_preview.shortcut(
-    r"https://br.evetools.org/br/([a-zA-Z0-9]{24})",
-    command="/br_preview https://br.evetools.org/br/{0}",
-    fuzzy=True
+br_preview_alt = on_alconna(
+    Alconna(
+        "{:.*}https://br.evetools.org/br/{br_id:str}{:.*}",
+        separators=["\x04", "\n"],
+    ),
+    use_cmd_start=False
 )
 
 
@@ -91,12 +88,17 @@ async def _(
         )
 
 
-@br_preview.handle()
+@br_preview_time.handle()
 async def _(
+        arp: Arparma,
         event: Event,
-        br_link: str = Args["br_link", str]
 ):
-    await br_preview.finish(
+    await emoji_action(event)
+    header = arp.header
+    system_id = header["system_id"]
+    timestamp = header["timestamp"]
+    br_link = f"https://br.evetools.org/related/{system_id}/{timestamp}"
+    await br_preview_time.finish(
         UniMessage.reply(event.message_id) +
         UniMessage.image(
             raw=await html2pic_br(
@@ -106,4 +108,25 @@ async def _(
             )
         )
 )
+
+
+@br_preview_alt.handle()
+async def _(
+        arp: Arparma,
+        event: Event,
+):
+    await emoji_action(event)
+    header = arp.header
+    br_id = header["br_id"]
+    br_link = f"https://br.evetools.org/br/{br_id}"
+    await br_preview_alt.finish(
+        UniMessage.reply(event.message_id) +
+        UniMessage.image(
+            raw=await html2pic_br(
+                url=br_link,
+                element=".development",
+                hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
+            )
+        )
+    )
 

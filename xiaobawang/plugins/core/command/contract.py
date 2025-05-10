@@ -1,4 +1,4 @@
-from arclet.alconna import Alconna, MultiVar, Args
+from arclet.alconna import Alconna, MultiVar, Args, Arparma
 from nonebot.internal.adapter import Event
 from nonebot_plugin_alconna import on_alconna, UniMessage
 
@@ -21,16 +21,10 @@ janice = on_alconna(
 
 janice_preview = on_alconna(
     Alconna(
-        "janice_preview",
-        Args["url", str],
+        "https://janice.e-351.com/a/{code:str}",
+        separators=["\x04", "\n"],
     ),
-    use_cmd_start=True,
-)
-
-janice_preview.shortcut(
-    r"https://janice.e-351.com/a/([a-zA-Z0-9]{6})",
-    command="/janice_preview https://janice.e-351.com/a/{0}",
-    fuzzy=True
+    use_cmd_start=False,
 )
 
 
@@ -55,7 +49,7 @@ async def handle_janice(
         UniMessage.reply(event.message_id) + UniMessage.text(msg)
     )
     msg_id = get_msg_id(send_event)
-    pic = await capture_element(url=appraisal.janiceUrl, element=".appraisal", full_page=True)
+    pic = await capture_element(url=appraisal.janiceUrl, element=".appraisal", full_page=False)
     if pic:
         await janice.finish(
             UniMessage.reply(msg_id) + UniMessage.image(raw=pic)
@@ -66,16 +60,18 @@ async def handle_janice(
 
 @janice_preview.handle()
 async def handle_janice_preview(
+        arp: Arparma,
         event: Event,
-        url: str = Args["url", str]
 ):
     """
     处理合同估价请求
     :param event: 事件对象
-    :param url: 合同估价链接
+    :param arp:
     """
     await emoji_action(event)
-    pic = await capture_element(url=url, element=".appraisal", full_page=True)
+    code = arp.header["code"]
+    url = f"https://janice.e-351.com/a/{code}"
+    pic = await capture_element(url=url, element=".appraisal", full_page=False)
     if pic:
         await janice_preview.finish(
             UniMessage.reply(event.message_id) + UniMessage.image(raw=pic)
