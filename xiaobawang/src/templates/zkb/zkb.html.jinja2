@@ -105,7 +105,10 @@
 
         <!-- 危险度和团队度进度条 -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-bold mb-4">战斗评级</h2>
+            <div class="flex justify-between">
+                <h2 class="text-xl font-bold mb-2">战斗评级</h2>
+                <p class="font-bold mr-2">船分比：{{ "{:,.2f}".format(stats.ship_ratio) }}</p>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <div class="flex justify-between mb-1">
@@ -279,7 +282,7 @@
 
         <!-- 近期击杀记录 -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-bold mb-4">近期击杀记录</h2>
+            <h2 class="text-xl font-bold mb-4">近期KM记录</h2>
 
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -294,23 +297,23 @@
                                         </div>
                                     </td>
                                     <td class="py-3 px-2 w-16">
-                                        <img src="https://images.evetech.net/types/{{ km.ship_type_id }}/render?size=64" class="w-14 h-14 rounded-md" alt="Ship">
+                                        <img src="https://images.evetech.net/types/{{ km.ship_type_id }}/render?size=64" class="w-12 h-12 rounded-md" alt="Ship">
                                     </td>
-                                    <td class="py-3 px-2 w-40">
+                                    <td class="py-3 px-2 w-35">
                                         <div class="truncate">
                                             <span class="text-red-700">-0.7</span>
                                             <span class="hover:text-blue-700">{{ km.solar_system_name }}</span>
                                         </div>
-                                        <span class="text-xs text-gray-600">区域名称</span>
+                                        <span class="text-xs text-gray-600">{{ km.region_name }}</span>
                                     </td>
                                     <td class="py-3 px-2 w-14 hidden md:table-cell">
                                         {% if km.victim.alliance_id %}
-                                        <img src="https://images.evetech.net/alliances/{{ km.victim.alliance_id }}/logo?size=64" class="rounded-md" alt="{{ km.victim.alliance_name }}">
+                                        <img src="https://images.evetech.net/alliances/{{ km.victim.alliance_id }}/logo?size=64" class="rounded-md w-14" alt="{{ km.victim.alliance_name }}">
                                         {% elif km.victim.corporation_id %}
-                                        <img src="https://images.evetech.net/corporations/{{ km.victim.corporation_id }}/logo?size=64" class="rounded-md" alt="{{ km.victim.corporation_name }}">
+                                        <img src="https://images.evetech.net/corporations/{{ km.victim.corporation_id }}/logo?size=64" class="rounded-md w-14" alt="{{ km.victim.corporation_name }}">
                                         {% endif %}
                                     </td>
-                                    <td class="py-3 px-2">
+                                    <td class="py-3 px-2 max-w-xs">
                                         <div class="truncate">
                                             <span class="hover:text-blue-700">{{ km.victim.character_name }}</span>
                                         </div>
@@ -323,14 +326,14 @@
                                         </div>
                                         {% endif %}
                                     </td>
-                                    <td class="py-3 px-2 w-14 hidden md:table-cell">
+                                    <td class="py-3 px-2 w-14 hidden md:table-cell max-w-xs">
                                         {% if km.attacker.alliance_id %}
-                                        <img src="https://images.evetech.net/alliances/{{ km.attacker.alliance_id }}/logo?size=64" class="rounded-md" alt="{{ km.attacker.alliance_name }}">
+                                        <img src="https://images.evetech.net/alliances/{{ km.attacker.alliance_id }}/logo?size=64" class="rounded-md w-14" alt="{{ km.attacker.alliance_name }}">
                                         {% elif km.attacker.corporation_id %}
-                                        <img src="https://images.evetech.net/corporations/{{ km.attacker.corporation_id }}/logo?size=64" class="rounded-md" alt="{{ km.attacker.corporation_name }}">
+                                        <img src="https://images.evetech.net/corporations/{{ km.attacker.corporation_id }}/logo?size=64" class="rounded-md w-14" alt="{{ km.attacker.corporation_name }}">
                                         {% endif %}
                                     </td>
-                                    <td class="py-3 px-2 hidden md:table-cell">
+                                    <td class="py-3 px-2 hidden md:table-cell max-w-xs">
                                         <div class="truncate">
                                             <span class="hover:text-blue-700">{{ km.attacker.character_name }}
                                             {% if km.total_attackers > 1 %}<span class="text-gray-500">({{ km.total_attackers }})</span>{% endif %}</span>

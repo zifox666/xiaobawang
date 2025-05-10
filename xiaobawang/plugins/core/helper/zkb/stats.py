@@ -33,6 +33,11 @@ class ZkbStats:
         self.points_lost: int = data.get("pointsLost", 0)
         self.isk_lost: float = data.get("iskLost", 0.00)
 
+        if self.ships_destroyed > 0:
+            self.ship_ratio: float = self.points_destroyed / self.ships_destroyed
+        else:
+            self.ship_ratio: float = 0.00
+
         self.active_pvp: dict = data.get("activepvp", {})
         self.kills: int = self.active_pvp.get("kills", {}).get("count", 0)
 
@@ -125,6 +130,9 @@ class ZkbStats:
             query_ids.add(victim.get("ship_type_id", 0))
             query_ids.add(data.get("solar_system_id", 0))
 
+            system_data = await esi_client.get_system_info(data.get("solar_system_id", 0))
+            region_name = system_data.get("region_name", "")
+
             await self._query_names(query_ids)
             result = {
                 "killmail_id": data.get("killmail_id", 0),
@@ -152,6 +160,7 @@ class ZkbStats:
                 "solo": zkb_data.get("solo", False),
                 "total_attackers": len(attackers),
                 "lose": True if victim.get("character_id", 0) == self._id else False,
+                "region_name": region_name,
             }
 
             return result
