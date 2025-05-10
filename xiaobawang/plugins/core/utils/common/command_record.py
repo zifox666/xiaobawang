@@ -2,6 +2,7 @@ import traceback
 
 from arclet.alconna import Arparma
 from nonebot import require, logger
+from nonebot.internal.adapter import Message
 from nonebot_plugin_alconna.uniseg import Receipt
 
 from ...db.models.record import CommandRecord
@@ -43,7 +44,10 @@ def get_msg_id(send_event: Receipt) -> str | int:
     """
     try:
         logger.debug(send_event)
-        msg_id = send_event.msg_ids[0]["message_id"]
+        if isinstance(send_event.msg_ids[0], Message):
+            msg_id = send_event.msg_ids[0].message_id
+        else:
+            msg_id = send_event.msg_ids[0]["message_id"]
     except Exception as e:
         logger.error(f"h获取消息id失败\n{traceback.format_exc()}")
         return 0
