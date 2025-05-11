@@ -6,3 +6,4 @@ from .contract import *
 from .trans import *
 from .zkb import *
 from .wormhole import *
+from .help import *
