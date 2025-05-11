@@ -14,8 +14,8 @@ sidebar_position: 8
 
 ### 虫洞星系
 
-![虫洞星系](/img/features/wormhole/system.png)
+![虫洞星系](/img/docs/features/wormhole/system.png)
 
 ### 洞口信息
 
-![虫洞洞口](/img/features/wormhole/wormhole.png)
+![虫洞洞口](/img/docs/features/wormhole/wormhole.png)

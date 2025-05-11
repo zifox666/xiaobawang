@@ -23,7 +23,7 @@ sidebar_position: 3
 | Price Query (ojita)      |      ✅       |     ✅      |    ✅     |     ✅     |     ✅      |     ✅     |
 | Statistics Query (zkb)   |      ✅       |     ✅      |    ✅     |     ✅     |     ✅      |     ✅     |
 | Term Translation (trans) |      ✅       |     ✅      |    ✅     |     ✅     |     ✅      |     ✅     |
-| Wormhole Query           |      🚧      |     🚧     |    🚧    |    🚧     |    🚧      |    🚧     |
+| Wormhole Query           |      ✅       |     ✅      |    ✅     |     ✅     |     ✅      |     ✅     |
 | KM Subscription (sub)    |      ✅       |     ✅      |    🚫    |     ✅     |     ✅      |     ✅     |
 | Link Preview             |      ✅       |     ✅      |    📝    |    📝     |    📝      |     ✅     |
 | Capital Navigation (JDC) |      🚧      |     🚧     |    🚧    |    🚧     |    🚧      |    🚧     |
