@@ -9,7 +9,7 @@
     <div class="container">
         <div style="margin-top: -10px; margin-left: -10px;">
             <img src="https://wiki.eveuniversity.org/images/thumb/e/eb/Killreport.png/48px-Killreport.png" style="height: 25px; width: 25px;"/>
-            <span class="chinese">{{ title }}</span>
+            <span class="chinese">Created by XiaoBaWang 1.1.0 | Designed by newdoublex</span>
         </div>
         <div style="margin-top: 10px;" class="clear">
             <img src="https://images.evetech.net/characters/{{ victim.victim_id }}/portrait?size=128" />
@@ -17,7 +17,7 @@
         </div>
         <div style="margin-left: 11px; margin-top: 10px;">
             <div><span style="font-size: 18px; margin-top: 2px">
-                {% if victim.victim_name %}
+                {% if victim.victim_name != "Unknown" %}
                     {{ victim.victim_name }}
                 {% else %}
                     {{ victim.ship_type_name }} <span style="margin-left: 0.5ex; font-weight: 500;">({{ victim.ship_group_name }})</span>
@@ -32,7 +32,7 @@
                     {{ victim.victim_alliance_name }}
                 </span>
                 <div class="clear" style="font-size: 13px;">
-                    {% if victim.victim_name %}
+                    {% if victim.victim_name != "Unknown" %}
                     <div class="clear" style="margin-top: 12px;"><span>{{ victim.ship_type_name }} </span><span style="margin-left: 0.5ex; font-weight: 500;">({{ victim.ship_group_name }})</span></div>
                     {% endif %}
                     <div class="clear" style="position: absolute; left: 287px; top: 142px; font-weight: 500;">{{ time }} ({{ time_difference }})</div>
@@ -187,7 +187,6 @@
                 </div>
             </div>
         </div>
-
 
     </div>
 </body>

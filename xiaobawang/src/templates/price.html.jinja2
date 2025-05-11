@@ -73,13 +73,13 @@
                             <p class="text-gray-400 text-sm">单价</p>
                             <div class="grid grid-cols-3 gap-1 mt-1 text-sm">
                                 <div class="text-gray-400">卖:</div>
-                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.sell_price) }}</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "{:,.2f}".format(item.sell_price) }}</div>
 
                                 <div class="text-gray-400">买:</div>
-                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.buy_price) }}</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "{:,.2f}".format(item.buy_price) }}</div>
 
                                 <div class="text-gray-400">中:</div>
-                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.mid_price) }}</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "{:,.2f}".format(item.mid_price) }}</div>
                             </div>
                         </div>
 
@@ -87,13 +87,13 @@
                             <p class="text-gray-400 text-sm">总价 (x{{ num }})</p>
                             <div class="grid grid-cols-3 gap-1 mt-1 text-sm">
                                 <div class="text-gray-400">卖:</div>
-                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.total_sell) }}</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "{:,.2f}".format(item.total_sell) }}</div>
 
                                 <div class="text-gray-400">买:</div>
-                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.total_buy) }}</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "{:,.2f}".format(item.total_buy) }}</div>
 
                                 <div class="text-gray-400">中:</div>
-                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "%.2f"|format(item.total_mid) }}</div>
+                                <div class="text-gray-100 font-mono col-span-2 js-isk text-right">{{ "{:,.2f}".format(item.total_mid) }}</div>
                             </div>
                         </div>
                     </div>
@@ -101,13 +101,13 @@
                     <!-- 单数量模式 - 价格右对齐 -->
                     <div class="grid grid-cols-4 gap-y-2 text-sm">
                         <div class="text-gray-400">卖单价:</div>
-                        <div class="col-span-3 font-mono js-isk text-right">{{ "%.2f"|format(item.sell_price) }}</div>
+                        <div class="col-span-3 font-mono js-isk text-right">{{ "{:,.2f}".format(item.sell_price) }}</div>
 
                         <div class="text-gray-400">买单价:</div>
-                        <div class="col-span-3 font-mono js-isk text-right">{{ "%.2f"|format(item.buy_price) }}</div>
+                        <div class="col-span-3 font-mono js-isk text-right">{{ "{:,.2f}".format(item.buy_price) }}</div>
 
                         <div class="text-gray-400">中间价:</div>
-                        <div class="col-span-3 font-mono js-isk text-right">{{ "%.2f"|format(item.mid_price) }}</div>
+                        <div class="col-span-3 font-mono js-isk text-right">{{ "{:,.2f}".format(item.mid_price) }}</div>
                     </div>
                     {% endif %}
                 </div>
@@ -164,28 +164,12 @@
         </div>
 
         <!-- 页脚 -->
-        <footer class="mt-8 text-center text-xs text-gray-500">
-            数据来源: EVE Online 市场数据 | 查询时间: {{ now.strftime("%Y-%m-%d %H:%M:%S") }}
+        <footer class="mt-8 mb-2 text-center text-sm text-gray-500">
+          <p>Created by XiaoBaWang 1.1.0 | Designed by newdoublex</p>
         </footer>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // 格式化ISK价格显示
-            document.querySelectorAll('.js-isk').forEach(el => {
-                const value = parseFloat(el.textContent);
-                if (value >= 1e9) {
-                    el.textContent = (value / 1e9).toFixed(2) + " B ISK";
-                } else if (value >= 1e6) {
-                    el.textContent = (value / 1e6).toFixed(2) + " M ISK";
-                } else if (value >= 1e3) {
-                    el.textContent = (value / 1e3).toFixed(2) + " K ISK";
-                } else {
-                    el.textContent = value.toFixed(2) + " ISK";
-                }
-            });
-        });
-
         // 分页导航函数
         function sendNextPage() { console.log("请求下一页"); }
         function sendPreviousPage() { console.log("请求上一页"); }
