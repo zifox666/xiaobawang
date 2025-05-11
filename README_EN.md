@@ -64,7 +64,7 @@ Fill in your bot configuration items in the .env.dev file
 | Price query ojita    |     ✅     |    ✅    |   ✅   |    ✅    |    ✅    |    ✅    |
 | Stats query zkb      |     ✅     |    ✅    |   ✅   |    ✅    |    ✅    |    ✅    |
 | Term translation trans |    ✅     |    ✅    |   ✅   |    ✅    |    ✅    |    ✅    |
-| Wormhole query      |     🚧     |    🚧    |   🚧   |    🚧   |    🚧    |    🚧    |
+| Wormhole query      |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
 | KM subscription sub  |     ✅     |    ✅    |   🚫   |    ✅    |    ✅    |    ✅    |
 | Link preview        |     ✅     |    ✅    |   📝   |    📝   |    📝    |    ✅    |
 | Jump Drive Calculator JDC |  🚧   |    🚧    |   🚧   |    🚧   |    🚧    |    🚧    |
