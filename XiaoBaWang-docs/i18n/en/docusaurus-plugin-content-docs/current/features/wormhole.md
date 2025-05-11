@@ -14,8 +14,8 @@ Command format: `/wormhole wormhole_name`
 
 ### Wormhole System
 
-![Wormhole System](/static/img/features/wormhole/system.png)
+![Wormhole System](/img/features/wormhole/system.png)
 
 ### Wormhole Entrance Information
 
-![Wormhole Entrance](/static/img/features/wormhole/wormhole.png)
+![Wormhole Entrance](/img/features/wormhole/wormhole.png)

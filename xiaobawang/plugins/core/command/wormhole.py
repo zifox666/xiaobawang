@@ -24,7 +24,6 @@ async def handle_wormhole(
 ):
     wormhole_helper = WormholeHelper()
     data, type_ = await wormhole_helper.get(args)
-    print(data)
     if not data:
         await wormhole.finish(f"没有找到相关数据[{args}]")
     pic = await render_template(
