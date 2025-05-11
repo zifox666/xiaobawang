@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ name }} - 虫洞星系信息</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #ffffff;
+            color: #333333;
+        }
+        .orbit-map {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+        .orbit {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px dashed #aaaaaa;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .sun {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #ffd700;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .planet {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #3498db;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-6xl mx-auto bg-white shadow-md rounded-lg overflow-hidden">
+        <div class="p-4 border-b border-gray-200">
+            <h1 class="text-3xl font-bold text-center">{{ name }}</h1>
+        </div>
+
+        <!-- 基本信息部分 -->
+        <div class="p-6">
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2">基本信息</h2>
+
+            <!-- 基础信息和行星轨道图 -->
+            <div class="grid grid-cols-1 {% if effect and effect.name %}md:grid-cols-2{% endif %} gap-6 mb-6">
+                <!-- 左侧：基础信息 -->
+                <div class="bg-gray-50 p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold mb-4 border-b pb-2">基础信息</h3>
+                    <div class="flex flex-col sm:flex-row justify-between items-center">
+                        <div class="space-y-3 flex-1 ml-2">
+                            <p class="flex justify-between max-w-xs">
+                                <span class="font-medium w-24">星系名称:</span>
+                                <span class="flex-1 text-right">{{ name }}</span>
+                            </p>
+                            <p class="flex justify-between max-w-xs">
+                                <span class="font-medium w-24">所属区域:</span>
+                                <span class="flex-1 text-right">{{ region_name }}</span>
+                            </p>
+                            <p class="flex justify-between max-w-xs">
+                                <span class="font-medium w-24">所属星座:</span>
+                                <span class="flex-1 text-right">{{ constellation_name }}</span>
+                            </p>
+                            <p class="flex justify-between max-w-xs">
+                                <span class="font-medium w-24">星系等级:</span>
+                                <span class="flex-1 text-right" style="color: {{ class_info.color }}">{{ class_info.title }}</span>
+                            </p>
+                        </div>
+
+                        <div class="orbit-map mx-auto sm:mt-0 max-w-xs" id="orbitMap">
+                            <div class="sun"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 星系效果 -->
+                {% if effect and effect.name %}
+                <div class="bg-gray-50 p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold mb-4 border-b pb-2">星系效果</h3>
+                    <p class="font-medium mb-3">{{ effect.name }}</p>
+                    <ul class="list-disc list-inside space-y-2 pl-2">
+                        {% for detail in effect.effect_details %}
+                            <li class="text-sm">{{ detail }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 连接洞口部分 -->
+        <div class="p-6">
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2">连接洞口</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 左侧：永连洞 -->
+                <div class="bg-gray-50 p-4 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold mb-4">永连洞</h3>
+                    {% if statics|length > 0 %}
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b text-left">洞口编号</th>
+                                <th class="py-2 px-4 border-b text-right">质量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for wh in statics %}
+                            <tr>
+                                <td class="py-2 px-4 border-b">
+                                    <span style="color: {{ wh.color }}">{{ wh.name }} <span class="text-gray-600">[{{ wh.dest }}]</span></span>
+                                </td>
+                                <td class="py-2 px-4 border-b text-right">{{ "{:,.0f}".format(wh.total_mass) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>无永连洞口</p>
+                    {% endif %}
+                </div>
+
+                <!-- 右侧：漫游洞 -->
+                <div class="bg-gray-50 p-4 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold mb-4">可能的漫游洞</h3>
+                    {% if wanderings|length > 0 %}
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b text-left">洞口编号</th>
+                                <th class="py-2 px-4 border-b text-right">质量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for wh in wanderings %}
+                            <tr>
+                                <td class="py-2 px-4 border-b">
+                                    <span style="color: {{ wh.color }}">{{ wh.name }} <span class="text-gray-600">[{{ wh.dest }}]</span></span>
+                                </td>
+                                <td class="py-2 px-4 border-b text-right">{{ "{:,.0f}".format(wh.total_mass) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>无漫游洞口</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .orbit-map {
+            position: relative;
+        }
+        .orbit {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px dashed #aaaaaa;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .sun {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #ffd700;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        .planet {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            z-index: 5;
+        }
+    </style>
+
+    <script>
+        // 行星轨道渲染
+        document.addEventListener('DOMContentLoaded', function() {
+            const orbitMap = document.getElementById('orbitMap');
+            const mapSize = 200;
+            const centerX = mapSize / 2;
+            const centerY = mapSize / 2;
+            const maxOrbit = 9; // 最大轨道编号
+
+            // 解析行星数据
+            const cels = {{ cels|tojson }};
+            const celestialTypes = {{ celestialtypes|tojson }};
+
+            // 绘制轨道
+            for (let i = 1; i <= maxOrbit; i++) {
+                const orbitSize = (i / maxOrbit) * (mapSize - 30);
+                const orbit = document.createElement('div');
+                orbit.className = 'orbit';
+                orbit.style.width = `${orbitSize}px`;
+                orbit.style.height = `${orbitSize}px`;
+                orbitMap.appendChild(orbit);
+            }
+
+            // 添加行星
+            for (let i = 1; i < cels.length; i++) {
+                const cel = cels[i];
+                if (cel[0] === 7) { // 行星
+                    const orbitIndex = cel[5];
+                    const orbitSize = (orbitIndex / maxOrbit) * (mapSize - 30);
+                    const celestialTypeID = cel[1];
+
+                    const planet = document.createElement('div');
+                    planet.className = 'planet';
+
+                    // 设置行星颜色
+                    if (celestialTypes && celestialTypes[celestialTypeID] && celestialTypes[celestialTypeID].color) {
+                        planet.style.backgroundColor = celestialTypes[celestialTypeID].color;
+                    } else {
+                        planet.style.backgroundColor = '#4D7999'; // 默认颜色
+                    }
+
+                    // 计算行星位置
+                    const angle = (i * 57) % 360;
+                    const radians = angle * (Math.PI / 180);
+                    const radius = orbitSize / 2;
+
+                    const x = centerX + radius * Math.cos(radians);
+                    const y = centerY + radius * Math.sin(radians);
+
+                    planet.style.left = `${x}px`;
+                    planet.style.top = `${y}px`;
+                    planet.title = `轨道: ${orbitIndex}`;
+
+                    orbitMap.appendChild(planet);
+                }
+            }
+
+            // 设置太阳颜色
+            const sun = orbitMap.querySelector('.sun');
+            const sunType = cels[0] && cels[0][1]; // 假设第一个元素是太阳的类型ID
+            if (celestialTypes && sunType && celestialTypes[sunType] && celestialTypes[sunType].color) {
+                sun.style.backgroundColor = celestialTypes[sunType].color;
+            } else {
+                sun.style.backgroundColor = '#ffd700'; // 默认太阳颜色
+            }
+        });
+    </script>
+</body>
+</html>

@@ -5,3 +5,4 @@ from .common import *
 from .contract import *
 from .trans import *
 from .zkb import *
+from .wormhole import *

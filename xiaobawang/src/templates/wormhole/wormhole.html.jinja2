@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>虫洞信息 - {{ name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #111827;
+            color: #e5e7eb;
+            padding: 16px;
+        }
+        .attrtable-icon {
+            width: 40px;
+            text-align: center;
+        }
+        .attrtable-title {
+            width: 120px;
+            font-weight: 500;
+        }
+        .attrtable-notes {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            padding-left: 8px;
+        }
+        .bracketgroup {
+            margin-top: 16px;
+            border-left: 4px solid;
+            padding-left: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="max-w-4xl mx-auto bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <!-- 虫洞标题 -->
+        <div class="p-6 bg-gray-900">
+            <h1 class="text-4xl font-light flex items-center">
+                {{ name }}
+            </h1>
+        </div>
+
+        <!-- 主要信息表格 -->
+        <div class="p-6">
+            <table class="w-full">
+                <tr class="border-b border-gray-700">
+                    <td class="attrtable-icon py-4">
+                        <img src="https://anoik.is/static/icons/jump.png" width="32" height="32" alt="跳跃" class="mx-auto">
+                    </td>
+                    <td class="attrtable-title">目的地</td>
+                    <td>
+                        <span style="color: {{ color }}">{{ dest|default('未知') }}</span>
+                    </td>
+                    <td class="attrtable-notes"></td>
+                </tr>
+
+                <tr class="border-b border-gray-700">
+                    <td class="attrtable-icon py-4">
+                        <img src="https://anoik.is/static/icons/map.png" width="32" height="32" alt="来源" class="mx-auto">
+                    </td>
+                    <td class="attrtable-title">可能出现在</td>
+                    <td>
+                        {% for src in src_info %}
+                            <span style="color: {{ src.color }}">{{ src.name }}</span>{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td class="attrtable-notes"></td>
+                </tr>
+
+                <tr class="border-b border-gray-700">
+                    <td class="attrtable-icon py-4">
+                        <img src="https://anoik.is/static/icons/time.png" width="32" height="32" alt="时间" class="mx-auto">
+                    </td>
+                    <td class="attrtable-title">生存时间</td>
+                    <td>{{ lifetime }}</td>
+                    <td class="attrtable-notes"></td>
+                </tr>
+
+                <tr class="border-b border-gray-700">
+                    <td class="attrtable-icon py-4">
+                        <img src="https://anoik.is/static/icons/capacity.png" width="32" height="32" alt="单次质量" class="mx-auto">
+                    </td>
+                    <td class="attrtable-title">单次跳跃最大质量</td>
+                    <td>{{ max_mass_formatted|default('0') }} kg</td>
+                </tr>
+
+                <tr class="border-b border-gray-700">
+                    <td class="attrtable-icon py-4">
+                        <img src="https://anoik.is/static/icons/mass.png" width="32" height="32" alt="总质量" class="mx-auto">
+                    </td>
+                    <td class="attrtable-title">总跳跃质量</td>
+                    <td>{{ total_mass_formatted|default('0') }} kg</td>
+                </tr>
+
+                <tr class="border-b border-gray-700">
+                    <td class="attrtable-icon py-4">
+                        <img src="https://anoik.is/static/icons/speed.png" width="32" height="32" alt="刷新" class="mx-auto">
+                    </td>
+                    <td class="attrtable-title">刷新类型</td>
+                    <td>{{ static }}</td>
+                    <td class="attrtable-notes"></td>
+                </tr>
+
+                <tr class="border-b border-gray-700">
+                    <td class="attrtable-icon py-4">
+                        <img src="https://anoik.is/static/icons/refresh.png" width="32" height="32" alt="质量恢复" class="mx-auto">
+                    </td>
+                    <td class="attrtable-title">质量恢复</td>
+                    <td>{{ mass_regen|default('0') }} kg</td>
+                    <td class="attrtable-notes"></td>
+                </tr>
+            </table>
+
+        </div>
+    </div>
+</body>
+</html>
