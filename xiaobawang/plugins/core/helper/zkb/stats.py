@@ -115,7 +115,6 @@ class ZkbStats:
                 if attacker.get("final_blow", False):
                     final_attacker = attacker
                     break
-            print(final_attacker)
 
             final_attacker_character_id = final_attacker.get("character_id", 0)
             final_attacker_corporation_id = final_attacker.get("corporation_id", 0)
@@ -159,7 +158,7 @@ class ZkbStats:
                 "total_value": format_value(zkb_data.get("totalValue", 0)),
                 "solo": zkb_data.get("solo", False),
                 "total_attackers": len(attackers),
-                "lose": True if victim.get("character_id", 0) == self._id else False,
+                "lose": True if self._id in query_ids else False,
                 "region_name": region_name,
             }
 
@@ -169,7 +168,7 @@ class ZkbStats:
             return {}
 
 
-    async def _handle_recent_killmail(self):
+    async def _handle_recent_killmail(self, limit: int = 3):
         self.killmail_data = []
         killmails = await zkb_api.get_killmail_list(
             type_=self._type[:-2],
@@ -178,33 +177,35 @@ class ZkbStats:
         if not killmails:
             self.recent_killmails = []
             return
-        for killmail in killmails[:3]:
+        for killmail in killmails[:limit]:
             killmail_id = killmail.get("killmail_id")
             if killmail_id:
                 data = await get_zkb_killmail(killmail_id)
                 result = await self._handle_killmail(data=data)
-                print(result)
                 if result:
                     self.killmail_data.append(result)
 
-    async def _make(self):
+    async def _make(self, limit: int = 3):
         """
         处理数据
         :return:
         """
         await self._query_info()
-        await self._handle_recent_killmail()
+        if limit:
+            await self._handle_recent_killmail(limit)
 
 
-    async def render(self) -> bytes:
+    async def render(self, limit: int = 3, command: str = "zkb") -> bytes:
         """
         渲染图片
+        :param command: 命令： zkb / recent_km
+        :param limit: 最近击杀数量
         :return:
         """
-        await self._make()
+        await self._make(limit)
         return await render_template(
             template_path=templates_path / "zkb",
-            template_name="zkb.html.jinja2",
+            template_name="zkb.html.jinja2" if command == "zkb" else "recent_km.html.jinja2",
             data={"stats": self},
             width=1080,
             height=900,
