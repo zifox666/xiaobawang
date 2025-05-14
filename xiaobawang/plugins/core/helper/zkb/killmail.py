@@ -276,7 +276,8 @@ class KillmailHelper:
                 session_type=session_type,
                 pic=pic,
                 reason=reason,
-                kill_id=kill_id
+                kill_id=kill_id,
+                immediate=True if reason == "高价值击杀" else False
             )
 
         except Exception as e:
