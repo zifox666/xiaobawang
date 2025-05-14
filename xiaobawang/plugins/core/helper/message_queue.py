@@ -159,7 +159,7 @@ class MessageQueueSender:
             )
 
             if len(messages) > 3:
-                merged_messages = []
+                merged_nodes = []
                 for msg in messages:
                     content = msg["content"]
                     node = CustomNode(
@@ -167,12 +167,16 @@ class MessageQueueSender:
                         name="小霸王Bot",
                         content=content + UniMessage.text(msg["metadata"].get("url", "")),
                     )
-                    merged_messages.append(node)
-                merged_content = UniMessage.reference(nodes=merged_messages)
-                send_event = await merged_content.send(
-                    bot=bot,
-                    target=target
+                    merged_nodes.append(node)
+                send_event = await (
+                    UniMessage
+                    .reference(*merged_nodes)
+                    .send(
+                        bot=bot,
+                        target=target,
+                    )
                 )
+
             else:
                 for msg in messages:
                     content = msg["content"]
