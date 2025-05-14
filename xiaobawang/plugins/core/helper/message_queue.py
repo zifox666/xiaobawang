@@ -12,7 +12,7 @@ from ..utils.common.cache import save_msg_cache
 class MessageQueueSender:
     def __init__(
             self,
-            check_interval: int = 30,
+            check_interval: int = 45,
             max_wait_time: int = 180,
             threshold_for_extended_wait: int = 5
     ):
@@ -95,7 +95,7 @@ class MessageQueueSender:
         else:
             self.queue_last_active[queue_key] = time.time()
             self.message_queue[queue_key].append(message)
-            logger.debug(f"已添加消息到队列: {platform}:{session_id}")
+            logger.debug(f"已添加消息到队列: {platform}:{session_id} 当前队列长度: {len(self.message_queue[queue_key])}")
 
     async def _process_queue_loop(self):
         """持续处理队列的循环"""
@@ -120,7 +120,7 @@ class MessageQueueSender:
                         if wait_time >= adjusted_wait_time or wait_time >= self.max_wait_time * 0.8:
                             queues_to_process.append(queue_key)
                             logger.debug(
-                                f"队列 {queue_key} 消息数量: {len(messages)}，已等待: {wait_time:.1f}秒，准备处理")
+                                f"队列 {queue_key} 消息数量: {len(messages)}，已等待: {wait_time:.1f}秒, 开始推送")
                     else:
                         if wait_time >= self.check_interval:
                             queues_to_process.append(queue_key)
@@ -211,7 +211,7 @@ class MessageQueueSender:
                 private=is_private
             )
 
-            if len(messages) >= 3:
+            if len(messages) > 2:
                 merged_nodes = []
 
                 max_messages = 80
@@ -258,7 +258,7 @@ class MessageQueueSender:
         self.platform_handlers[platform] = handler
 
 
-message_sender = MessageQueueSender(check_interval=60, max_wait_time=300, threshold_for_extended_wait=5)
+message_sender = MessageQueueSender(check_interval=45, max_wait_time=180, threshold_for_extended_wait=5)
 
 
 async def queue_killmail_message(
