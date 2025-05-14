@@ -284,6 +284,7 @@ async def queue_killmail_message(
         session_id=session_id,
         session_type=session_type,
         message_content=content,
-        metadata=metadata
+        metadata=metadata,
+        immediate=immediate
     )
     logger.debug(f"已添加击杀邮件 {kill_id} 到队列")
