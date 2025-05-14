@@ -4,11 +4,10 @@ import asyncio
 
 from datetime import datetime, timezone
 
-from nonebot import logger, Bot
-from nonebot_plugin_alconna import Target, UniMessage, get_bot
+from nonebot import logger
 from nonebot_plugin_orm import get_session
 
-from ...utils.common.cache import save_msg_cache
+from ..message_queue import queue_killmail_message
 from ...helper.subscription import KillmailSubscriptionManager
 from ...api.killmail import get_zkb_killmail
 from ...api.esi.universe import esi_client
@@ -270,26 +269,18 @@ class KillmailHelper:
         try:
             logger.info(f"{session_type}:{session_id}: {reason}")
 
-            if pic:
-                bot = await get_bot(adapter=platform, bot_id=bot_id)
-
-                send_event = await UniMessage(
-                    UniMessage.text(reason) + UniMessage.image(raw=pic)
-                ).send(
-                    bot=bot,
-                    target=Target(
-                        id=session_id,
-                        private=True if session_type == "private" else False,
-                    )
-                )
-
-                await save_msg_cache(
-                    send_event,
-                    f'https://zkillboard.com/kill/{kill_id}/'
-                )
+            await queue_killmail_message(
+                platform=platform,
+                bot_id=bot_id,
+                session_id=session_id,
+                session_type=session_type,
+                pic=pic,
+                reason=reason,
+                kill_id=kill_id
+            )
 
         except Exception as e:
-            logger.error(f"发送 killmail 失败: {e}")
+            logger.error(f"准备发送 killmail 失败: {e}")
 
     async def _create_killmail_details(self, killmail_data: Dict[str, Any]) -> Dict[str, Any]:
         """

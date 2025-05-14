@@ -8,6 +8,7 @@ from .config import Config, SDE_DB_PATH, plugin_config
 from .upgrade import download_and_extract_sde
 from .oper import sde_search
 from .db import init_engine, close_engine
+from ..core.helper.message_queue import message_sender
 
 __plugin_meta__ = PluginMetadata(
     name="EVE SDE 数据库",
@@ -37,12 +38,14 @@ async def startup():
 
     await init_engine(db_path)
     await cache.init()
+    await message_sender.start()
 
 
 @driver.on_shutdown
 async def shutdown():
     """清理SDE数据库连接"""
     await close_engine()
+    await message_sender.stop()
 
 
 async def update_sde():
