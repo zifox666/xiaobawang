@@ -33,7 +33,7 @@ TITLE = """
 async def init():
     print(TITLE)
 
-    await GitHubAutoUpdater(
+    updater = await GitHubAutoUpdater(
         repo_owner="zifox666",
         repo_name="xiaobawang"
     ).check()
