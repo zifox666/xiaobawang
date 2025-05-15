@@ -5,6 +5,7 @@ from .config import plugin_config
 from .utils.common.cache import cache as c
 from .utils.common.command_record import HelperExtension
 from .command import *
+from .utils.github import GitHubAutoUpdater
 from .utils.hook import *
 from .utils.common.http_client import init_client, close_client
 
@@ -31,10 +32,16 @@ TITLE = """
 @driver.on_startup
 async def init():
     print(TITLE)
+
+    await GitHubAutoUpdater(
+        repo_owner="zifox666",
+        repo_name="xiaobawang"
+    ).check()
+
     await c.init()
 
     if plugin_config.EVE_JANICE_API_KEY == "G9KwKq3465588VPd6747t95Zh94q3W2E":
-        logger.warning("请向JANICE作者申请专用API KEY，临时API有严重速率限制\nhttps://github.com/E-351/janice")
+        logger.warning("请向JANICE作者申请专用API KEY，临时API有严重速率限制。访问 https://github.com/E-351/janice")
 
     add_global_extension(HelperExtension())
 
