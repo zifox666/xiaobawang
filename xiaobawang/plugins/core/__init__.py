@@ -5,7 +5,7 @@ from .config import plugin_config
 from .utils.common.cache import cache as c
 from .utils.common.command_record import HelperExtension
 from .command import *
-from .utils.github import GitHubAutoUpdater
+from .utils.github import updater
 from .utils.hook import *
 from .utils.common.http_client import init_client, close_client
 
@@ -42,10 +42,7 @@ async def init():
 
     await _start_km_listen()
 
-    updater = await GitHubAutoUpdater(
-        repo_owner="zifox666",
-        repo_name="xiaobawang"
-    ).check()
+    await updater.check()
 
 
 @driver.on_shutdown

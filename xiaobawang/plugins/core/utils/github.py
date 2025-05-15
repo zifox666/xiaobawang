@@ -4,9 +4,7 @@ import subprocess
 import httpx
 from pathlib import Path
 from typing import Tuple, Optional, Callable
-from nonebot import logger, require
-
-require("nonebot_plugin_apscheduler")
+from nonebot import logger
 
 from nonebot_plugin_apscheduler import scheduler
 
@@ -144,7 +142,6 @@ class GitHubAutoUpdater:
             logger.error(f"更新仓库时出错: {e}")
             return False
 
-    @scheduler.scheduled_job("cron", hour=20, minute=0)
     async def check(self, branch: str = "main") -> bool:
         """
         检查、更新并可选地重启应用
@@ -172,3 +169,11 @@ class GitHubAutoUpdater:
             logger.success("更新成功，请重启应用")
             # os.kill(os.getpid(), signal.SIGTERM)
             return True
+
+
+updater = GitHubAutoUpdater(repo_owner="zifox666",repo_name="xiaobawang")
+
+@scheduler.scheduled_job("cron", hour=20, minute=0)
+async def _():
+    logger.info("开始检查更新...")
+    await updater.check()
