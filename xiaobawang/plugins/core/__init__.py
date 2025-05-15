@@ -33,11 +33,6 @@ TITLE = """
 async def init():
     print(TITLE)
 
-    updater = await GitHubAutoUpdater(
-        repo_owner="zifox666",
-        repo_name="xiaobawang"
-    ).check()
-
     await c.init()
 
     if plugin_config.EVE_JANICE_API_KEY == "G9KwKq3465588VPd6747t95Zh94q3W2E":
@@ -46,6 +41,11 @@ async def init():
     add_global_extension(HelperExtension())
 
     await _start_km_listen()
+
+    updater = await GitHubAutoUpdater(
+        repo_owner="zifox666",
+        repo_name="xiaobawang"
+    ).check()
 
 
 @driver.on_shutdown

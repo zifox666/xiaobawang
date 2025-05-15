@@ -158,7 +158,7 @@ class GitHubAutoUpdater:
         needs_upgrade, local_hash, remote_hash = await self.needs_upgrade(branch)
 
         if not needs_upgrade:
-            logger.info(f"当前已是最新版本: {local_hash[:7]}")
+            logger.info(f"XiaoBaWang 当前已是最新版本: {local_hash[:7]}")
             return False
 
         logger.info(f"发现新版本! 当前版本: {local_hash[:7]}, 最新版本: {remote_hash[:7]}")
@@ -166,9 +166,9 @@ class GitHubAutoUpdater:
         update_success = self.update(branch)
         if not update_success:
             logger.error("更新失败，请手动更新")
-            os.kill(os.getpid(), signal.SIGINT)
+            os.kill(os.getpid(), signal.SIGTERM)
             return False
         else:
-            logger.info("更新成功，请重启应用")
-            os.kill(os.getpid(), signal.SIGINT)
+            logger.success("更新成功，请重启应用")
+            # os.kill(os.getpid(), signal.SIGTERM)
             return True
