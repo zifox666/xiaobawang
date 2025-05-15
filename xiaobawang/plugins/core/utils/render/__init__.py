@@ -165,7 +165,8 @@ async def html2pic_br(
         html_content: str = None,
         url: str = None,
         element: str = None,
-        hide_elements: list = None
+        hide_elements: list = None,
+        trim_class: str = "hOohQec_"
 ) -> bytes | str:
     async with get_new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1) as page:
         if url:
@@ -186,6 +187,13 @@ async def html2pic_br(
                 }
             """, hide_elements)
 
+        trim_width = 0
+        if trim_class:
+            trim_element = await page.query_selector(f".{trim_class}")
+            if trim_element:
+                trim_box = await trim_element.bounding_box()
+                if trim_box:
+                    trim_width = trim_box['width'] * 0.9
         element_handle = await page.wait_for_selector(element)
         if element_handle is None:
             raise ValueError(f"Element '{element}' not found on the page.")
@@ -207,9 +215,27 @@ async def html2pic_br(
             }
         )
 
-        stitched_image = Image.open(BytesIO(screenshot))
-        stitched_image.save("./html2pic.png")
-        with BytesIO() as output:
-            stitched_image.save(output, format="PNG")
-            return output.getvalue()
+        if trim_width > 0:
+            img = Image.open(BytesIO(screenshot))
+            original_width, original_height = img.size
+
+            actual_trim = min(trim_width, original_width / 2 - 10)
+
+            cropped_img = img.crop((
+                actual_trim,
+                0,
+                original_width - actual_trim,
+                original_height
+            ))
+
+            with BytesIO() as output:
+                cropped_img.save(output, format="PNG")
+                cropped_img.save("./html2pic.png")
+                return output.getvalue()
+        else:
+            stitched_image = Image.open(BytesIO(screenshot))
+            stitched_image.save("./html2pic.png")
+            with BytesIO() as output:
+                stitched_image.save(output, format="PNG")
+                return output.getvalue()
 
