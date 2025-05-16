@@ -2,7 +2,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from nonebot import require
+from nonebot import require, logger
 from PIL import Image
 
 from ...config import SRC_PATH
@@ -166,8 +166,19 @@ async def html2pic_br(
         url: str = None,
         element: str = None,
         hide_elements: list = None,
-        trim_class: str = "hOohQec_"
+        trim_class: str = "hOohQec_",
+        click_selector: Optional[str] = None,
 ) -> bytes | str:
+    """
+    BR网页元素截图函数
+    :param html_content:
+    :param url: br链接
+    :param element: 需要截图的元素
+    :param hide_elements: 需要隐藏的元素
+    :param trim_class: 间隔统计元素
+    :param click_selector: 选择需要点击的元素 bp3-tab-panel_general_ [involved,summary,timeline,damage,composition]
+    :return:
+    """
     async with get_new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1) as page:
         if url:
             await page.goto(url)
@@ -205,6 +216,16 @@ async def html2pic_br(
         await page.set_viewport_size({"width": int(element_width), "height": int(element_height)})
 
         await page.wait_for_load_state("networkidle")
+
+        if click_selector:
+            try:
+                click_element = await page.wait_for_selector(f'[data-tab-id="{click_selector}"]', timeout=1000)
+                if click_element:
+                    await click_element.click()
+                    await page.wait_for_timeout(1000)
+                    await page.wait_for_load_state("networkidle")
+            except Exception as e:
+                logger.error(f"点击元素 '{click_selector}' 失败: {str(e)}")
 
         screenshot = await page.screenshot(
             clip={
