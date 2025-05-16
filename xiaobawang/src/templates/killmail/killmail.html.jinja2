@@ -109,7 +109,7 @@
                         <img src="https://images.evetech.net/characters/{{ attack.attacker_id }}/portrait?size=64" />
                         <div style="display: flex; align-items: flex-end;">
                             <div>
-                                <img src="https://images.evetech.net/types/{{ attack.ship_type_id }}/icon?size=32" />
+                                <img src="https://img.evetools.org/sdeimages/types/{{ attack.ship_type_id }}/icon?size=32" />
                                 <img class="clear" src="https://images.evetech.net/types/{{ attack.weapon_type_id }}/icon?size=32" />
                             </div>
                             <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
@@ -139,7 +139,8 @@
                     </div>
                     {% for slotEquipment in slot.slot_items %}
                         <div class="clear equip-line {{ slotEquipment.drop }}">
-                            <img src="https://images.evetech.net/types/{{ slotEquipment.item_id }}/icon?size=32">
+                            <img src="https://images.evetech.net/types/{{ slotEquipment.item_id }}/icon?size=32"
+                                onerror="this.onerror=null; this.src='https://images.evetech.net/types/{{ slotEquipment.item_id }}/bp?size=32';">
                             <span class="chinese">{{ slotEquipment.item_name }}</span>
                             <span class="pull-right">{{ slotEquipment.item_number }}</span>
                         </div>
@@ -148,7 +149,8 @@
                             {% for nested_item in slotEquipment.nested_items %}
                                 <div class="clear equip-line {{ nested_item.drop }}">
                                     <span style="margin: 0 5px;">&ensp;</span>
-                                    <img src="https://images.evetech.net/types/{{ nested_item.item_id }}/icon?size=32">
+                                    <img src="https://images.evetech.net/types/{{ nested_item.item_id }}/icon?size=32"
+                                        onerror="this.onerror=null; this.src='https://images.evetech.net/types/{{ nested_item.item_id }}/bp?size=32';">
                                     <span class="chinese">{{ nested_item.item_name }}</span>
                                     <span class="pull-right">{{ nested_item.item_number }}</span>
                                 </div>

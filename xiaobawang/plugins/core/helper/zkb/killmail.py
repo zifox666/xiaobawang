@@ -53,6 +53,10 @@ class KillmailHelper:
                 # logger.debug(f"没有活跃的订阅，忽略 killmail: {killmail_id}")
                 return
 
+            if not await self._check_killmail_time(data):
+                logger.debug("超过限制时间")
+                return
+
             victim_info, attacker_info = self._extract_kill_info(data)
 
             matched_sessions = await self._match_subscriptions(
@@ -76,6 +80,27 @@ class KillmailHelper:
             # logger.debug(f"击杀价值过低，忽略 killmail: {data.get('killmail_id')}, 价值: {total_value:,.2f} ISK")
             return False
         return True
+
+    @classmethod
+    async def _check_killmail_time(cls, data: Dict[str, Any]) -> bool:
+        """检查击杀时间是否在10天以内"""
+        killmail_time_str = data.get("killmail_time", "")
+        if not killmail_time_str:
+            logger.warning(f"收到无效的 killmail 数据: 缺少时间信息")
+            return False
+
+        try:
+            killmail_time = datetime.fromisoformat(killmail_time_str.replace("Z", "+00:00"))
+            current_time = datetime.now(timezone.utc)
+            time_diff = current_time - killmail_time
+
+            if time_diff.days > 10:
+                logger.debug(f"击杀时间超过10天，忽略 killmail: {data.get('killmail_id')}, 时间: {killmail_time_str}")
+                return False
+            return True
+        except Exception as e:
+            logger.warning(f"解析击杀时间失败: {e}, 时间字符串: {killmail_time_str}")
+            return False
 
     async def _get_active_subscriptions(self):
         """获取活跃的订阅"""
@@ -713,7 +738,7 @@ class KillmailHelper:
         elif "cargo" in flag_name:
             return "thumb/8/82/Icon_capacity.png/48px-Icon_capacity"
         elif "subsystem" in flag_name:
-            return "EVE_SubIcon"
+            return "e/eb/Icon_fit_rig"
         elif "fighter" in flag_name:
             return "thumb/f/f6/Icon_drone_bandwidth.png/30px-Icon_drone_bandwidth"
         else:
