@@ -477,3 +477,4 @@ $RECYCLE.BIN/
 /data/
 /html2pic.png
 /.env.local
+/.env.prod
