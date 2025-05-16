@@ -24,7 +24,7 @@ br = on_alconna(
         "br",
         Option("damage|d"),
         Option("timeline|t"),
-        Option("summary|t"),
+        Option("summary|s"),
         Option("composition|c")
     ),
     use_cmd_start=True,
@@ -87,16 +87,19 @@ async def _(
         kill_id = matched.group(1)
         data = await km.get(kill_id)
         br_link = f"https://br.evetools.org/related/{data['solar_system_id']}/{convert_time(data['killmail_time'])}"
+        no_url = False
     else:
         br_link = save_link
+        no_url = True
 
     if br_link:
-        await save_msg_cache(
-            await br.send(
-                UniMessage.reply(msg_id) + UniMessage.text(br_link)
-            ),
-            br_link,
-        )
+        if not no_url:
+            await save_msg_cache(
+                await br.send(
+                    UniMessage.reply(msg_id) + UniMessage.text(br_link)
+                ),
+                br_link,
+            )
         await save_msg_cache(
             await br.send(
                 UniMessage.reply(msg_id) +
