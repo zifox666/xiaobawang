@@ -287,4 +287,5 @@ async def queue_killmail_message(
         metadata=metadata,
         immediate=immediate
     )
-    logger.debug(f"已添加击杀邮件 {kill_id} 到队列")
+    if not immediate:
+        logger.debug(f"已添加击杀邮件 {kill_id} 到队列")

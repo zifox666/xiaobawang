@@ -200,7 +200,7 @@ class KillmailHelper:
                     )
 
             if matched:
-                session_key = (sub["platform"], sub["bot_id"], sub["session_id"], sub["session_type"])
+                session_key = (sub["platform"], sub["bot_id"], sub["session_id"], sub["session_type"], total_value)
                 logger.debug(f"符合条件\n{session_key}\n{reason}")
                 matched_sessions.setdefault(session_key, []).append(reason)
 
@@ -260,10 +260,10 @@ class KillmailHelper:
         )
 
         tasks = []
-        for (platform, bot_id, session_id, session_type), reasons in matched_sessions.items():
+        for (platform, bot_id, session_id, session_type, total_value), reasons in matched_sessions.items():
             reason = " | ".join(reasons)
             tasks.append(
-                self.send_killmail(platform, bot_id, session_id, session_type, pic, reason, killmail_id)
+                self.send_killmail(platform, bot_id, session_id, session_type, pic, reason, killmail_id, total_value)
             )
 
         if tasks:
@@ -289,6 +289,7 @@ class KillmailHelper:
             pic: bytes,
             reason: str,
             kill_id: str,
+            total_value: float = 0
     ):
         """发送击杀邮件到指定会话"""
         try:
@@ -302,7 +303,7 @@ class KillmailHelper:
                 pic=pic,
                 reason=reason,
                 kill_id=kill_id,
-                immediate=True if reason == "高价值击杀" else False
+                immediate=True if reason == "高价值击杀" or total_value >= 8_000_000_000 else False
             )
 
         except Exception as e:
