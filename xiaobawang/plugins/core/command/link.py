@@ -1,4 +1,5 @@
 import re
+from encodings.idna import sace_prefix
 
 from arclet.alconna import Alconna, Arparma, Option
 from nonebot_plugin_alconna import on_alconna, UniMessage
@@ -116,7 +117,6 @@ async def _(
         )
 
 
-
 @br_preview_time.handle()
 async def _(
         arp: Arparma,
@@ -127,16 +127,19 @@ async def _(
     system_id = header["system_id"]
     timestamp = header["timestamp"]
     br_link = f"https://br.evetools.org/related/{system_id}/{timestamp}"
-    await br_preview_time.finish(
-        UniMessage.reply(event.message_id) +
-        UniMessage.image(
-            raw=await html2pic_br(
-                url=br_link,
-                element=".development",
-                hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
+    await save_msg_cache(
+        await br_preview_time.send(
+            UniMessage.reply(event.message_id) +
+            UniMessage.image(
+                raw=await html2pic_br(
+                    url=br_link,
+                    element=".development",
+                    hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
+                )
             )
-        )
-)
+        ),
+        br_link
+    )
 
 
 @br_preview_alt.handle()
@@ -148,14 +151,17 @@ async def _(
     header = arp.header
     br_id = header["br_id"]
     br_link = f"https://br.evetools.org/br/{br_id}"
-    await br_preview_alt.finish(
-        UniMessage.reply(event.message_id) +
-        UniMessage.image(
-            raw=await html2pic_br(
-                url=br_link,
-                element=".development",
-                hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
+    await save_msg_cache(
+        await br_preview_alt.send(
+            UniMessage.reply(event.message_id) +
+            UniMessage.image(
+                raw=await html2pic_br(
+                    url=br_link,
+                    element=".development",
+                    hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
+                )
             )
-        )
+        ),
+        br_link
     )
 
