@@ -149,7 +149,7 @@ class KillmailHelper:
         total_value = float(data.get("zkb", {}).get("totalValue", 0))
         for sub in high_value_subs:
             if total_value >= sub["min_value"]:
-                session_key = (sub["platform"], sub["bot_id"], sub["session_id"], sub["session_type"])
+                session_key = (sub["platform"], sub["bot_id"], sub["session_id"], sub["session_type"], total_value)
                 reason = f"高价值击杀"
                 matched_sessions.setdefault(session_key, []).append(reason)
 
