@@ -32,7 +32,12 @@ class TextProcessor:
         jieba.suggest_freq(('中', '大', '小'), True)
 
         if sys.platform.startswith('linux'):
-            jieba.enable_parallel(12)
+            jieba.enable_parallel(2)
+
+    def close(self):
+        """关闭文本处理器资源"""
+        if sys.platform.startswith('linux'):
+            jieba.disable_parallel()
 
     @classmethod
     def _read_replace_word(cls) -> dict[str, str]:
