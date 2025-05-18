@@ -19,11 +19,12 @@ class TextProcessor:
         初始化文本处理工具
         """
         self.chinese_pattern = re.compile(r'[\u4e00-\u9fff]')
-        self.dict_path = plugin_config.jieba_words_path if plugin_config.jieba_words_path else SRC_DIR / "jieba.txt"
+        self.default_path = SRC_DIR / "jieba.txt"
+        self.dict_path = plugin_config.jieba_words_path if plugin_config.jieba_words_path else self.default_path
         self.replace_json = self._read_replace_word()
 
         if self.dict_path and os.path.exists(self.dict_path):
-            jieba.load_userdict(self.dict_path)
+            jieba.load_userdict(str(self.dict_path))
             logger.info(f"已加载自定义词典: {self.dict_path}")
         else:
             logger.info("jieba未启用自定义词库")
@@ -31,13 +32,9 @@ class TextProcessor:
         jieba.initialize()
         jieba.suggest_freq(('中', '大', '小'), True)
 
-        if sys.platform.startswith('linux'):
-            jieba.enable_parallel(2)
-
     def close(self):
         """关闭文本处理器资源"""
-        if sys.platform.startswith('linux'):
-            jieba.disable_parallel()
+        pass
 
     @classmethod
     def _read_replace_word(cls) -> dict[str, str]:

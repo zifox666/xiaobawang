@@ -1,5 +1,4 @@
 import asyncio
-import sys
 
 from nonebot import get_driver, logger, require
 

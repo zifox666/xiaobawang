@@ -11,7 +11,6 @@ from arclet.alconna import (
 from nonebot import logger, require
 from nonebot.internal.adapter import Event, Bot
 from nonebot.plugin.on import on_command
-from nonebot_plugin_alconna.builtins.extensions import ReplyRecordExtension
 from nonebot_plugin_orm import AsyncSession
 
 from ..api.esi.market import market
@@ -20,7 +19,6 @@ from ..utils.common.cache import cache
 from ..helper.price import price_helper
 from ..utils.render import render_template, templates_path
 
-require("xiaobawang.plugins.sde")
 require("nonebot_plugin_alconna")
 
 from nonebot_plugin_alconna import on_alconna, UniMessage
