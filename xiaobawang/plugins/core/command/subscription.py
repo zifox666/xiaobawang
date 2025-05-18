@@ -12,7 +12,7 @@ from ..helper.zkb.listener import zkb_listener
 from ..utils.common import parse_session_id
 
 
-__all__ = ["start_km_listen", "sub", "sub_high", "_start_km_listen", "_stop_km_listen"]
+__all__ = ["start_km_listen", "sub", "sub_high", "start_km_listen_", "stop_km_listen_"]
 
 
 start_km_alc = Alconna(
@@ -29,13 +29,13 @@ start_km_listen = on_alconna(
 
 
 @start_km_listen.assign("start")
-async def _start_km_listen():
+async def start_km_listen_():
     _ = asyncio.create_task(zkb_listener.start())
     logger.info("开始监听zkb")
 
 
 @start_km_listen.assign("stop")
-async def _stop_km_listen():
+async def stop_km_listen_():
     await zkb_listener.stop()
     logger.info("停止监听zkb")
 

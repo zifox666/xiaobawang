@@ -1,6 +1,8 @@
+import sys
+
 from nonebot import get_driver, logger, require
 
-from .command.subscription import _start_km_listen
+from .command.subscription import start_km_listen_, stop_km_listen_
 from .config import plugin_config
 from .utils.common.cache import cache as c
 from .utils.common.command_record import HelperExtension
@@ -40,7 +42,7 @@ async def init():
 
     add_global_extension(HelperExtension())
 
-    await _start_km_listen()
+    await start_km_listen_()
 
     await updater.check()
 
@@ -48,4 +50,7 @@ async def init():
 @driver.on_shutdown
 async def shutdown():
     await close_client()
+    await c.close()
+    await stop_km_listen_()
 
+    sys.exit(0)

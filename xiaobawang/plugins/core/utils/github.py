@@ -1,6 +1,7 @@
 import os
-import signal
 import subprocess
+import sys
+
 import httpx
 from pathlib import Path
 from typing import Tuple, Optional, Callable
@@ -163,11 +164,9 @@ class GitHubAutoUpdater:
         update_success = self.update(branch)
         if not update_success:
             logger.error("更新失败，请手动更新")
-            os.kill(os.getpid(), signal.SIGTERM)
-            return False
+            sys.exit(0)
         else:
             logger.success("更新成功，请重启应用")
-            # os.kill(os.getpid(), signal.SIGTERM)
             return True
 
 

@@ -48,6 +48,13 @@ class RedisCache:
                 logger.error(f"SDE Redis缓存连接失败: {e}")
                 raise e
 
+    async def close(self):
+        """关闭Redis连接"""
+        if self._initialized and self._redis is not None:
+            await self._redis.close()
+            logger.info("SDE Redis缓存连接已关闭")
+            self._initialized = False
+
     @property
     def redis(self) -> redis.Redis:
         """获取Redis客户端实例"""
