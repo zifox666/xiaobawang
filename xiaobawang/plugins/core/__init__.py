@@ -52,5 +52,3 @@ async def shutdown():
     await close_client()
     await c.close()
     await stop_km_listen_()
-
-    sys.exit(0)
