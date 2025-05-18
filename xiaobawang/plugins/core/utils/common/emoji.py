@@ -1,3 +1,5 @@
+import traceback
+
 from nonebot import logger
 from nonebot.adapters.onebot.v11 import GroupMessageEvent as ob11_GroupMessageEvent
 from nonebot.internal.adapter import Event
