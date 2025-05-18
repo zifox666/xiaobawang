@@ -39,7 +39,7 @@ async def init():
     await c.init()
 
     if plugin_config.EVE_JANICE_API_KEY == "G9KwKq3465588VPd6747t95Zh94q3W2E":
-        logger.warning("请向JANICE作者申请专用API KEY，临时API有严重速率限制。访问 https://github.com/E-351/janice")
+        logger.opt(colors=True).warning("请向JANICE作者申请专用API KEY，临时API有严重速率限制。访问 https://github.com/E-351/janice")
 
     add_global_extension(HelperExtension())
 

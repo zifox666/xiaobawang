@@ -156,17 +156,17 @@ class GitHubAutoUpdater:
         needs_upgrade, local_hash, remote_hash = await self.needs_upgrade(branch)
 
         if not needs_upgrade:
-            logger.info(f"XiaoBaWang 当前已是最新版本: {local_hash[:7]}")
+            logger.opt(colors=True).info(f"XiaoBaWang 当前已是最新版本: {local_hash[:7]}")
             return False
 
-        logger.info(f"发现新版本! 当前版本: {local_hash[:7]}, 最新版本: {remote_hash[:7]}")
+        logger.opt(colors=True).info(f"发现新版本! 当前版本: {local_hash[:7]}, 最新版本: {remote_hash[:7]}")
 
         update_success = self.update(branch)
         if not update_success:
-            logger.error("更新失败，请手动更新")
+            logger.opt(colors=True).error("更新失败，请手动更新")
             sys.exit(0)
         else:
-            logger.success("更新成功，请重启应用")
+            logger.opt(colors=True).success("更新成功，请重启应用")
             return True
 
 
