@@ -62,6 +62,7 @@ async def handle_janice_preview(
     :param event: 事件对象
     :param url:
     """
+    url = f"https://{url}"
     await emoji_action(event)
     pic = await capture_element(url=url, element=".appraisal", full_page=False)
     if pic:

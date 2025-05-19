@@ -1,5 +1,9 @@
+import re
+
 from arclet.alconna import Alconna, Option, Args, MultiVar, Arparma
 from nonebot.internal.adapter import Event
+from nonebot.params import RegexStr
+from nonebot.plugin.on import on_regex
 from nonebot_plugin_alconna import on_alconna, UniMessage
 
 from ..utils.common.emoji import emoji_action
@@ -19,27 +23,22 @@ zkb = on_alconna(
     use_cmd_start=True,
 )
 
-zkb_preview = on_alconna(
-    Alconna(
-        "{:.*}https://zkillboard.com/{type:str}/{id:int}/{:.*}",
-        separators=["\x04", "\n"],
-    ),
-    use_cmd_start=False,
-)
+zkb_preview = on_regex(r"https://zkillboard.com/([a-zA-Z]+)/([0-9]+)/")
 
 
 @zkb_preview.handle()
 async def handle_zkb(
-        arp: Arparma,
-        event: Event
+        event: Event,
+        url: str = RegexStr(),
 ):
-    await emoji_action(event)
-    result = arp.header
-    entity_type = result["type"]
-    entity_id = result["id"]
+    match = re.match(r"https://zkillboard.com/([a-zA-Z]+)/([0-9]+)/", url)
+    if not match:
+        return
+    entity_type, entity_id = match.groups()
 
     if entity_type not in ["character", "corporation"]:
         return
+    await emoji_action(event)
 
     pic = await ZkbStats(
         await zkb_api.get_stats(entity_type, entity_id)
@@ -47,10 +46,7 @@ async def handle_zkb(
 
     if pic:
         await save_msg_cache(
-            send_event=await zkb_preview.send(
-                UniMessage.reply(event.message_id) +
-                UniMessage.image(raw=pic)
-            ),
+            send_event=await UniMessage.image(raw=pic).send(target=event, reply_to=True),
             value_=f"https://zkillboard.com/{entity_type}/{entity_id}/",
         )
     else:

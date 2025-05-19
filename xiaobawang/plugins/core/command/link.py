@@ -32,6 +32,7 @@ br = on_alconna(
 )
 
 br_preview_time = on_regex(r"https://br.evetools.org/br/([a-zA-Z0-9]{24})")
+br_preview_zkb = on_regex(r"https://zkillboard.com/related/([0-9]{8})/([0-9]{12})/")
 br_preview_alt = on_regex(r"https://br.evetools.org/related/([0-9]{8})/([0-9]{12})")
 
 
@@ -131,6 +132,33 @@ async def _(
         url: str = RegexStr()
 ):
     await emoji_action(event)
+    await save_msg_cache(
+        await UniMessage.image(
+            raw=await html2pic_br(
+                url=url,
+                element=".development",
+                hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
+            )
+        ).send(
+            target=event,
+            reply_to=True
+        ),
+        url
+    )
+
+
+@br_preview_zkb.handle()
+async def _(
+        event: Event,
+        url: str = RegexStr()
+):
+    matched = re.match(r"https://zkillboard.com/related/([0-9]+)/([0-9]+)/", url)
+    if not matched:
+        return
+    await emoji_action(event)
+    system, time = matched.groups()
+    url = f"https://br.evetools.org/related/{system}/{time}"
+
     await save_msg_cache(
         await UniMessage.image(
             raw=await html2pic_br(
