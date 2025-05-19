@@ -1,9 +1,9 @@
 import re
-from encodings.idna import sace_prefix
 
 from arclet.alconna import Alconna, Arparma, Option
+from nonebot.params import RegexStr
 from nonebot_plugin_alconna import on_alconna, UniMessage
-from nonebot import Bot
+from nonebot import Bot, on_regex
 from nonebot.internal.adapter import Event
 
 from ..helper.zkb.killmail import km
@@ -31,21 +31,8 @@ br = on_alconna(
     use_cmd_start=True,
 )
 
-br_preview_time = on_alconna(
-    Alconna(
-        "{:.*}https://br.evetools.org/related/{system_id:int}/{timestamp:int}{:.*}",
-        separators=["\x04", "\n"],
-    ),
-    use_cmd_start=False
-)
-
-br_preview_alt = on_alconna(
-    Alconna(
-        "{:.*}https://br.evetools.org/br/{br_id:str}{:.*}",
-        separators=["\x04", "\n"],
-    ),
-    use_cmd_start=False
-)
+br_preview_time = on_regex(r"https://br.evetools.org/br/([a-zA-Z0-9]{24})")
+br_preview_alt = on_regex(r"https://br.evetools.org/related/([0-9]{8})/([0-9]{12})")
 
 
 @link.handle()
@@ -119,49 +106,42 @@ async def _(
 
 @br_preview_time.handle()
 async def _(
-        arp: Arparma,
         event: Event,
+        url: str = RegexStr()
 ):
     await emoji_action(event)
-    header = arp.header
-    system_id = header["system_id"]
-    timestamp = header["timestamp"]
-    br_link = f"https://br.evetools.org/related/{system_id}/{timestamp}"
     await save_msg_cache(
-        await br_preview_time.send(
-            UniMessage.reply(event.message_id) +
-            UniMessage.image(
-                raw=await html2pic_br(
-                    url=br_link,
-                    element=".development",
-                    hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
-                )
+        await UniMessage.image(
+            raw=await html2pic_br(
+                url=url,
+                element=".development",
+                hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
             )
+        ).send(
+            target=event,
+            reply_to=True
         ),
-        br_link
+        url
     )
 
 
 @br_preview_alt.handle()
 async def _(
-        arp: Arparma,
         event: Event,
+        url: str = RegexStr()
 ):
     await emoji_action(event)
-    header = arp.header
-    br_id = header["br_id"]
-    br_link = f"https://br.evetools.org/br/{br_id}"
     await save_msg_cache(
-        await br_preview_alt.send(
-            UniMessage.reply(event.message_id) +
-            UniMessage.image(
-                raw=await html2pic_br(
-                    url=br_link,
-                    element=".development",
-                    hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
-                )
+        await UniMessage.image(
+            raw=await html2pic_br(
+                url=url,
+                element=".development",
+                hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
             )
+        ).send(
+            target=event,
+            reply_to=True
         ),
-        br_link
+        url
     )
 

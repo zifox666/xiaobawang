@@ -1,5 +1,7 @@
-from arclet.alconna import Alconna, MultiVar, Args, Arparma
+from arclet.alconna import Alconna, MultiVar, Args
+from nonebot import on_regex
 from nonebot.internal.adapter import Event
+from nonebot.params import RegexStr
 from nonebot_plugin_alconna import on_alconna, UniMessage
 
 from ..utils.common import type_word
@@ -19,13 +21,7 @@ janice = on_alconna(
     aliases=("合同估价", "合同", "contract")
 )
 
-janice_preview = on_alconna(
-    Alconna(
-        "https://janice.e-351.com/a/{code:str}",
-        separators=["\x04", "\n"],
-    ),
-    use_cmd_start=False,
-)
+janice_preview = on_regex(r"janice\.e-351\.com/a/([a-zA-Z0-9]{6})")
 
 
 @janice.handle()
@@ -56,24 +52,17 @@ async def handle_janice(
         )
 
 
-
-
 @janice_preview.handle()
 async def handle_janice_preview(
-        arp: Arparma,
         event: Event,
+        url: str = RegexStr()
 ):
     """
     处理合同估价请求
     :param event: 事件对象
-    :param arp:
+    :param url:
     """
     await emoji_action(event)
-    code = arp.header["code"]
-    url = f"https://janice.e-351.com/a/{code}"
     pic = await capture_element(url=url, element=".appraisal", full_page=False)
     if pic:
-        await janice_preview.finish(
-            UniMessage.reply(event.message_id) + UniMessage.image(raw=pic)
-        )
-
+        await UniMessage.image(raw=pic).send(target=event, reply_to=True)
