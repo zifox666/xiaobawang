@@ -1,10 +1,12 @@
 import asyncio
 from arclet.alconna import Alconna, Subcommand, Args, MultiVar, Option, CommandMeta, Arparma
 from nonebot.internal.adapter import Event
+from nonebot.permission import SUPERUSER
 
-from nonebot_plugin_alconna import on_alconna
+from nonebot_plugin_alconna import on_alconna, UniMessage
 from nonebot_plugin_orm import AsyncSession
 from nonebot import Bot, logger
+from nonebot_plugin_uninfo import Uninfo, SceneType
 
 from ..api.esi.universe import esi_client
 from ..helper.subscription import KillmailSubscriptionManager
@@ -25,6 +27,7 @@ start_km_alc = Alconna(
 start_km_listen = on_alconna(
     start_km_alc,
     use_cmd_start=True,
+    permission=SUPERUSER
 )
 
 
@@ -67,6 +70,22 @@ sub = on_alconna(
             "remove",
             Args['type', str]['name', MultiVar(str)],
         ),
+        Subcommand(
+            "list"
+        ),
+        meta=CommandMeta(
+            fuzzy_match=True
+        )
+    ),
+    use_cmd_start=True,
+)
+
+
+sub_high = on_alconna(
+    Alconna(
+        "sub_high",
+        Args["value", int, 18_000_000_000],
+        Option("-r|--remove", help_text="移除高价值订阅"),
         meta=CommandMeta(
             fuzzy_match=True
         )
@@ -78,12 +97,13 @@ sub = on_alconna(
 @sub.assign("add")
 async def _add_sub(
         result: Arparma,
-        bot: Bot,
-        event: Event,
+        user_info: Uninfo,
         session: AsyncSession,
 ):
-    platform = bot.type
-    session_info = parse_session_id(event.get_session_id())
+    if user_info.member and user_info.member.role.id not in ["CHANNEL_ADMINISTRATOR", "ADMINISTRATOR", "OWNER"]:
+        await sub.finish(f"你还不是群管理员，无法使用此功能")
+
+    platform = user_info.adapter
     target_name = " ".join(result.name)
     try:
         id_data = await esi_client.get_universe_id(
@@ -92,12 +112,13 @@ async def _add_sub(
         )
     except:
         await sub.finish(f"[{target_name}]不存在，请检查")
+
     if id_data.get("id"):
         target_id = id_data["id"]
         target_name = id_data["name"]
 
-        session_id = session_info.get('group_id') if session_info.get('group_id') else session_info.get('user_id')
-        session_type = session_info.get('type')
+        session_id = user_info.scene.id
+        session_type = user_info.scene.type
 
         attack_limit = result.add.options.get('attack').args.get('value')
         victim_limit = result.add.options.get('victim').args.get('value')
@@ -109,7 +130,7 @@ async def _add_sub(
 
                 a_flag = await sub_manager.add_subscription(
                     platform=platform,
-                    bot_id=bot.self_id,
+                    bot_id=user_info.self_id,
                     target_id=target_id,
                     target_name=target_name,
                     target_type=category_type_list[result.type],
@@ -124,7 +145,7 @@ async def _add_sub(
 
                 v_flag = await sub_manager.add_subscription(
                     platform=platform,
-                    bot_id=bot.self_id,
+                    bot_id=user_info.self_id,
                     target_id=target_id,
                     target_name=target_name,
                     target_type=category_type_list[result.type],
@@ -137,15 +158,15 @@ async def _add_sub(
 
         if a_flag or v_flag:
             logger.info(f"""订阅已增加
-[{platform}]{bot.self_id}
-[{session_type}]{session_id}
+[{platform}]{user_info.self_id}
+[{SceneType(user_info.scene.type).name}]{session_id}
 [{category_type_list[result.type]}]{target_name}({target_id})
 [击杀推送阈值]{attack_limit if a_flag else '关闭'}
 [损失推送阈值]{victim_limit if v_flag else '关闭'}""")
 
             await sub.finish(f"""订阅已增加
-[{platform}]{bot.self_id}
-[{session_type}]{session_id}
+[{platform}]{user_info.self_id}
+[{SceneType(user_info.scene.type).name}]{session_id}
 [{category_type_list[result.type]}]{target_name}({target_id})
 [击杀推送阈值]{attack_limit if a_flag else '关闭'}
 [损失推送阈值]{victim_limit if v_flag else '关闭'}""")
@@ -154,12 +175,13 @@ async def _add_sub(
 @sub.assign("remove")
 async def _remove_sub(
         result: Arparma,
-        bot: Bot,
-        event: Event,
+        user_info: Uninfo,
         session: AsyncSession,
 ):
-    platform = bot.type
-    session_info = parse_session_id(event.get_session_id())
+    if user_info.member and user_info.member.role.id not in ["CHANNEL_ADMINISTRATOR", "ADMINISTRATOR", "OWNER"]:
+        await sub.finish(f"你还不是群管理员，无法使用此功能")
+
+    platform = user_info.adapter
     target_name = " ".join(result.name)
     try:
         id_data = await esi_client.get_universe_id(
@@ -173,15 +195,15 @@ async def _remove_sub(
         target_id = id_data["id"]
         target_name = id_data["name"]
 
-        session_id = session_info.get('group_id') if session_info.get('group_id') else session_info.get('user_id')
-        session_type = session_info.get('type')
+        session_id = user_info.scene.id
+        session_type = user_info.scene.type
 
         async with session:
             sub_manager = KillmailSubscriptionManager(session)
 
             subscriptions = await sub_manager.get_session_subscriptions(
                 platform=platform,
-                bot_id=bot.self_id,
+                bot_id=user_info.self_id,
                 session_id=session_id,
                 session_type=session_type
             )
@@ -199,48 +221,36 @@ async def _remove_sub(
 
         if removed:
             logger.info(f"""订阅已移除
-[{platform}]{bot.self_id}
-[{session_type}]{session_id}
+[{platform}]{user_info.self_id}
+[{SceneType(user_info.scene.type).name}]{session_id}
 [{category_type_list[result.type]}]{target_name}({target_id})""")
             await sub.finish(f"""订阅已移除
-[{platform}]{bot.self_id}
-[{session_type}]{session_id}
+[{platform}]{user_info.self_id}
+[{SceneType(user_info.scene.type).name}]{session_id}
 [{category_type_list[result.type]}]{target_name}({target_id})""")
         else:
             await sub.finish(f"没有找到符合条件的订阅")
 
 
-sub_high = on_alconna(
-    Alconna(
-        "sub_high",
-        Args["value", int, 18_000_000_000],
-        Option("-r|--remove", help_text="移除高价值订阅"),
-        meta=CommandMeta(
-            fuzzy_match=True
-        )
-    ),
-    use_cmd_start=True,
-)
-
-
 @sub_high.handle()
 async def _handle_sub_high(
         result: Arparma,
-        bot: Bot,
-        event: Event,
+        user_info: Uninfo,
         session: AsyncSession,
 ):
-    platform = bot.type
-    session_info = parse_session_id(event.get_session_id())
-    session_id = session_info.get('group_id') if session_info.get('group_id') else session_info.get('user_id')
-    session_type = session_info.get('type')
+    if user_info.member and user_info.member.role.id not in ["CHANNEL_ADMINISTRATOR", "ADMINISTRATOR", "OWNER"]:
+        await sub.finish(f"你还不是群管理员，无法使用此功能")
+
+    platform = user_info.adapter
+    session_id = user_info.scene.id
+    session_type = user_info.scene.type
 
     async with session:
         sub_manager = KillmailSubscriptionManager(session)
         if result.options.get('remove'):
             subscriptions = await sub_manager.get_session_subscriptions(
                 platform=platform,
-                bot_id=bot.self_id,
+                bot_id=user_info.self_id,
                 session_id=session_id,
                 session_type=session_type
             )
@@ -253,11 +263,11 @@ async def _handle_sub_high(
 
                 if removed:
                     logger.info(f"""高价值订阅已移除
-[{platform}]{bot.self_id}
-[{session_type}]{session_id}""")
+[{platform}]{user_info.self_id}
+[{SceneType(user_info.scene.type).name}]{session_id}""")
                     await sub_high.finish(f"""高价值订阅已移除
-[{platform}]{bot.self_id}
-[{session_type}]{session_id}""")
+[{platform}]{user_info.self_id}
+[{SceneType(user_info.scene.type).name}]{session_id}""")
                 else:
                     await sub_high.finish("移除高价值订阅失败")
             else:
@@ -268,7 +278,7 @@ async def _handle_sub_high(
 
             added = await sub_manager.add_subscription(
                 platform=platform,
-                bot_id=bot.self_id,
+                bot_id=user_info.self_id,
                 session_id=session_id,
                 session_type=session_type,
                 sub_type="high_value",
@@ -277,14 +287,78 @@ async def _handle_sub_high(
 
             if added:
                 logger.info(f"""高价值订阅已添加
-[{platform}]{bot.self_id}
-[{session_type}]{session_id}
+[{platform}]{user_info.self_id}
+[{SceneType(user_info.scene.type).name}]{session_id}
 [最低价值]{min_value}""")
                 await sub_high.finish(f"""高价值订阅已添加
-[{platform}]{bot.self_id}
-[{session_type}]{session_id}
+[{platform}]{user_info.self_id}
+[{SceneType(user_info.scene.type).name}]{session_id}
 [最低价值]{min_value}""")
             else:
                 await sub_high.finish("添加高价值订阅失败")
 
+
+@sub.assign("list")
+async def _handle_sub_list(
+        user_info: Uninfo,
+        session: AsyncSession,
+):
+    sub_manager = KillmailSubscriptionManager(session)
+    data = await sub_manager.get_session_subscriptions(
+        platform=user_info.adapter,
+        bot_id=user_info.self_id,
+        session_id=user_info.scene.id,
+        session_type=user_info.scene.type
+    )
+
+    result_parts = ["当前订阅列表："]
+
+    hv_sub = data["high_value_subscription"]
+    if hv_sub:
+        min_value = hv_sub["min_value"]
+        value_str = f"{min_value / 1_000_000_000:.2f}B" if min_value >= 1_000_000_000 else f"{min_value / 1_000_000:.2f}M"
+        result_parts.append(f"● 高价值击杀订阅 (最低{value_str})")
+
+    if data["condition_subscriptions"]:
+        result_parts.append("● 条件订阅：")
+
+        targets = {}
+        for cond in data["condition_subscriptions"]:
+            key = (cond["target_type"], cond["target_id"])
+            if key not in targets:
+                targets[key] = {
+                    "name": cond["target_name"],
+                    "type": cond["target_type"],
+                    "attack": None,
+                    "victim": None
+                }
+
+            value = cond["min_value"]
+            value_str = f"{value / 1_000_000_000:.2f}B" if value >= 1_000_000_000 else f"{value / 1_000_000:.2f}M"
+
+            if cond["is_victim"]:
+                targets[key]["victim"] = value_str
+            else:
+                targets[key]["attack"] = value_str
+
+        for i, (_, target) in enumerate(targets.items(), 1):
+            type_name = {
+                "character": "角色",
+                "corporation": "军团",
+                "alliance": "联盟",
+                "system": "星系",
+                "inventory_type": "舰船"
+            }.get(target["type"], target["type"])
+
+            attack_str = f"击杀 {target['attack']}" if target["attack"] else "击杀 关闭"
+            victim_str = f"损失 {target['victim']}" if target["victim"] else "损失 关闭"
+
+            result_parts.append(f"  {i}. [{type_name}] {target['name']}")
+            result_parts.append(f"     {attack_str} | {victim_str}")
+
+    if len(result_parts) == 1:
+        result_parts.append("暂无订阅")
+
+    result_text = "\n".join(result_parts)
+    await sub.finish(result_text)
 

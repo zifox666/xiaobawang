@@ -1359,6 +1359,22 @@ nonebot2 = ">=2.3.0,<3.0.0"
 strenum = ">=0.4.15,<0.5.0"
 
 [[package]]
+name = "nonebot-plugin-uninfo"
+version = "0.7.3"
+description = "Universal Information Model for Nonebot2"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "nonebot_plugin_uninfo-0.7.3-py3-none-any.whl", hash = "sha256:d45e97aaaebaf6b41ec0c625859216e61700e6a2929cbe0ee659a71b470fdd08"},
+    {file = "nonebot_plugin_uninfo-0.7.3.tar.gz", hash = "sha256:254922908d8b8c60ba63c7216d4d8de54ebb7e56ef91b3b360ebd810dcff4d48"},
+]
+
+[package.dependencies]
+importlib-metadata = ">=7.2.1"
+nonebot2 = ">=2.4.2"
+
+[[package]]
 name = "nonebot-plugin-waiter"
 version = "0.8.1"
 description = "An alternative for got-and-reject in Nonebot"
@@ -2948,4 +2964,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "08e04a98f9321a207f37cd93f74a9302be95af2886d30d6c7dc99267926e454e"
+content-hash = "8509d383854dff652cb096bd8271654177e7674614082224e46581479d8f95d4"
