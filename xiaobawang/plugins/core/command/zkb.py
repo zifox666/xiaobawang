@@ -56,7 +56,6 @@ async def handle_zkb(
 @zkb.handle()
 async def handle_zkb(
         arp: Arparma,
-        event: Event,
 ):
     args = " ".join(arp.main_args.get("args"))
     type_ = arp.other_args.get("type", "character")
@@ -76,8 +75,8 @@ async def handle_zkb(
     if pic:
         await save_msg_cache(
             send_event=await zkb.send(
-                UniMessage.reply(event.message_id) +
-                UniMessage.image(raw=pic)
+                message=UniMessage.image(raw=pic),
+                reply_to=True,
             ),
             value_=f"https://zkillboard.com/{type_}/{id_}/",
         )

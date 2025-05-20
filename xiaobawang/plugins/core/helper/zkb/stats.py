@@ -1,3 +1,4 @@
+import asyncio
 import traceback
 from datetime import datetime
 from typing import Optional
@@ -167,7 +168,6 @@ class ZkbStats:
             logger.error(f"处理killmail失败\n{traceback.format_exc()}")
             return {}
 
-
     async def _handle_recent_killmail(self, limit: int = 3):
         self.killmail_data = []
         killmails = await zkb_api.get_killmail_list(
@@ -177,13 +177,23 @@ class ZkbStats:
         if not killmails:
             self.recent_killmails = []
             return
-        for killmail in killmails[:limit]:
+
+        target_killmails = killmails[:limit]
+
+        tasks = []
+        for killmail in target_killmails:
             killmail_id = killmail.get("killmail_id")
             if killmail_id:
-                data = await get_zkb_killmail(killmail_id)
-                result = await self._handle_killmail(data=data)
-                if result:
-                    self.killmail_data.append(result)
+                tasks.append(self._process_single_killmail(killmail_id))
+
+        results = await asyncio.gather(*tasks)
+
+        self.killmail_data = [result for result in results if result]
+
+    async def _process_single_killmail(self, killmail_id):
+        """处理单个击杀邮件"""
+        data = await get_zkb_killmail(killmail_id)
+        return await self._handle_killmail(data=data)
 
     async def _make(self, limit: int = 3):
         """
@@ -191,7 +201,7 @@ class ZkbStats:
         :return:
         """
         await self._query_info()
-        if limit:
+        if limit and self.active_pvp:
             await self._handle_recent_killmail(limit)
 
 
