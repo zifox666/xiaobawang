@@ -9,7 +9,7 @@ from ..common.cache import cache
 
 
 @Bot.on_calling_api
-async def handle_api_call(api: str, data: Dict[str, Any]):
+async def handle_api_call(bot: Bot, api: str, data: Dict[str, Any]):
     cache_key = "send_msg"
     if api == "send_msg":
         i = await cache.get(cache_key)
