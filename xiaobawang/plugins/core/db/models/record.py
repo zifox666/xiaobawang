@@ -21,10 +21,11 @@ class KillmailPushRecord(Model):
     __tablename__ = "killmail_push_record"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True, unique=True)
-    sender: Mapped[int] = mapped_column()
-    send_type: Mapped[str] = mapped_column()
+    bot_id: Mapped[str] = mapped_column()
+    platform: Mapped[str] = mapped_column()
+    session_id: Mapped[str] = mapped_column()
+    session_type: Mapped[str] = mapped_column()
     killmail_id: Mapped[int] = mapped_column()
-    reason: Mapped[str] = mapped_column()
     time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 

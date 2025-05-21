@@ -1,4 +1,5 @@
 import math
+import traceback
 from typing import List, Dict, Any, Optional, Tuple
 import asyncio
 
@@ -307,7 +308,7 @@ class KillmailHelper:
             )
 
         except Exception as e:
-            logger.error(f"准备发送 killmail 失败: {e}")
+            logger.error(f"准备发送 killmail 失败: {e}\n{traceback.format_exc()}")
 
     async def _create_killmail_details(self, killmail_data: Dict[str, Any]) -> Dict[str, Any]:
         """

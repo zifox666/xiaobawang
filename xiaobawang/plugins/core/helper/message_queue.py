@@ -1,11 +1,15 @@
 import asyncio
-from typing import Dict, List, Any
+import traceback
+from datetime import datetime
+from typing import Dict, List, Any, Tuple
 import time
 from collections import defaultdict
 
 from nonebot import logger
 from nonebot_plugin_alconna import Target, UniMessage, get_bot, CustomNode
+from nonebot_plugin_orm import get_session
 
+from ..db.models.record import KillmailPushRecord
 from ..utils.common.cache import save_msg_cache
 
 
@@ -35,6 +39,8 @@ class MessageQueueSender:
         self.platform_handlers = {
             "OneBot V11": self._handle_onebot_v11
         }
+
+        self.session = get_session()
 
     async def start(self):
         """启动消息队列处理任务"""
@@ -96,6 +102,32 @@ class MessageQueueSender:
             self.queue_last_active[queue_key] = time.time()
             self.message_queue[queue_key].append(message)
             logger.debug(f"已添加消息到队列: {platform}:{session_id} 当前队列长度: {len(self.message_queue[queue_key])}")
+
+        await self._record_pushed_killmail(queue_key, metadata.get("kill_id", 0))
+
+    async def _record_pushed_killmail(
+            self,
+            query_key: Tuple[str, str, str, str],
+            kill_id: int
+    ):
+        """
+        记录已推送的击杀邮件
+        :param query_key:
+        :param kill_id:
+        """
+        try:
+            record = KillmailPushRecord(
+                bot_id=query_key[1],
+                platform=query_key[0],
+                session_id=query_key[2],
+                session_type=query_key[3],
+                killmail_id=int(kill_id),
+                time=datetime.now(),
+            )
+            self.session.add(record)
+            await self.session.commit()
+        except Exception as e:
+            logger.error(f"记录击杀邮件推送失败: {e}\n{traceback.format_exc()}")
 
     async def _process_queue_loop(self):
         """持续处理队列的循环"""
@@ -213,6 +245,7 @@ class MessageQueueSender:
 
             if len(messages) > 2:
                 merged_nodes = []
+                last_url = ""
 
                 max_messages = 80
 
@@ -231,9 +264,14 @@ class MessageQueueSender:
                     )
                     merged_nodes.append(node)
 
-                send_event = await UniMessage.reference(*merged_nodes).send(
-                    bot=bot,
-                    target=target
+                    last_url = metadata.get("url")
+
+                await save_msg_cache(
+                    await UniMessage.reference(*merged_nodes).send(
+                        bot=bot,
+                        target=target
+                    ),
+                    last_url
                 )
 
                 logger.info(f"已发送合并消息到 {session_id}，共{len(messages)}条")
@@ -276,7 +314,10 @@ async def queue_killmail_message(
         return
 
     content = UniMessage.text(reason) + UniMessage.image(raw=pic)
-    metadata = {"url": f'https://zkillboard.com/kill/{kill_id}/'}
+    metadata = {
+        "url": f'https://zkillboard.com/kill/{kill_id}/',
+        "kill_id": kill_id
+    }
 
     await message_sender.add_message(
         platform=platform,
