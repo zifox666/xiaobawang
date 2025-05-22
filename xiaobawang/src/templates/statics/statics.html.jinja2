@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="../tailwindcss.js"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">{{ title }}</h1>
+            <p class="text-gray-600">{{ period }}</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- 总览卡片 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">命令总览</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <p class="text-blue-700 text-sm">总命令数</p>
+                        <p class="text-blue-900 text-2xl font-bold">{{ command_stats.total }}</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <p class="text-green-700 text-sm">活跃用户</p>
+                        <p class="text-green-900 text-2xl font-bold">{{ active_users.data|length }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">击杀邮件总览</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <p class="text-purple-700 text-sm">总推送数</p>
+                        <p class="text-purple-900 text-2xl font-bold">{{ killmail_stats.total }}</p>
+                    </div>
+                    <div class="bg-indigo-50 p-4 rounded-lg">
+                        <p class="text-indigo-700 text-sm">平台数</p>
+                        <p class="text-indigo-900 text-2xl font-bold">{{ killmail_stats.by_platform.data|length }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- 使用趋势图表 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">使用趋势</h2>
+                <div class="chart-container">
+                    <canvas id="usageTrendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 命令按小时分布 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">命令按小时分布</h2>
+                <div class="chart-container">
+                    <canvas id="commandByHourChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- 命令类型分布 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">命令类型分布</h2>
+                <div class="chart-container">
+                    <canvas id="commandTypeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 来源分布 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">命令来源分布</h2>
+                <div class="chart-container">
+                    <canvas id="sourceDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- 平台分布 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">击杀邮件平台分布</h2>
+                <div class="chart-container">
+                    <canvas id="platformDistributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 活跃用户排行 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">活跃用户排行</h2>
+                <div class="chart-container">
+                    <canvas id="activeUsersChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 表格数据 -->
+        <div class="grid grid-cols-1 gap-6">
+            <!-- 前 10 个会话 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">前 10 个击杀邮件推送会话</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">会话 ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">会话类型</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">推送数</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for item in killmail_stats.by_session.data %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ item['会话ID'] }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ item['会话类型'] }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ item['推送数'] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 设置中文字体
+        Chart.defaults.font.family = "'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif";
+
+        // 设置颜色主题
+        const colors = {
+            blue: 'rgba(59, 130, 246, 0.7)',
+            red: 'rgba(239, 68, 68, 0.7)',
+            green: 'rgba(16, 185, 129, 0.7)',
+            purple: 'rgba(139, 92, 246, 0.7)',
+            yellow: 'rgba(245, 158, 11, 0.7)',
+            indigo: 'rgba(99, 102, 241, 0.7)',
+            pink: 'rgba(236, 72, 153, 0.7)',
+            gray: 'rgba(107, 114, 128, 0.7)'
+        };
+
+        // 使用趋势图表
+        const trendData = {{ chart_data.usage_trend|safe }};
+        new Chart(document.getElementById('usageTrendChart'), {
+            type: 'line',
+            data: {
+                labels: trendData.map(item => item['日期']),
+                datasets: [
+                    {
+                        label: '命令数',
+                        data: trendData.map(item => item['命令数']),
+                        borderColor: colors.blue,
+                        backgroundColor: colors.blue.replace('0.7', '0.1'),
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: '击杀邮件推送数',
+                        data: trendData.map(item => item['击杀邮件推送数']),
+                        borderColor: colors.red,
+                        backgroundColor: colors.red.replace('0.7', '0.1'),
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+
+        // 命令按小时分布
+        const hourData = {{ chart_data.command_stats.by_hour|safe }};
+        new Chart(document.getElementById('commandByHourChart'), {
+            type: 'bar',
+            data: {
+                labels: hourData.map(item => item['小时']),
+                datasets: [{
+                    label: '命令数',
+                    data: hourData.map(item => item['命令数']),
+                    backgroundColor: colors.green
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // 命令类型分布
+        const commandTypeData = {{ chart_data.command_stats.by_command|safe }};
+        new Chart(document.getElementById('commandTypeChart'), {
+            type: 'pie',
+            data: {
+                labels: commandTypeData.map(item => item['命令']),
+                datasets: [{
+                    data: commandTypeData.map(item => item['使用次数']),
+                    backgroundColor: Object.values(colors)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+
+        // 来源分布
+        const sourceData = {{ chart_data.command_stats.by_source|safe }};
+        new Chart(document.getElementById('sourceDistributionChart'), {
+            type: 'doughnut',
+            data: {
+                labels: sourceData.map(item => item['来源']),
+                datasets: [{
+                    data: sourceData.map(item => item['命令数']),
+                    backgroundColor: Object.values(colors)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+
+        // 平台分布
+        const platformData = {{ chart_data.killmail_stats.by_platform|safe }};
+        new Chart(document.getElementById('platformDistributionChart'), {
+            type: 'polarArea',
+            data: {
+                labels: platformData.map(item => item['平台']),
+                datasets: [{
+                    data: platformData.map(item => item['推送数']),
+                    backgroundColor: Object.values(colors)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+
+        // 活跃用户排行
+        const activeUsersData = {{ chart_data.active_users|safe }};
+        new Chart(document.getElementById('activeUsersChart'), {
+            type: 'bar',
+            data: {
+                labels: activeUsersData.map(item => item['用户']),
+                datasets: [{
+                    label: '命令数',
+                    data: activeUsersData.map(item => item['命令数']),
+                    backgroundColor: colors.indigo
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
