@@ -10,6 +10,7 @@ from .command import *
 from .utils.github import updater
 from .utils.hook import *
 from .utils.common.http_client import init_client, close_client
+from .router import *
 
 require("nonebot_plugin_alconna")
 

@@ -26,6 +26,8 @@ class HelperExtension(Extension):
         async with get_session() as session:
             session.add(
                 CommandRecord(
+                    bot_id=bot.self_id,
+                    platform=str(bot.adapter),
                     source=res.source.path,
                     origin=str(res.origin),
                     sender=str(event.get_user_id()),

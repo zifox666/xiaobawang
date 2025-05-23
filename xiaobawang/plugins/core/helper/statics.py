@@ -1,9 +1,7 @@
 import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
-import matplotlib.pyplot as plt
+from typing import Dict, Any, Optional
 from sqlalchemy import func, text, select
-from io import BytesIO
 
 from nonebot_plugin_orm import get_session
 from nonebot import logger
@@ -160,6 +158,7 @@ class DataAnalysisHelper:
                         select(
                             KillmailPushRecord.session_id,
                             KillmailPushRecord.session_type,
+                            KillmailPushRecord.platform,
                             func.count().label("count")
                         )
                         .where(KillmailPushRecord.time >= start_date)
@@ -168,7 +167,7 @@ class DataAnalysisHelper:
                         .limit(10)
                     )
                     result = await session.execute(query)
-                    data = [{"会话ID": row.session_id, "会话类型": row.session_type, "推送数": row.count}
+                    data = [{"会话ID": row.session_id, "平台": row.platform, "会话类型": row.session_type, "推送数": row.count}
                             for row in result.fetchall()]
 
                 total_query = (
@@ -208,7 +207,6 @@ class DataAnalysisHelper:
                     .where(CommandRecord.time >= start_date)
                     .group_by(CommandRecord.sender)
                     .order_by(text("count DESC"))
-                    .limit(10)
                 )
                 result = await session.execute(query)
 

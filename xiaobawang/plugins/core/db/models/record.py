@@ -9,6 +9,8 @@ class CommandRecord(Model):
     __tablename__ = "command_record"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True, unique=True)
+    bot_id: Mapped[str] = mapped_column(default="0", nullable=True)
+    platform: Mapped[str] = mapped_column(default="OneBot V11", nullable=True)
     source: Mapped[str] = mapped_column()
     origin: Mapped[str] = mapped_column()
     sender: Mapped[str] = mapped_column()
