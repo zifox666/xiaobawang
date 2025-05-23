@@ -56,7 +56,7 @@ async def submit_statistics(
         session=submit_data.session,
         time=submit_data.time,
     )
-    await session.add(command_record)
+    session.add(command_record)
     await session.commit()
     return {"success": True}
 
