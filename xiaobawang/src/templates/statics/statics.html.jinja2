@@ -54,6 +54,109 @@
             </div>
         </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- 月度对比卡片 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">月度对比 ({{ month_comparison.current_month }} vs {{ month_comparison.prev_month }})</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-blue-700 text-sm">命令数</p>
+                                <p class="text-blue-900 text-2xl font-bold">{{ "{:,.0f}".format(month_comparison.commands.current) }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-500">上月: {{ "{:,.0f}".format(month_comparison.commands.previous) }}</p>
+                                {% if month_comparison.commands.growth > 0 %}
+                                    <p class="text-green-600">↑ {{ "{:+,.0f}".format(month_comparison.commands.growth) }} ({{ "{:+.1f}%".format(month_comparison.commands.growth_rate) }})</p>
+                                {% elif month_comparison.commands.growth < 0 %}
+                                    <p class="text-red-600">↓ {{ "{:+,.0f}".format(month_comparison.commands.growth) }} ({{ "{:+.1f}%".format(month_comparison.commands.growth_rate) }})</p>
+                                {% else %}
+                                    <p class="text-gray-600">— (0%)</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-purple-700 text-sm">击杀邮件数</p>
+                                <p class="text-purple-900 text-2xl font-bold">{{ "{:,.0f}".format(month_comparison.killmails.current) }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-500">上月: {{ "{:,.0f}".format(month_comparison.killmails.previous) }}</p>
+                                {% if month_comparison.killmails.growth > 0 %}
+                                    <p class="text-green-600">↑ {{ "{:+,.0f}".format(month_comparison.killmails.growth) }} ({{ "{:+.1f}%".format(month_comparison.killmails.growth_rate) }})</p>
+                                {% elif month_comparison.killmails.growth < 0 %}
+                                    <p class="text-red-600">↓ {{ "{:+,.0f}".format(month_comparison.killmails.growth) }} ({{ "{:+.1f}%".format(month_comparison.killmails.growth_rate) }})</p>
+                                {% else %}
+                                    <p class="text-gray-600">— (0%)</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-green-700 text-sm">活跃用户数</p>
+                                <p class="text-green-900 text-2xl font-bold">{{ "{:,.0f}".format(month_comparison.active_users.current) }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-500">上月: {{ "{:,.0f}".format(month_comparison.active_users.previous) }}</p>
+                                {% if month_comparison.active_users.growth > 0 %}
+                                    <p class="text-green-600">↑ {{ "{:+,.0f}".format(month_comparison.active_users.growth) }} ({{ "{:+.1f}%".format(month_comparison.active_users.growth_rate) }})</p>
+                                {% elif month_comparison.active_users.growth < 0 %}
+                                    <p class="text-red-600">↓ {{ "{:+,.0f}".format(month_comparison.active_users.growth) }} ({{ "{:+.1f}%".format(month_comparison.active_users.growth_rate) }})</p>
+                                {% else %}
+                                    <p class="text-gray-600">— (0%)</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-50 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-amber-700 text-sm">新增用户</p>
+                                <p class="text-amber-900 text-2xl font-bold">{{ "{:,.0f}".format(month_comparison.active_users.new_users) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户统计卡片 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">用户统计</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-indigo-50 p-4 rounded-lg">
+                        <p class="text-indigo-700 text-sm">总用户数</p>
+                        <p class="text-indigo-900 text-2xl font-bold">{{ "{:,.0f}".format(user_statistics.total_users) }}</p>
+                    </div>
+                    <div class="bg-teal-50 p-4 rounded-lg flex justify-between items-center">
+                        <div>
+                            <p class="text-teal-700 text-sm">当前活跃用户</p>
+                            <p class="text-teal-900 text-2xl font-bold">{{ "{:,.0f}".format(user_statistics.active_users) }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">活跃率: </p>
+                            {% if user_statistics.active_rate > 50 %}
+                            <p class="text-green-600">{{ "{:.1f}%".format(user_statistics.active_rate) }}</p>
+                            {% elif user_statistics.active_rate < 50 %}
+                            <p class="text-red-600">{{ "{:.1f}%".format(user_statistics.active_rate) }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-span-2 bg-orange-50 p-4 rounded-lg">
+                        <p class="text-orange-700 text-sm">{{ user_statistics.period }}新增用户</p>
+                        <p class="text-orange-900 text-2xl font-bold">{{ "{:,.0f}".format(user_statistics.new_users) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <!-- 使用趋势图表 -->
             <div class="bg-white rounded-lg shadow p-6">
@@ -142,6 +245,22 @@
     <script>
         // 设置中文字体
         Chart.defaults.font.family = "'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif";
+
+        // 全局禁用所有动画
+        Chart.defaults.animation = false;
+        Chart.defaults.animations = {
+            colors: false,
+            x: false,
+            y: false,
+            radius: false
+        };
+        Chart.defaults.transitions = {
+            active: {
+                animation: {
+                    duration: 0
+                }
+            }
+        };
 
         // 设置颜色主题
         const colors = {
@@ -311,7 +430,7 @@
 
         // 活跃用户排行
         const activeUsersData = {{ chart_data.active_users|safe }};
-        const topFiveUsers = activeUsersData.slice(0, 5).map(item => {
+        const topFiveUsers = activeUsersData.slice(1, 6).map(item => {
             const userId = item['用户'];
             const maskedId = userId.length > 3
                 ? `${userId.substring(0, 2)}${'*'.repeat(userId.length - 3)}${userId.slice(-1)}`

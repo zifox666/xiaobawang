@@ -24,7 +24,7 @@ async def handle_statics(
         template_path=templates_path / "statics",
         template_name="statics.html.jinja2",
         data=await data_analysis.generate(days),
-        width=1080
+        width=1280
     )
     if pic:
         await statics.finish(
