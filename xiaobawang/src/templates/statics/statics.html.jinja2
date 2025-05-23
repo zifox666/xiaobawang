@@ -30,11 +30,11 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-blue-50 p-4 rounded-lg">
                         <p class="text-blue-700 text-sm">总命令数</p>
-                        <p class="text-blue-900 text-2xl font-bold">{{ command_stats.total }}</p>
+                        <p class="text-blue-900 text-2xl font-bold">{{ "{:,.0f}".format(command_stats.total) }}</p>
                     </div>
                     <div class="bg-green-50 p-4 rounded-lg">
                         <p class="text-green-700 text-sm">活跃用户</p>
-                        <p class="text-green-900 text-2xl font-bold">{{ active_users.data|length }}</p>
+                        <p class="text-green-900 text-2xl font-bold">{{ "{:,.0f}".format(active_users.data|length) }}</p>
                     </div>
                 </div>
             </div>
@@ -44,7 +44,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-purple-50 p-4 rounded-lg">
                         <p class="text-purple-700 text-sm">总推送数</p>
-                        <p class="text-purple-900 text-2xl font-bold">{{ killmail_stats.total }}</p>
+                        <p class="text-purple-900 text-2xl font-bold">{{ "{:,.0f}".format(killmail_stats.total) }}</p>
                     </div>
                     <div class="bg-indigo-50 p-4 rounded-lg">
                         <p class="text-indigo-700 text-sm">平台数</p>
@@ -124,7 +124,7 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            {% for item in killmail_stats.by_session.data %}
+                            {% for item in killmail_stats.by_session.data[0:5] %}
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap">{{ item['会话ID'][:2] }}***</td>
                                 <td class="px-6 py-4 whitespace-nowrap">{{ item['平台'] }}</td>
