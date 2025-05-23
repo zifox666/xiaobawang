@@ -20,6 +20,9 @@ class Config(BaseModel):
     zkb_listener_method: str = "websocket"
     zkb_listener_url: str = "ws://127.0.0.1:8080"
 
+    upload_statistics: bool = True
+    upload_statistics_url: str = "https://xbw.newdoublex.space/statics"
+
 plugin_config = get_plugin_config(Config)
 
 if not plugin_config.user_agent:

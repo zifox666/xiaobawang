@@ -9,6 +9,8 @@ from nonebot import logger
 from nonebot_plugin_alconna import Target, UniMessage, get_bot, CustomNode
 from nonebot_plugin_orm import get_session
 
+from ..config import plugin_config
+from ..api.statics import upload_statistics
 from ..db.models.record import KillmailPushRecord
 from ..utils.common.cache import save_msg_cache
 
@@ -39,8 +41,6 @@ class MessageQueueSender:
         self.platform_handlers = {
             "OneBot V11": self._handle_onebot_v11
         }
-
-        self.session = get_session()
 
     async def start(self):
         """启动消息队列处理任务"""
@@ -124,8 +124,18 @@ class MessageQueueSender:
                 killmail_id=int(kill_id),
                 time=datetime.now(),
             )
-            self.session.add(record)
-            await self.session.commit()
+            async with get_session() as session:
+                session.add(record)
+                await session.flush()
+                await session.commit()
+            if plugin_config.upload_statistics:
+                await upload_statistics.send_km_record(
+                    bot_id=query_key[1],
+                    platform=query_key[0],
+                    session_id=query_key[2],
+                    session_type=query_key[3],
+                    killmail_id=int(kill_id),
+                )
         except Exception as e:
             logger.error(f"记录击杀邮件推送失败: {e}\n{traceback.format_exc()}")
 
@@ -289,7 +299,7 @@ class MessageQueueSender:
                         await save_msg_cache(send_event, metadata["url"])
 
         except Exception as e:
-            logger.error(f"发送消息到 OneBot V11:{session_id} 失败: {e}")
+            logger.error(f"发送消息到 OneBot V11:{session_id} 失败: {traceback.format_exc()}")
 
     def register_platform_handler(self, platform: str, handler):
         """注册平台特定的处理器"""

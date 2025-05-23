@@ -74,6 +74,28 @@ Fill in your bot configuration items in the .env.dev file
 | Currency query      |     ✅     |    ✅    |   ✅   |    ✅    |    ✅    |    ✅    |
 | EVE server status   |     ✅     |    ✅    |   ✅   |    ✅    |    ✅    |    ✅    |
 
+## 📊 Statistics Collection
+
+This project collects basic command usage statistics to help us improve features and user experience. The collected data includes but is not limited to:
+
+<details>
+
+<summary>Collected Data</summary>
+
+```text
+- Bot ID
+- Adapter platform
+- Command source
+- Original command
+- Event type
+- Session ID
+```
+
+</details>
+
+**How to disable**: If you prefer not to share these statistics, you can add the following configuration to your `.env` file:
+
+`upload_statistics=false`
 
 ## 🙏 Acknowledgements
 

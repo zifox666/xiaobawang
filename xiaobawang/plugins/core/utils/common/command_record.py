@@ -5,6 +5,8 @@ from nonebot import require, logger
 from nonebot.adapters.telegram.model import Message as TelegramMessage
 from nonebot_plugin_alconna.uniseg import Receipt
 
+from ...config import plugin_config
+from ...api.statics import upload_statistics
 from ...db.models.record import CommandRecord
 
 require("nonebot_plugin_alconna")
@@ -36,6 +38,17 @@ class HelperExtension(Extension):
                 )
             )
             await session.commit()
+
+        if plugin_config.upload_statistics:
+            await upload_statistics.send_command_record(
+                bot_id=str(bot.self_id),
+                platform=str(bot.adapter),
+                source=str(res.source.path),
+                origin=str(res.origin),
+                sender=str(event.get_user_id()),
+                event=str(event.get_event_name()),
+                session=str(event.get_session_id()),
+            )
 
 
 def get_msg_id(send_event: Receipt) -> str | int:

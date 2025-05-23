@@ -41,6 +41,9 @@ async def init():
     if plugin_config.EVE_JANICE_API_KEY == "G9KwKq3465588VPd6747t95Zh94q3W2E":
         logger.opt(colors=True).warning("请向JANICE作者申请专用API KEY，临时API有严重速率限制。访问 https://github.com/E-351/janice")
 
+    if plugin_config.upload_statistics:
+        logger.opt(colors=True).info(f"上传云端统计已启用 将会上传到 {plugin_config.upload_statistics_url} \n如果不想上传请在配置文件中关闭 upload_statistics")
+
     add_global_extension(HelperExtension())
 
     await start_km_listen_()

@@ -74,6 +74,28 @@ poetry run python bot.py
 | 汇率查询 currency       |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
 | EVE服务器状态 eve status |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
 
+## 📊 数据统计
+
+本项目会收集基本的命令使用统计信息，以帮助我们改进功能和用户体验。收集的数据包括但不限于：
+
+<details>
+
+<summary>收集的数据</summary>
+
+```text
+- 机器人ID
+- 适配器平台
+- 命令来源
+- 原始命令
+- 事件类型
+- 会话ID
+```
+
+</details>
+
+**如何禁用**：如果您不希望分享这些数据，可在 `.env` 文件中添加以下配置：
+
+`upload_statistics=false`
 
 ## 🙏 感谢
 
