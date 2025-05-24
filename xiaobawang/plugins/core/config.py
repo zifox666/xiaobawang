@@ -37,5 +37,6 @@ PLUGIN_PATH = Path(__file__).resolve().parent
 SRC_PATH = ROOT_PATH / "xiaobawang" / "src"
 
 HEADERS = {
-    'user_agent': f'Nonebot2/XiaoBaWang(https://github.com/zifox666/xiaobawang) zifox666@gmail.com Deployed by {plugin_config.user_agent}'
+    'user_agent': f'Nonebot2/XiaoBaWang(https://github.com/zifox666/xiaobawang) zifox666@gmail.com Deployed by {plugin_config.user_agent}',
+    'Accept-Language': 'zh',
 }
