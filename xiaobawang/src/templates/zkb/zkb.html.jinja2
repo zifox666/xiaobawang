@@ -189,16 +189,44 @@
                         <div class="flex-1 flex ml-2">
                             {% for hour in range(24) %}
                                 {% set activity_count = 0 %}
-                                {% if stats.activity is mapping and (day|string) in stats.activity and (hour|string) in stats.activity[day|string] %}
-                                    {% set activity_count = stats.activity[day|string][hour|string] %}
+                                {% set day_str = day|string %}
+                                {% set hour_str = hour|string %}
+                                
+                                {# 获取当前日期的数据结构 #}
+                                {% set day_data = None %}
+                                {% if stats.activity is mapping and day_str in stats.activity %}
+                                    {% set day_data = stats.activity[day_str] %}
                                 {% endif %}
+                                
+                                {# 获取活动计数 #}
+                                {% if day_data is not none %}
+                                    {% if day_data is mapping %}
+                                        {# 字典格式: 常见于角色(char)数据 #}
+                                        {% if hour_str in day_data %}
+                                            {% set activity_count = day_data[hour_str] %}
+                                        {% endif %}
+                                    {% elif day_data is iterable and day_data is not string %}
+                                        {# 列表格式: 常见于军团(corp)数据 #}
+                                        {% if day_data|length > hour %}
+                                            {% set activity_count = day_data[hour] %}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                                
+                                {# 确保 activity_count 是数字 #}
+                                {% if activity_count is not number %}
+                                    {% set activity_count = 0 %}
+                                {% endif %}
+                                
+                                {# 计算活动等级 #}
                                 {% set level = 0 %}
                                 {% if activity_count > 0 %}
-                                    {% if activity_count < 10 %}
+                                    {% set max_value = stats.activity.max|default(100) %}
+                                    {% if activity_count < (max_value * 0.1)|round %}
                                         {% set level = 1 %}
-                                    {% elif activity_count < 30 %}
+                                    {% elif activity_count < (max_value * 0.3)|round %}
                                         {% set level = 2 %}
-                                    {% elif activity_count < 60 %}
+                                    {% elif activity_count < (max_value * 0.6)|round %}
                                         {% set level = 3 %}
                                     {% else %}
                                         {% set level = 4 %}
@@ -235,7 +263,8 @@
                             <div class="flex-grow">
                                 <div class="flex justify-between">
                                     <span>{{ item.shipName }}</span>
-                                    <span class="font-semibold">{{ item.kills }}</span>
+                                    <span class="font-semibold">{{ 
+                                        item.kills }}</span>
                                 </div>
                                 <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
                                     <div class="bg-blue-600 h-2 rounded-full" style="width: {{ (item.kills / stats.top_ships[0].kills * 100)|round }}%"></div>
