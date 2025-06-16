@@ -53,7 +53,7 @@ async def handle_km(
         template_name="killmail.html.jinja2",
         data=data,
         width=665,
-        height=900,
+        height=100,
     )
     await save_msg_cache(
         await km_handler.send(UniMessage.reply(event.message_id) + UniMessage.image(raw=pic)),
