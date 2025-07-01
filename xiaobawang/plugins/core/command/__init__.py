@@ -8,3 +8,4 @@ from .zkb import *
 from .wormhole import *
 from .help import *
 from .statics import *
+from .eve_status import *

@@ -216,7 +216,7 @@ class MessageQueueSender:
             bot = await get_bot(adapter=platform, bot_id=bot_id)
             target = Target(
                 id=session_id,
-                private=(session_type == "private")
+                private=(session_type == 0)
             )
 
             for msg in messages:
@@ -247,7 +247,7 @@ class MessageQueueSender:
 
         try:
             bot = await get_bot(adapter="OneBot V11", bot_id=bot_id)
-            is_private = (session_type == "private")
+            is_private = (session_type == 0)
             target = Target(
                 id=session_id,
                 private=is_private
@@ -340,3 +340,32 @@ async def queue_killmail_message(
     )
     if not immediate:
         logger.debug(f"已添加击杀邮件 {kill_id} 到队列")
+
+async def queue_common(
+        platform: str,
+        bot_id: str,
+        session_id: str,
+        session_type: str,
+        msg: UniMessage,
+        metadata: Dict = None,
+        immediate: bool = True
+):
+    """
+    统一消息队列
+    :param platform: 平台名称
+    :param bot_id: 机器人ID
+    :param session_id: 会话ID
+    :param session_type: 会话类型 (private/group)
+    :param msg: 消息内容
+    :param metadata: 额外的元数据 (如链接等)
+    :param immediate: 是否立即发送消息
+    """
+    await message_sender.add_message(
+        platform=platform,
+        bot_id=bot_id,
+        session_id=session_id,
+        session_type=session_type,
+        message_content=msg,
+        metadata=metadata or {},
+        immediate=immediate
+    )

@@ -38,7 +38,7 @@ query_price = on_alconna(
     ),
     aliases=("查价", "Ojita", "OJITA", "jita"),
     auto_send_output=True,
-    use_cmd_start=True
+    use_cmd_start=True,
 )
 next_page = on_alconna(
     Alconna("next"),
