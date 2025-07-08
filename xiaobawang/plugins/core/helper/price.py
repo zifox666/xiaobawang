@@ -49,11 +49,13 @@ class PriceHelper:
         Returns:
             查询结果字典
         """
+        region_id = 10000002  # 默认区域为 Jita
         # 处理 PLEX 特殊情况
         if word in self.alias_plex and num == 1:
             num = self.alias_plex[word]
             word = "伊甸币"
             logger.info(f"查询价格:{word}*{num}")
+            region_id = 19000001
 
         alias_results = await self.alias_helper.check(session, word)
         all_items = []
@@ -106,7 +108,14 @@ class PriceHelper:
         }
 
         page_data = await self._get_page_data(combined_data, current_page)
-        result = await self._query_and_format_prices(page_data, word, num, current_page, len(all_items))
+        result = await self._query_and_format_prices(
+            page_data=page_data,
+            word=word,
+            num=num,
+            current_page=current_page,
+            total_count=len(all_items),
+            region_id=region_id
+        )
 
         return result
 
@@ -184,7 +193,8 @@ class PriceHelper:
             word: str,
             num: int,
             current_page: int,
-            total_count: int
+            total_count: int,
+            region_id: Optional[int] = 10000002
     ) -> Dict[str, Any]:
         """
         查询价格并格式化结果
@@ -195,6 +205,7 @@ class PriceHelper:
             num: 物品数量
             current_page: 当前页码
             total_count: 总物品数
+            region_id: 区域ID，默认为10000002（Jita）
 
         Returns:
             市场价格
@@ -202,11 +213,11 @@ class PriceHelper:
         items = page_data["items"]
         type_ids = [item["typeID"] for item in items]
 
-        prices = await market.get_price(type_ids=type_ids)
+        prices = await market.get_price(type_ids=type_ids, region_id=region_id)
 
         histories_line = {}
         for type_id in type_ids:
-            history_data = await market.get_history(type_id)
+            history_data = await market.get_history(type_id=type_id, region_id=region_id)
             histories_line[type_id] = generate_minimal_chart(history_data["history"]) if history_data else None
 
         formatted_items = []

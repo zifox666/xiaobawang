@@ -156,9 +156,14 @@ class MarketHandle:
 
         await cache.mset(cache_dict, 3600)
 
+        # plex特殊星域
+        plex_data = await self._mult_get(region_id=19000001, type_id=44992)
+        processed_plex_data = await self._process_market_data(plex_data)
+
+        plex_cache_key = "market:19000001:44992"
+        await cache.set(plex_cache_key, processed_plex_data.get(44992), 3600)
+
         logger.info(f"定时缓存任务完成，共缓存 {len(processed_data)} 条市场数据")
-        del processed_data
-        del market_data
 
     async def get_price(
             self,
