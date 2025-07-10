@@ -51,8 +51,11 @@ class PriceHelper:
         """
         region_id = 10000002  # 默认区域为 Jita
         # 处理 PLEX 特殊情况
-        if word in self.alias_plex and num == 1:
-            num = self.alias_plex[word]
+        if word in self.alias_plex:
+            if num == 1:
+                num = self.alias_plex[word]
+            else:
+                num = self.alias_plex[word] * num
             word = "伊甸币"
             logger.info(f"查询价格:{word}*{num}")
             region_id = 19000001
