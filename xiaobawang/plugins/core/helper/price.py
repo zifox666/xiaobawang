@@ -55,7 +55,7 @@ class PriceHelper:
             if num == 1:
                 num = self.alias_plex[word]
             else:
-                num = self.alias_plex[word] * num
+                num = num
             word = "伊甸币"
             logger.info(f"查询价格:{word}*{num}")
             region_id = 19000001
