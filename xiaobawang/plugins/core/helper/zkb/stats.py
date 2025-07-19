@@ -159,9 +159,12 @@ class ZkbStats:
                 "total_value": format_value(zkb_data.get("totalValue", 0)),
                 "solo": zkb_data.get("solo", False),
                 "total_attackers": len(attackers),
-                "lose": True if self._id in query_ids else False,
                 "region_name": region_name,
             }
+
+            ids_to_remove = {final_attacker_character_id, final_attacker_corporation_id, final_attacker_alliance_id}
+            query_ids -= ids_to_remove
+            result["lose"] = True if self._id in query_ids else False
 
             return result
         except Exception as e:

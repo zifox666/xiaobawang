@@ -11,6 +11,7 @@ from arclet.alconna import (
 from nonebot import logger, require
 from nonebot.internal.adapter import Event, Bot
 from nonebot.plugin.on import on_command
+from nonebot.rule import to_me
 from nonebot_plugin_orm import AsyncSession
 
 from ..api.esi.market import market
@@ -50,7 +51,7 @@ prev_page = on_alconna(
     aliases={"上一页"},
     use_cmd_start=True
 )
-update_market_cache = on_command("更新市场数据", aliases={"更新市场", "更新市场数据"}, priority=5)
+update_market_cache = on_command("更新市场数据", aliases={"更新市场", "更新市场数据"}, priority=5, rule=to_me())
 
 
 @query_price.handle()
