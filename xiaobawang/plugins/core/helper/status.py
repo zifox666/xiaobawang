@@ -25,29 +25,39 @@ class EVEServerStatus:
         self.status: Optional[Dict[str, Any]] = None
         self.api_status: Optional[Dict[str, Any]] = None
 
-        self.previous_server_online: Optional[bool] = True
+        self.previous_server_online: Optional[bool] = None
 
         scheduler.add_job(
-            self.check, "cron", second="*/15", id="eve_server_status_check"
+            self.check, "cron", second="*/30", id="eve_server_status_check"
         )
 
     async def check(self):
         """
         Check the server status.
         """
-        self.status = await esi_client.get_server_status()
-        self.api_status = await esi_client.get_api_status()
+        try:
+            self.status = await esi_client.get_server_status()
+            self.api_status = await esi_client.get_api_status()
+        except Exception as e:
+            logger.error(f"获取EVE服务器状态失败: {str(e)}")
+            raise e
 
-        self.status = await esi_client.get_server_status()
-        self.api_status = await esi_client.get_api_status()
+        if self.status:
+            players_count = self.status.get("players", 0)
+            current_online = players_count > 0
 
-        current_online = bool(self.status and self.status.get("players", 0) > 0 and self.status.get("vip", False))
+            logger.debug(f"EVE服务器状态: 玩家数={players_count}, 在线={current_online}")
+        else:
+            current_online = self.previous_server_online
 
         if self.previous_server_online is None:
             self.previous_server_online = current_online
+            logger.info(f"EVE服务器状态初始化: {'在线' if current_online else '离线'}")
             return
 
         if current_online != self.previous_server_online:
+            logger.info(
+                f"EVE服务器状态变化: 从{'在线' if self.previous_server_online else '离线'}变为{'在线' if current_online else '离线'}")
             await self.notify_status_change()
             self.previous_server_online = current_online
 
@@ -56,23 +66,34 @@ class EVEServerStatus:
         推送服务器消息到订阅
         :return:
         """
-        async with get_session() as session:
-            subs = await self.get_subs(
-                session=session,
-                is_enabled=True
-            )
-
-            if not subs:
-                return
-
-            for sub in subs:
-                await queue_common(
-                    platform=sub.platform,
-                    bot_id=sub.bot_id,
-                    session_id=sub.session_id,
-                    session_type=sub.session_type,
-                    msg=UniMessage(str(self))
+        try:
+            async with get_session() as session:
+                subs = await self.get_subs(
+                    session=session,
+                    is_enabled=True
                 )
+
+                if not subs:
+                    logger.info("没有找到活跃的EVE服务器状态订阅")
+                    return
+
+                status_message = str(self)
+                logger.info(f"正在向{len(subs)}个订阅推送EVE服务器状态变化通知")
+
+                for sub in subs:
+                    try:
+                        await queue_common(
+                            platform=sub.platform,
+                            bot_id=sub.bot_id,
+                            session_id=sub.session_id,
+                            session_type=sub.session_type,
+                            msg=UniMessage(status_message)
+                        )
+                        logger.debug(f"向订阅 {sub.platform}:{sub.session_id} 推送状态变化成功")
+                    except Exception as e:
+                        logger.error(f"向订阅 {sub.platform}:{sub.session_id} 推送状态变化失败: {str(e)}")
+        except Exception as e:
+            logger.error(f"推送EVE服务器状态变化通知时出错: {str(e)}")
 
     @classmethod
     async def add_sub(cls, session: AsyncSession, user_info: Uninfo) -> bool:
