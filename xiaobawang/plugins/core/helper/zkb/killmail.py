@@ -12,6 +12,7 @@ from ..message_queue import queue_killmail_message
 from ...helper.subscription import KillmailSubscriptionManager
 from ...api.killmail import get_zkb_killmail
 from ...api.esi.universe import esi_client
+from ...utils.common import is_blueprint
 from ...utils.render import templates_path, render_template
 
 from xiaobawang.plugins.sde.oper import sde_search
@@ -553,6 +554,12 @@ class KillmailHelper:
 
                 item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
 
+                if is_blueprint(item_name):
+                    item_name = f"{item_name} ({'拷贝' if singleton == 2 else '原图'})"
+                    blueprint = True
+                else:
+                    blueprint = False
+
                 nested_items = []
                 has_nested = "items" in item
                 if has_nested:
@@ -566,7 +573,8 @@ class KillmailHelper:
                             "item_number": quantity_dropped,
                             "drop": "drop",
                             "nested_items": nested_items,
-                            "singleton": singleton
+                            "singleton": singleton,
+                            "blueprint": blueprint
                         })
 
                     if quantity_destroyed > 0:
@@ -576,14 +584,15 @@ class KillmailHelper:
                             "item_number": quantity_destroyed,
                             "drop": "destroyed",
                             "nested_items": nested_items,
-                            "singleton": singleton
+                            "singleton": singleton,
+                            "blueprint": blueprint
                         })
                 else:
                     item_key = (item_type_id, singleton)
                     if item_key not in item_tracking[slot_type]:
                         item_tracking[slot_type][item_key] = {
-                            "drop": {"count": 0, "name": item_name, "singleton": singleton},
-                            "destroyed": {"count": 0, "name": item_name, "singleton": singleton}
+                            "drop": {"count": 0, "name": item_name, "singleton": singleton, "blueprint": blueprint},
+                            "destroyed": {"count": 0, "name": item_name, "singleton": singleton, "blueprint": blueprint}
                         }
 
                     if quantity_dropped > 0:
@@ -602,7 +611,8 @@ class KillmailHelper:
                             "item_number": states["drop"]["count"],
                             "drop": "drop",
                             "nested_items": None,
-                            "singleton": singleton
+                            "singleton": states["drop"]["singleton"],
+                            "blueprint": states["drop"]["blueprint"]
                         })
 
                     if states["destroyed"]["count"] > 0:
@@ -612,7 +622,8 @@ class KillmailHelper:
                             "item_number": states["destroyed"]["count"],
                             "drop": "destroyed",
                             "nested_items": None,
-                            "singleton": singleton
+                            "singleton": states["destroyed"]["singleton"],
+                            "blueprint": states["destroyed"]["blueprint"]
                         })
 
             # 按优先级排序槽位组
@@ -656,6 +667,12 @@ class KillmailHelper:
 
             item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
 
+            if is_blueprint(item_name):
+                item_name = f"{item_name} ({'拷贝' if singleton == 2 else '原图'})"
+                blueprint = True
+            else:
+                blueprint = False
+
             sub_items = []
             if "items" in item:
                 sub_items = self._process_nested_items(item["items"], item_names)
@@ -667,7 +684,8 @@ class KillmailHelper:
                     "item_number": quantity_dropped,
                     "drop": drop,
                     "nested_items": sub_items if sub_items else None,
-                    "singleton": singleton
+                    "singleton": singleton,
+                    "blueprint": blueprint
                 })
 
             if quantity_destroyed > 0:
@@ -677,7 +695,8 @@ class KillmailHelper:
                     "item_number": quantity_destroyed,
                     "drop": drop,
                     "nested_items": sub_items if sub_items else None,
-                    "singleton": singleton
+                    "singleton": singleton,
+                    "blueprint": blueprint
                 })
 
         return formatted_items

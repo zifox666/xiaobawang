@@ -139,9 +139,12 @@
                     </div>
                     {% for slotEquipment in slot.slot_items %}
                         <div class="clear equip-line {{ slotEquipment.drop }}">
-                            <img src="https://images.evetech.net/types/{{ slotEquipment.item_id }}/icon?size=32"
-                                onerror="this.onerror=null; this.src='https://images.evetech.net/types/{{ slotEquipment.item_id }}/bp?size=32';">
-                            <span class="chinese">{{ slotEquipment.item_name }} {% if slotEquipment.singleton == 3 %}(拷贝){% endif %}</span>
+                            {% if slotEquipment.blueprint %}
+                            <img alt="{{ slotEquipment.item_id }}" src="https://images.evetech.net/types/{{ slotEquipment.item_id }}/bp?size=32">
+                            {% else %}
+                            <img alt="{{ slotEquipment.item_id }}" src="https://images.evetech.net/types/{{ slotEquipment.item_id }}/icon?size=32">
+                            {% endif %}
+                            <span class="chinese">{{ slotEquipment.item_name }}</span>
                             <span class="pull-right">{{ slotEquipment.item_number }}</span>
                         </div>
 
@@ -149,9 +152,12 @@
                             {% for nested_item in slotEquipment.nested_items %}
                                 <div class="clear equip-line {{ nested_item.drop }}">
                                     <span style="margin: 0 5px;">&ensp;</span>
-                                    <img src="https://images.evetech.net/types/{{ nested_item.item_id }}/icon?size=32"
-                                        onerror="this.onerror=null; this.src='https://images.evetech.net/types/{{ nested_item.item_id }}/bp?size=32';">
-                                    <span class="chinese">{{ nested_item.item_name }} {% if nested_item.singleton == 3 %}(拷贝){% endif %}</span>
+                                    {% if nested_item.blueprint %}
+                                    <img alt="{{ nested_item.item_id }}" src="https://images.evetech.net/types/{{ nested_item.item_id }}/bp?size=32">
+                                    {% else %}
+                                    <img alt="{{ nested_item.item_id }}" src="https://images.evetech.net/types/{{ nested_item.item_id }}/icon?size=32">
+                                    {% endif %}
+                                    <span class="chinese">{{ nested_item.item_name }}</span>
                                     <span class="pull-right">{{ nested_item.item_number }}</span>
                                 </div>
                             {% endfor %}

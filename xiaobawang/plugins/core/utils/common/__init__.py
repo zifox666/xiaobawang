@@ -68,3 +68,16 @@ def format_value(value: str | int | float) -> str:
     else:
         return f"{value:.2f}"
 
+
+def is_blueprint(item_name: str) -> bool:
+    """
+    判断物品名称是否为蓝图
+
+    :param item_name: 物品名称
+
+    :return: 如果是蓝图，返回True；否则返回False
+    """
+    if not item_name:
+        return False
+
+    return "蓝图" in item_name or "Blueprint" in item_name
