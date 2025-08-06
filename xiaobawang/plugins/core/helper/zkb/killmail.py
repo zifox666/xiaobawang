@@ -534,6 +534,7 @@ class KillmailHelper:
                 item_type_id = item.get("item_type_id", 0)
                 quantity_dropped = item.get("quantity_dropped", 0)
                 quantity_destroyed = item.get("quantity_destroyed", 0)
+                singleton = item.get("singleton", 0)
 
                 flag_name = flag_info.get(flag, f"Flag: {flag}")
 
@@ -546,7 +547,7 @@ class KillmailHelper:
                         "slotName": slot_display_name,
                         "slotPng": slot_image,
                         "slot_items": [],
-                        "slotType": slot_type
+                        "slotType": slot_type,
                     }
                     item_tracking[slot_type] = {}
 
@@ -555,7 +556,8 @@ class KillmailHelper:
                 nested_items = []
                 has_nested = "items" in item
                 if has_nested:
-                    nested_items = self._process_nested_items(item["items"], item_names, "drop" if quantity_dropped > 0 else "destroyed")
+                    nested_items = self._process_nested_items(item["items"], item_names,
+                                                              "drop" if quantity_dropped > 0 else "destroyed")
 
                     if quantity_dropped > 0:
                         slot_type_groups[slot_type]["slot_items"].append({
@@ -563,7 +565,8 @@ class KillmailHelper:
                             "item_name": item_name,
                             "item_number": quantity_dropped,
                             "drop": "drop",
-                            "nested_items": nested_items
+                            "nested_items": nested_items,
+                            "singleton": singleton
                         })
 
                     if quantity_destroyed > 0:
@@ -572,30 +575,34 @@ class KillmailHelper:
                             "item_name": item_name,
                             "item_number": quantity_destroyed,
                             "drop": "destroyed",
-                            "nested_items": nested_items
+                            "nested_items": nested_items,
+                            "singleton": singleton
                         })
                 else:
-                    if item_type_id not in item_tracking[slot_type]:
-                        item_tracking[slot_type][item_type_id] = {
-                            "drop": {"count": 0, "name": item_name},
-                            "destroyed": {"count": 0, "name": item_name}
+                    item_key = (item_type_id, singleton)
+                    if item_key not in item_tracking[slot_type]:
+                        item_tracking[slot_type][item_key] = {
+                            "drop": {"count": 0, "name": item_name, "singleton": singleton},
+                            "destroyed": {"count": 0, "name": item_name, "singleton": singleton}
                         }
 
                     if quantity_dropped > 0:
-                        item_tracking[slot_type][item_type_id]["drop"]["count"] += quantity_dropped
+                        item_tracking[slot_type][item_key]["drop"]["count"] += quantity_dropped
 
                     if quantity_destroyed > 0:
-                        item_tracking[slot_type][item_type_id]["destroyed"]["count"] += quantity_destroyed
+                        item_tracking[slot_type][item_key]["destroyed"]["count"] += quantity_destroyed
 
             for slot_type, items_map in item_tracking.items():
-                for item_id, states in items_map.items():
+                for item_key, states in items_map.items():
+                    item_id, singleton = item_key
                     if states["drop"]["count"] > 0:
                         slot_type_groups[slot_type]["slot_items"].append({
                             "item_id": item_id,
                             "item_name": states["drop"]["name"],
                             "item_number": states["drop"]["count"],
                             "drop": "drop",
-                            "nested_items": None
+                            "nested_items": None,
+                            "singleton": singleton
                         })
 
                     if states["destroyed"]["count"] > 0:
@@ -604,7 +611,8 @@ class KillmailHelper:
                             "item_name": states["destroyed"]["name"],
                             "item_number": states["destroyed"]["count"],
                             "drop": "destroyed",
-                            "nested_items": None
+                            "nested_items": None,
+                            "singleton": singleton
                         })
 
             # 按优先级排序槽位组
@@ -644,6 +652,7 @@ class KillmailHelper:
             item_type_id = item.get("item_type_id", 0)
             quantity_dropped = item.get("quantity_dropped", 0)
             quantity_destroyed = item.get("quantity_destroyed", 0)
+            singleton = item.get("singleton", 0)
 
             item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
 
@@ -657,7 +666,8 @@ class KillmailHelper:
                     "item_name": item_name,
                     "item_number": quantity_dropped,
                     "drop": drop,
-                    "nested_items": sub_items if sub_items else None
+                    "nested_items": sub_items if sub_items else None,
+                    "singleton": singleton
                 })
 
             if quantity_destroyed > 0:
@@ -666,7 +676,8 @@ class KillmailHelper:
                     "item_name": item_name,
                     "item_number": quantity_destroyed,
                     "drop": drop,
-                    "nested_items": sub_items if sub_items else None
+                    "nested_items": sub_items if sub_items else None,
+                    "singleton": singleton
                 })
 
         return formatted_items

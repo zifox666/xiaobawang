@@ -9,7 +9,7 @@
     <div class="container">
         <div style="margin-top: -10px; margin-left: -10px;">
             <img src="https://wiki.eveuniversity.org/images/thumb/e/eb/Killreport.png/48px-Killreport.png" style="height: 25px; width: 25px;"/>
-            <span class="chinese">Created by XiaoBaWang 1.1.0 | Designed by newdoublex</span>
+            <span class="chinese">击毁报告</span>
         </div>
         <div style="margin-top: 10px;" class="clear">
             <img src="https://images.evetech.net/characters/{{ victim.victim_id }}/portrait?size=128" />
@@ -47,10 +47,10 @@
             <span class="clear chinese" style="font-size: 14px; margin-top: 6px;">最后一击</span>
 
             <div class="clear" style="font-weight: 900;">
-                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" />
+                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" onerror="this.style.display='none'"/>
                 <div>
-                    <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" />
-                    <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" />
+                    <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
+                    <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
                 </div>
                 <div style="font-size: 11px; margin-left: 5px;">
                     <div>
@@ -82,11 +82,11 @@
                     </div>
                 </div>
                 {% else %}
-                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" />
+                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" onerror="this.style.display='none'"/>
                 <div style="display: flex; align-items: flex-end;">
                     <div>
-                        <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" />
-                        <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" />
+                        <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.style.display='none'" />
+                        <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
                     </div>
                     <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
                         <div>
@@ -109,8 +109,8 @@
                         <img src="https://images.evetech.net/characters/{{ attack.attacker_id }}/portrait?size=64" />
                         <div style="display: flex; align-items: flex-end;">
                             <div>
-                                <img src="https://img.evetools.org/sdeimages/types/{{ attack.ship_type_id }}/icon?size=32" />
-                                <img class="clear" src="https://images.evetech.net/types/{{ attack.weapon_type_id }}/icon?size=32" />
+                                <img src="https://img.evetools.org/sdeimages/types/{{ attack.ship_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
+                                <img class="clear" src="https://images.evetech.net/types/{{ attack.weapon_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
                             </div>
                             <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
                                 <div>
@@ -141,7 +141,7 @@
                         <div class="clear equip-line {{ slotEquipment.drop }}">
                             <img src="https://images.evetech.net/types/{{ slotEquipment.item_id }}/icon?size=32"
                                 onerror="this.onerror=null; this.src='https://images.evetech.net/types/{{ slotEquipment.item_id }}/bp?size=32';">
-                            <span class="chinese">{{ slotEquipment.item_name }}</span>
+                            <span class="chinese">{{ slotEquipment.item_name }} {% if slotEquipment.singleton == 3 %}(拷贝){% endif %}</span>
                             <span class="pull-right">{{ slotEquipment.item_number }}</span>
                         </div>
 
@@ -151,7 +151,7 @@
                                     <span style="margin: 0 5px;">&ensp;</span>
                                     <img src="https://images.evetech.net/types/{{ nested_item.item_id }}/icon?size=32"
                                         onerror="this.onerror=null; this.src='https://images.evetech.net/types/{{ nested_item.item_id }}/bp?size=32';">
-                                    <span class="chinese">{{ nested_item.item_name }}</span>
+                                    <span class="chinese">{{ nested_item.item_name }} {% if nested_item.singleton == 3 %}(拷贝){% endif %}</span>
                                     <span class="pull-right">{{ nested_item.item_number }}</span>
                                 </div>
                             {% endfor %}
