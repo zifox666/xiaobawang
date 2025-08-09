@@ -5,7 +5,7 @@ from nonebot_plugin_alconna import on_alconna
 
 from xiaobawang.plugins.core.api.common import get_exchangerate
 
-__all__ = ["hl", "evetime"]
+__all__ = ["evetime", "hl"]
 
 hl = on_alconna(
     Alconna(
@@ -13,14 +13,10 @@ hl = on_alconna(
         Args["value", float]["currency", str],
     ),
     use_cmd_start=True,
-    aliases=("汇率", "exchangerate")
+    aliases=("汇率", "exchangerate"),
 )
 
-evetime = on_alconna(
-    Alconna("evetime"),
-    use_cmd_start=True,
-    aliases=("EVE时间", "eve时间")
-)
+evetime = on_alconna(Alconna("evetime"), use_cmd_start=True, aliases=("EVE时间", "eve时间"))
 
 
 hl_aliases = {
@@ -38,8 +34,8 @@ hl_aliases = {
 
 @hl.handle()
 async def handle_hl(
-        value: float = Args["value", float],
-        currency: str = Args["currency", str],
+    value: float = Args["value", float],
+    currency: str = Args["currency", str],
 ):
     if u := hl_aliases.get(currency):
         currency = u

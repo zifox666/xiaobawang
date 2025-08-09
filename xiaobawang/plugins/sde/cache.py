@@ -1,13 +1,14 @@
+from functools import wraps
 import json
 import pickle
 from typing import Any, TypeVar
-from functools import wraps
-import redis.asyncio as redis
 
 from nonebot import logger
+import redis.asyncio as redis
+
 from .config import plugin_config
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 # Redis 缓存前缀
 CACHE_PREFIX = "xiaobawang:sde:"
@@ -25,7 +26,7 @@ class RedisCache:
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super(RedisCache, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     async def init(self):
@@ -158,7 +159,7 @@ class RedisCache:
 cache = RedisCache()
 
 
-def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclude_args: list = None):
+def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclude_args: list | None = None):
     """
     简化版缓存装饰器，用于缓存函数调用结果
     :param expire_time: 过期时间（秒）
@@ -184,15 +185,15 @@ def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclu
             if cache_args:
                 try:
                     key_parts.append(str(cache_args))
-                except:
+                except Exception:
                     key_parts.append("args")
 
             # 添加关键字参数
             if kwargs:
                 try:
-                    sorted_kwargs = sorted([(k, v) for k, v in kwargs.items()])
+                    sorted_kwargs = sorted(kwargs.items())
                     key_parts.append(str(sorted_kwargs))
-                except:
+                except Exception:
                     key_parts.append("kwargs")
 
             # 简单拼接成缓存键

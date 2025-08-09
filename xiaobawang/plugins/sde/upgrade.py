@@ -1,10 +1,11 @@
-import bz2
-import httpx
 import asyncio
+import bz2
 from pathlib import Path
-from tqdm import tqdm
 
+import aiofiles
+import httpx
 from nonebot import logger
+from tqdm import tqdm
 
 
 class SDEDownloader:
@@ -20,22 +21,22 @@ class SDEDownloader:
         """下载文件并显示进度条"""
         async with httpx.AsyncClient() as client:
             head_resp = await client.head(self.download_url)
-            total_size = int(head_resp.headers.get('content-length', 0))
+            total_size = int(head_resp.headers.get("content-length", 0))
 
             progress_bar = tqdm(
                 total=total_size,
                 unit="B",
                 unit_scale=True,
                 desc=f"下载EVE SDE文件 {self.download_url.split('/')[-1]}",
-                ascii=True
+                ascii=True,
             )
 
             async with client.stream("GET", self.download_url) as response:
                 response.raise_for_status()
 
-                with open(self.temp_download_path, 'wb') as f:
+                async with aiofiles.open(self.temp_download_path, "wb") as f:
                     async for chunk in response.aiter_bytes(chunk_size=1024 * 1024):
-                        f.write(chunk)
+                        await f.write(chunk)
                         progress_bar.update(len(chunk))
 
             progress_bar.close()
@@ -57,18 +58,14 @@ class SDEDownloader:
         file_size = self.download_path.stat().st_size
 
         progress_bar = tqdm(
-            total=file_size,
-            unit="B",
-            unit_scale=True,
-            desc=f"解压 {self.download_path.name}",
-            ascii=True
+            total=file_size, unit="B", unit_scale=True, desc=f"解压 {self.download_path.name}", ascii=True
         )
 
         def _decompress():
-            with open(self.download_path, 'rb') as source:
-                with open(self.target_path, 'wb') as dest:
+            async with open(self.download_path, "rb") as source:
+                async with open(self.target_path, "wb") as dest:
                     decompressor = bz2.BZ2Decompressor()
-                    for data in iter(lambda: source.read(1024 * 1024), b''):
+                    for data in iter(lambda: source.read(1024 * 1024), b""):
                         progress_bar.update(len(data))
                         dest.write(decompressor.decompress(data))
 

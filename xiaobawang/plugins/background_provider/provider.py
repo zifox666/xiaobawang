@@ -1,17 +1,18 @@
 import asyncio as aio
 import base64
+from collections.abc import Awaitable, Callable
 import mimetypes
-import random
 from pathlib import Path
-from typing import Awaitable, Callable, Dict, List, NamedTuple, Optional, TypeVar
+import random
+from typing import NamedTuple, TypeVar
 
 import anyio
-from httpx import AsyncClient, Response
+from httpx import Response
 from nonebot import logger
 
-from .config import plugin_config as config
-from .config import DEFAULT_BG_PATH
 from .aioclient import get_client
+from .config import DEFAULT_BG_PATH
+from .config import plugin_config as config
 
 
 class BgData(NamedTuple):
@@ -22,11 +23,11 @@ class BgData(NamedTuple):
 BGProviderType = Callable[[], Awaitable[BgData]]
 TBP = TypeVar("TBP", bound=BGProviderType)
 
-registered_bg_providers: Dict[str, BGProviderType] = {}
+registered_bg_providers: dict[str, BGProviderType] = {}
 cli = get_client()
 
 
-def get_bg_files() -> List[Path]:
+def get_bg_files() -> list[Path]:
     if not config.bg_local_path.exists():
         logger.warning("Custom background path does not exist, fallback to default")
         return [DEFAULT_BG_PATH]
@@ -43,7 +44,7 @@ def get_bg_files() -> List[Path]:
 BG_FILES = get_bg_files()
 
 
-def bg_provider(name: Optional[str] = None):
+def bg_provider(name: str | None = None):
     def deco(func: TBP) -> TBP:
         provider_name = name or func.__name__
         if provider_name in registered_bg_providers:
@@ -64,27 +65,27 @@ def resp_to_bg_data(resp: Response):
 @bg_provider()
 async def loli():
     return resp_to_bg_data(
-            (await cli.get("https://www.loliapi.com/acg/pe/")).raise_for_status(),
-        )
+        (await cli.get("https://www.loliapi.com/acg/pe/")).raise_for_status(),
+    )
 
 
 @bg_provider()
 async def bing():
     return resp_to_bg_data(
-            (await cli.get("https://bing.img.run/rand_m.php")).raise_for_status(),
-        )
+        (await cli.get("https://bing.img.run/rand_m.php")).raise_for_status(),
+    )
 
 
 @bg_provider()
 async def lolicon():
     resp = await cli.get(
-            "https://api.lolicon.app/setu/v2",
-            params={
-                "r18": config.bg_lolicon_r18_type,
-                "proxy": "false",
-                "excludeAI": "true",
-            },
-        )
+        "https://api.lolicon.app/setu/v2",
+        params={
+            "r18": config.bg_lolicon_r18_type,
+            "proxy": "false",
+            "excludeAI": "true",
+        },
+    )
     url = resp.raise_for_status().json()["data"][0]["urls"]["original"]
     resp = await cli.get(
         url,
@@ -134,9 +135,9 @@ class BgPreloader:
         if preload_count < 1:
             raise ValueError("preload_count must be greater than 0")
         self.preload_count = preload_count
-        self.backgrounds: List[BgData] = []
-        self.tasks: List[aio.Task[None]] = []
-        self.task_signal: Optional[aio.Future[None]] = None
+        self.backgrounds: list[BgData] = []
+        self.tasks: list[aio.Task[None]] = []
+        self.task_signal: aio.Future[None] | None = None
         self.signal_wait_lock = aio.Lock()
 
     def _get_signal(self) -> aio.Future[None]:
@@ -194,7 +195,7 @@ class BgPreloader:
         bg = self.backgrounds.pop(0)
         self.start_preload()
 
-        return f'data:image/png;base64,{base64.b64encode(bg.data).decode("utf-8")}'
+        return f"data:image/png;base64,{base64.b64encode(bg.data).decode('utf-8')}"
 
 
 bg_preloader = BgPreloader(config.bg_preload_count)

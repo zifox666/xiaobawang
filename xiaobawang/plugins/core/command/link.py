@@ -1,15 +1,15 @@
 import re
 
 from arclet.alconna import Alconna, Arparma, Option
-from nonebot.params import RegexStr
-from nonebot_plugin_alconna import on_alconna, UniMessage
 from nonebot import Bot, on_regex
 from nonebot.internal.adapter import Event
+from nonebot.params import RegexStr
+from nonebot_plugin_alconna import UniMessage, on_alconna
 
 from ..helper.zkb.killmail import km
-from ..utils.common import get_reply_message_id, convert_time
-from ..utils.common.emoji import emoji_action
+from ..utils.common import convert_time, get_reply_message_id
 from ..utils.common.cache import get_msg_cache, save_msg_cache
+from ..utils.common.emoji import emoji_action
 from ..utils.render import html2pic_br
 
 link = on_alconna(
@@ -21,13 +21,7 @@ link = on_alconna(
 )
 
 br = on_alconna(
-    Alconna(
-        "br",
-        Option("damage|d"),
-        Option("timeline|t"),
-        Option("summary|s"),
-        Option("composition|c")
-    ),
+    Alconna("br", Option("damage|d"), Option("timeline|t"), Option("summary|s"), Option("composition|c")),
     use_cmd_start=True,
 )
 
@@ -38,24 +32,22 @@ br_preview_alt = on_regex(r"https://br.evetools.org/related/([0-9]{8})/([0-9]{12
 
 @link.handle()
 async def _(
-        bot: Bot,
-        event: Event,
+    bot: Bot,
+    event: Event,
 ):
     msg_id = await get_reply_message_id(bot, event)
     if not msg_id:
         return
     save_link = await get_msg_cache(msg_id)
     if save_link:
-        await link.send(
-            UniMessage.reply(msg_id) + UniMessage.text(save_link)
-        )
+        await link.send(UniMessage.reply(msg_id) + UniMessage.text(save_link))
 
 
 @br.handle()
 async def _(
-        bot: Bot,
-        event: Event,
-        result: Arparma,
+    bot: Bot,
+    event: Event,
+    result: Arparma,
 ):
     click_selector = "involved"
     if result.find("damage"):
@@ -84,74 +76,57 @@ async def _(
     if br_link:
         if not no_url:
             await save_msg_cache(
-                await br.send(
-                    UniMessage.reply(msg_id) + UniMessage.text(br_link)
-                ),
+                await br.send(UniMessage.reply(msg_id) + UniMessage.text(br_link)),
                 br_link,
             )
         await save_msg_cache(
             await br.send(
-                UniMessage.reply(msg_id) +
-                UniMessage.image(
+                UniMessage.reply(msg_id)
+                + UniMessage.image(
                     raw=await html2pic_br(
                         url=br_link,
                         element=".development",
-                        hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_', 'MNHgrY8N', 'bp3-dark'],
+                        hide_elements=["bp3-navbar", "bp3-fixed-top", "bp3-dark", "_2ds1SVI_", "MNHgrY8N", "bp3-dark"],
                         click_selector=click_selector,
                     )
                 )
             ),
-            br_link
+            br_link,
         )
 
 
 @br_preview_time.handle()
-async def _(
-        event: Event,
-        url: str = RegexStr()
-):
+async def _(event: Event, url: str = RegexStr()):
     await emoji_action(event)
     await save_msg_cache(
         await UniMessage.image(
             raw=await html2pic_br(
                 url=url,
                 element=".development",
-                hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
+                hide_elements=["bp3-navbar", "bp3-fixed-top", "bp3-dark", "_2ds1SVI_"],
             )
-        ).send(
-            target=event,
-            reply_to=True
-        ),
-        url
+        ).send(target=event, reply_to=True),
+        url,
     )
 
 
 @br_preview_alt.handle()
-async def _(
-        event: Event,
-        url: str = RegexStr()
-):
+async def _(event: Event, url: str = RegexStr()):
     await emoji_action(event)
     await save_msg_cache(
         await UniMessage.image(
             raw=await html2pic_br(
                 url=url,
                 element=".development",
-                hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
+                hide_elements=["bp3-navbar", "bp3-fixed-top", "bp3-dark", "_2ds1SVI_"],
             )
-        ).send(
-            target=event,
-            reply_to=True
-        ),
-        url
+        ).send(target=event, reply_to=True),
+        url,
     )
 
 
 @br_preview_zkb.handle()
-async def _(
-        event: Event,
-        url: str = RegexStr()
-):
+async def _(event: Event, url: str = RegexStr()):
     matched = re.match(r"https://zkillboard.com/related/([0-9]+)/([0-9]+)/", url)
     if not matched:
         return
@@ -164,12 +139,8 @@ async def _(
             raw=await html2pic_br(
                 url=url,
                 element=".development",
-                hide_elements=['bp3-navbar', 'bp3-fixed-top', 'bp3-dark', '_2ds1SVI_'],
+                hide_elements=["bp3-navbar", "bp3-fixed-top", "bp3-dark", "_2ds1SVI_"],
             )
-        ).send(
-            target=event,
-            reply_to=True
-        ),
-        url
+        ).send(target=event, reply_to=True),
+        url,
     )
-

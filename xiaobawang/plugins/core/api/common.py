@@ -1,6 +1,4 @@
-
-
-from xiaobawang.plugins.core.utils.common.cache import cache_result, cache
+from xiaobawang.plugins.core.utils.common.cache import cache, cache_result
 from xiaobawang.plugins.core.utils.common.http_client import get_client
 
 

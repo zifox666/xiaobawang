@@ -1,10 +1,10 @@
-import traceback
 from datetime import datetime
+import traceback
 
 from nonebot import logger
 
-from .base import BaseClient
 from ..config import plugin_config
+from .base import BaseClient
 
 
 class Statics(BaseClient):
@@ -13,14 +13,14 @@ class Statics(BaseClient):
         self._base_url = plugin_config.upload_statistics_url
 
     async def send_command_record(
-            self,
-            bot_id: str,
-            platform: str,
-            source: str,
-            origin: str,
-            sender: str,
-            event: str,
-            session: str,
+        self,
+        bot_id: str,
+        platform: str,
+        source: str,
+        origin: str,
+        sender: str,
+        event: str,
+        session: str,
     ):
         """
         发送命令记录
@@ -34,8 +34,8 @@ class Statics(BaseClient):
         :return:
         """
         try:
-            r = await self._post(
-                endpoint=f"/command",
+            _ = await self._post(
+                endpoint="/command",
                 data={
                     "bot_id": bot_id,
                     "platform": platform,
@@ -44,19 +44,19 @@ class Statics(BaseClient):
                     "sender": sender,
                     "event": event,
                     "session": session,
-                    "time": datetime.now().isoformat()
-                }
+                    "time": datetime.now().isoformat(),
+                },
             )
-        except Exception as e:
+        except Exception:
             logger.error(f"发送命令记录失败: {traceback.format_exc()}")
 
     async def send_km_record(
-            self,
-            bot_id: str,
-            platform: str,
-            session_id: str,
-            session_type: str,
-            killmail_id: str,
+        self,
+        bot_id: str,
+        platform: str,
+        session_id: str,
+        session_type: str,
+        killmail_id: str,
     ):
         """
         发送击杀记录
@@ -69,17 +69,19 @@ class Statics(BaseClient):
         """
         try:
             r = await self._post(
-                endpoint=f"/km",
+                endpoint="/km",
                 data={
                     "bot_id": bot_id,
                     "platform": platform,
                     "session_id": session_id,
                     "session_type": session_type,
                     "killmail_id": killmail_id,
-                    "time": datetime.now().isoformat()
-                }
+                    "time": datetime.now().isoformat(),
+                },
             )
-        except Exception as e:
+            logger.debug(r)
+        except Exception:
             logger.error(f"发送击杀记录失败: {traceback.format_exc()}")
+
 
 upload_statistics = Statics()

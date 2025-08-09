@@ -1,11 +1,10 @@
 from datetime import datetime
-from typing import List
 
-from fastapi import APIRouter, Response, Depends, HTTPException
-from nonebot_plugin_orm import get_session, AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, Response
+from nonebot_plugin_htmlrender import template_to_html
+from nonebot_plugin_orm import AsyncSession, get_session
 from pydantic import BaseModel
 from starlette.responses import HTMLResponse
-from nonebot_plugin_htmlrender import template_to_html
 
 from ..db.models.record import CommandRecord, KillmailPushRecord
 from ..helper.statics import data_analysis
@@ -13,10 +12,12 @@ from ..utils.render import templates_path
 
 router = APIRouter()
 
+
 class SubmitStatistics(BaseModel):
     """
     提交统计数据
     """
+
     bot_id: str
     platform: str
     source: str
@@ -26,10 +27,12 @@ class SubmitStatistics(BaseModel):
     session: str
     time: datetime
 
+
 class SubmitKillmail(BaseModel):
     """
     提交Killmail数据
     """
+
     bot_id: str
     platform: str
     session_id: str
@@ -39,10 +42,7 @@ class SubmitKillmail(BaseModel):
 
 
 @router.post("/command", summary="提交命令统计数据")
-async def submit_statistics(
-        submit_data: SubmitStatistics,
-        session: AsyncSession = Depends(get_session)
-) -> dict:
+async def submit_statistics(submit_data: SubmitStatistics, session: AsyncSession = Depends(get_session)) -> dict:
     """
     提交统计数据
     """
@@ -62,10 +62,7 @@ async def submit_statistics(
 
 
 @router.post("/km")
-async def submit_km(
-        submit_data: SubmitKillmail,
-        session: AsyncSession = Depends(get_session)
-) -> dict:
+async def submit_km(submit_data: SubmitKillmail, session: AsyncSession = Depends(get_session)) -> dict:
     """
     提交Killmail数据
     """
@@ -84,7 +81,7 @@ async def submit_km(
 
 @router.get("", summary="查看统计数据")
 async def get_statistics(
-        days: int = 30,
+    days: int = 30,
 ) -> Response:
     """查看统计数据"""
     data = await data_analysis.generate(days)
@@ -98,8 +95,7 @@ async def get_statistics(
 
 @router.post("/command/batch", summary="批量提交命令统计数据")
 async def batch_submit_statistics(
-        submit_data_list: List[SubmitStatistics],
-        session: AsyncSession = Depends(get_session)
+    submit_data_list: list[SubmitStatistics], session: AsyncSession = Depends(get_session)
 ) -> dict:
     """
     批量提交命令统计数据
@@ -122,7 +118,8 @@ async def batch_submit_statistics(
                 event=item.event,
                 session=item.session,
                 time=item.time,
-            ) for item in submit_data_list
+            )
+            for item in submit_data_list
         ]
 
         session.add_all(command_records)
@@ -131,15 +128,12 @@ async def batch_submit_statistics(
         return {"success": True, "count": len(command_records)}
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=500, detail=f"批量提交命令统计数据失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"批量提交命令统计数据失败: {e!s}")
 
 
 # 批量提交击杀邮件数据
 @router.post("/km/batch", summary="批量提交击杀邮件数据")
-async def batch_submit_km(
-        submit_data_list: List[SubmitKillmail],
-        session: AsyncSession = Depends(get_session)
-) -> dict:
+async def batch_submit_km(submit_data_list: list[SubmitKillmail], session: AsyncSession = Depends(get_session)) -> dict:
     """
     批量提交击杀邮件数据
 
@@ -159,7 +153,8 @@ async def batch_submit_km(
                 session_type=item.session_type,
                 killmail_id=item.killmail_id,
                 time=item.time,
-            ) for item in submit_data_list
+            )
+            for item in submit_data_list
         ]
 
         session.add_all(killmail_records)
@@ -168,4 +163,4 @@ async def batch_submit_km(
         return {"success": True, "count": len(killmail_records)}
     except Exception as e:
         await session.rollback()
-        raise HTTPException(status_code=500, detail=f"批量提交击杀邮件数据失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"批量提交击杀邮件数据失败: {e!s}")

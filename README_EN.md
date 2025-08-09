@@ -32,11 +32,14 @@ git clone https://github.com/zifox666/xiaobawang.git
 cd xiaobawang
 
 # Install dependencies
-pip install poetry      # Install poetry
-poetry install          # Install dependencies
+pip install uv
+uv sync
+
+# Install scaffolding
+pip install nb-cli
 
 # Start running
-poetry run python bot.py
+nb run
 ```
 
 ## 📝 Simple Configuration

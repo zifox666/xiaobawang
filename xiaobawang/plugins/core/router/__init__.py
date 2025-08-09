@@ -1,5 +1,5 @@
-import nonebot
 from fastapi import FastAPI
+import nonebot
 
 from .statics import router as statics_router
 

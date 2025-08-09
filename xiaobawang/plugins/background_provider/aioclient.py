@@ -2,6 +2,7 @@ import asyncio
 
 import httpx
 from nonebot import logger
+
 from .config import plugin_config
 
 client: httpx.AsyncClient | None = None

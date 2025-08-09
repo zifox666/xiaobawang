@@ -1,8 +1,8 @@
-from typing import Literal, Optional
+from pathlib import Path
+from typing import Literal
 
 from nonebot import get_plugin_config
 from pydantic import BaseModel
-from pathlib import Path
 
 
 class Config(BaseModel):
@@ -12,7 +12,7 @@ class Config(BaseModel):
     sde_download_url: str = "https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2"
     sde_auto_download: bool = True
     sde_db_path: str = None
-    jieba_words_path: Optional[str] = None
+    jieba_words_path: str | None = None
 
     redis_url: str = "redis://127.0.0.1:6379/4"
 

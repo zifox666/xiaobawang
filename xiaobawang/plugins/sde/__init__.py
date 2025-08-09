@@ -3,13 +3,14 @@ from pathlib import Path
 from nonebot import get_driver, logger
 from nonebot.plugin import PluginMetadata
 
-from .cache import cache
-from .config import Config, SDE_DB_PATH, plugin_config
-from .upgrade import download_and_extract_sde
-from .oper import sde_search
-from .db import init_engine, close_engine
-from .utils import text_processor
 from ..core.helper.message_queue import message_sender
+from .cache import cache
+from .config import SDE_DB_PATH, plugin_config
+from .config import Config as Config
+from .db import close_engine, init_engine
+from .oper import sde_search as sde_search
+from .upgrade import download_and_extract_sde
+from .utils import text_processor
 
 __plugin_meta__ = PluginMetadata(
     name="EVE SDE 数据库",
@@ -28,12 +29,11 @@ async def startup():
     if not db_path.exists():
         logger.info("SDE数据库文件不存在，准备下载...")
         if not plugin_config.sde_auto_download:
-            raise FileNotFoundError(f"SDE数据库文件 {db_path} 不存在，且自动下载已禁用。请手动下载数据库或启用自动下载。")
+            raise FileNotFoundError(
+                f"SDE数据库文件 {db_path} 不存在，且自动下载已禁用。请手动下载数据库或启用自动下载。"
+            )
 
-        await download_and_extract_sde(
-            download_url=plugin_config.sde_download_url,
-            target_path=db_path
-        )
+        await download_and_extract_sde(download_url=plugin_config.sde_download_url, target_path=db_path)
     else:
         logger.info(f"SDE数据库文件已存在: {db_path}")
 
@@ -58,8 +58,5 @@ async def update_sde():
         raise RuntimeError("自动下载已禁用，无法更新SDE数据库")
 
     logger.info("开始更新SDE数据库...")
-    await download_and_extract_sde(
-        download_url=plugin_config.sde_download_url,
-        target_path=db_path
-    )
+    await download_and_extract_sde(download_url=plugin_config.sde_download_url, target_path=db_path)
     logger.info("SDE数据库更新完成")

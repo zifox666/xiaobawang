@@ -1,26 +1,27 @@
-from arclet.alconna import Alconna, Args, MultiVar, Option, Arparma
+from arclet.alconna import Alconna, Args, Arparma, MultiVar, Option
 from nonebot_plugin_alconna import on_alconna
+
+from xiaobawang.plugins.sde.oper import sde_search
 
 from ..api.esi.universe import esi_client
 from ..utils.common import is_chinese
-from xiaobawang.plugins.sde.oper import sde_search
 
 __all__ = ["trans"]
 
 trans = on_alconna(
     Alconna(
         "trans",
-        Args['args', MultiVar(str)],
-        Option("-l|--limit", Args['value', int], default=10),
+        Args["args", MultiVar(str)],
+        Option("-l|--limit", Args["value", int], default=10),
     ),
     use_cmd_start=True,
-    aliases=("fy", "翻译", "fanyi")
+    aliases=("fy", "翻译", "fanyi"),
 )
 
 
 @trans.handle()
 async def _trans(
-        arp: Arparma,
+    arp: Arparma,
 ):
     args = " ".join(arp.main_args.get("args"))
     limit = arp.other_args.get("limit", 10)
@@ -32,15 +33,15 @@ async def _trans(
     system_name = None
     if name_data:
         name_id = None
-        if 'systems' in name_data:
-            name_id = name_data['systems'][0]['id']
-            type_ = 'systems'
-        elif 'constellations' in name_data:
-            name_id = name_data['constellations'][0]['id']
-            type_ = 'constellations'
-        elif 'regions' in name_data:
-            name_id = name_data['regions'][0]['id']
-            type_ = 'regions'
+        if "systems" in name_data:
+            name_id = name_data["systems"][0]["id"]
+            type_ = "systems"
+        elif "constellations" in name_data:
+            name_id = name_data["constellations"][0]["id"]
+            type_ = "constellations"
+        elif "regions" in name_data:
+            name_id = name_data["regions"][0]["id"]
+            type_ = "regions"
 
         if name_id:
             name = await esi_client.get_trans_name(
@@ -64,5 +65,3 @@ async def _trans(
             msg += f"[{t.get('typeID')}] {t.get('source').get('text')} : {t.get('translation').get('text')}\n"
 
         await trans.finish(msg)
-
-

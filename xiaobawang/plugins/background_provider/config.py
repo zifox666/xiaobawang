@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from nonebot import get_plugin_config
 from pydantic import BaseModel
@@ -13,7 +13,7 @@ class Config(BaseModel):
     bg_preload_count: int = 5
     bg_lolicon_r18_type: Literal[0, 1, 2] = 0
     bg_local_path: Path = DEFAULT_BG_PATH
-    req_timeout: Optional[int] = 10
+    req_timeout: int | None = 10
     proxy: str = None
 
 

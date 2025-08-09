@@ -17,5 +17,5 @@ async def emoji_action(event: Event, emoji: str = "🔥"):
             await message_reaction(event=event, emoji="12893")
         else:
             await message_reaction(event=event, emoji=emoji)
-    except Exception as e:
+    except Exception:
         logger.error(f"表情包发送失败: {traceback.format_exc()}")

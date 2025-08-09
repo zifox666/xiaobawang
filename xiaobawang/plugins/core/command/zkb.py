@@ -1,16 +1,16 @@
 import re
 
-from arclet.alconna import Alconna, Option, Args, MultiVar, Arparma
+from arclet.alconna import Alconna, Args, Arparma, MultiVar, Option
 from nonebot.internal.adapter import Event
 from nonebot.params import RegexStr
 from nonebot.plugin.on import on_regex
-from nonebot_plugin_alconna import on_alconna, UniMessage
+from nonebot_plugin_alconna import UniMessage, on_alconna
 
-from ..utils.common.emoji import emoji_action
 from ..api.esi.universe import esi_client
 from ..api.zkillboard import zkb_api
 from ..helper.zkb.stats import ZkbStats
 from ..utils.common.cache import save_msg_cache
+from ..utils.common.emoji import emoji_action
 
 __all__ = ["zkb", "zkb_preview"]
 
@@ -28,8 +28,8 @@ zkb_preview = on_regex(r"https://zkillboard.com/([a-zA-Z]+)/([0-9]+)/")
 
 @zkb_preview.handle()
 async def handle_zkb(
-        event: Event,
-        url: str = RegexStr(),
+    event: Event,
+    url: str = RegexStr(),
 ):
     match = re.match(r"https://zkillboard.com/([a-zA-Z]+)/([0-9]+)/", url)
     if not match:
@@ -40,9 +40,7 @@ async def handle_zkb(
         return
     await emoji_action(event)
 
-    pic = await ZkbStats(
-        await zkb_api.get_stats(entity_type, entity_id)
-    ).render()
+    pic = await ZkbStats(await zkb_api.get_stats(entity_type, entity_id)).render()
 
     if pic:
         await save_msg_cache(
@@ -54,8 +52,8 @@ async def handle_zkb(
 
 
 @zkb.handle()
-async def handle_zkb(
-        arp: Arparma,
+async def _handle_zkb(
+    arp: Arparma,
 ):
     args = " ".join(arp.main_args.get("args"))
     type_ = arp.other_args.get("type", "character")
@@ -65,12 +63,13 @@ async def handle_zkb(
     if id_ is None:
         msg = f"未找到[{type_}]{args}"
         if type_ != "character":
-            msg += "\n查询军团请使用/zkb name --type corporation"
+            msg += "\n/zkb <name> -t [type]"
         await zkb.finish(msg)
 
-    pic = await ZkbStats(
-        await zkb_api.get_stats(type_, id_)
-    ).render()
+    zkb_data = await zkb_api.get_stats(type_, id_)
+    if zkb_data.get("error", None):
+        await zkb.finish(f"未找到[{type_}]{args}")
+    pic = await ZkbStats(zkb_data).render()
 
     if pic:
         await save_msg_cache(
@@ -82,4 +81,3 @@ async def handle_zkb(
         )
     else:
         await zkb.finish("获取数据失败，请稍后再试")
-

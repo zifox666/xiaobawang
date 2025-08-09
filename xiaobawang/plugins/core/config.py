@@ -23,6 +23,7 @@ class Config(BaseModel):
     upload_statistics: bool = True
     upload_statistics_url: str = "https://xbw.newdoublex.space/statics"
 
+
 plugin_config = get_plugin_config(Config)
 
 if not plugin_config.user_agent:
@@ -37,6 +38,7 @@ PLUGIN_PATH = Path(__file__).resolve().parent
 SRC_PATH = ROOT_PATH / "xiaobawang" / "src"
 
 HEADERS = {
-    'user_agent': f'Nonebot2/XiaoBaWang(https://github.com/zifox666/xiaobawang) zifox666@gmail.com Deployed by {plugin_config.user_agent}',
-    'Accept-Language': 'zh',
+    "user_agent": f"Nonebot2/XiaoBaWang(https://github.com/zifox666/xiaobawang) zifox666@gmail.com "
+    f"Deployed by {plugin_config.user_agent}",
+    "Accept-Language": "zh",
 }

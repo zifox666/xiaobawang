@@ -1,8 +1,7 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import NullPool
-
 from nonebot import logger
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import NullPool
 
 Base = declarative_base()
 
@@ -10,7 +9,7 @@ _engine = None
 _sessionmaker = None
 
 
-async def init_engine(db_path: str = None):
+async def init_engine(db_path: str | None = None):
     """初始化SDE数据库引擎"""
     global _engine, _sessionmaker
 
@@ -22,14 +21,10 @@ async def init_engine(db_path: str = None):
         _engine = create_async_engine(
             url,
             poolclass=NullPool,  # SQLite建议使用NullPool
-            echo=False
+            echo=False,
         )
 
-        _sessionmaker = sessionmaker(
-            _engine,
-            class_=AsyncSession,
-            expire_on_commit=False
-        )
+        _sessionmaker = sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
 
         logger.info("SDE数据库引擎初始化成功")
     except Exception as e:

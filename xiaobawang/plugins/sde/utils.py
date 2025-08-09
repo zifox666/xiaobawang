@@ -1,14 +1,12 @@
 import json
-import re
 import os
-import sys
+import re
 
 import jieba
-from typing import List
 from nonebot import logger
 
 from .cache import cache_result
-from .config import plugin_config, SRC_DIR
+from .config import SRC_DIR, plugin_config
 
 
 class TextProcessor:
@@ -18,7 +16,7 @@ class TextProcessor:
         """
         初始化文本处理工具
         """
-        self.chinese_pattern = re.compile(r'[\u4e00-\u9fff]')
+        self.chinese_pattern = re.compile(r"[\u4e00-\u9fff]")
         self.default_path = SRC_DIR / "jieba.txt"
         self.dict_path = plugin_config.jieba_words_path if plugin_config.jieba_words_path else self.default_path
         self.replace_json = self._read_replace_word()
@@ -30,7 +28,7 @@ class TextProcessor:
             logger.info("jieba未启用自定义词库")
 
         jieba.initialize()
-        jieba.suggest_freq(('中', '大', '小'), True)
+        jieba.suggest_freq(("中", "大", "小"), True)
 
     def close(self):
         """关闭文本处理器资源"""
@@ -43,7 +41,7 @@ class TextProcessor:
         """
         replace_path = SRC_DIR / "replace.json"
         if os.path.exists(replace_path):
-            with open(replace_path, 'r', encoding='utf-8') as file:
+            with open(replace_path, encoding="utf-8") as file:
                 return json.load(file)
         return {}
 
@@ -63,7 +61,7 @@ class TextProcessor:
         return bool(self.chinese_pattern.search(text))
 
     @cache_result(prefix="jieba_tokenize_")
-    async def tokenize(self, text: str) -> List[str]:
+    async def tokenize(self, text: str) -> list[str]:
         """
         根据文本语言类型进行分词
         """
@@ -76,9 +74,10 @@ class TextProcessor:
             if plugin_config.sde_default_participle == "jieba":
                 return list(jieba.cut(text))
             else:
-                words = re.split(r'(\d+|[a-zA-Z]+|[\u4e00-\u9fa5])', text)
-                return [char for word in words for char in word.strip() if char.strip() != '']
+                words = re.split(r"(\d+|[a-zA-Z]+|[\u4e00-\u9fa5])", text)
+                return [char for word in words for char in word.strip() if char.strip() != ""]
         else:
             return text.split()
+
 
 text_processor = TextProcessor()

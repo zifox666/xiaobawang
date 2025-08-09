@@ -1,14 +1,16 @@
-from typing import Optional, Any
+from typing import Any
+
 from nonebot import logger
 
+from ..utils.common.cache import cache, cache_result
 from .base import BaseClient
-from ..utils.common.cache import cache_result, cache
 
 
 class ZkillboardApi(BaseClient):
     """
     Zkillboard API
     """
+
     def __init__(self):
         super().__init__()
         self._base_url: str = "https://zkillboard.com/api"
@@ -16,10 +18,10 @@ class ZkillboardApi(BaseClient):
 
     @cache_result(expire_time=cache.TIME_DAY, prefix="zkill:get_stats", exclude_args=[0])
     async def get_stats(
-            self,
-            type_: str,
-            id_: str | int,
-    ) -> Optional[dict[str, Any]]:
+        self,
+        type_: str,
+        id_: str | int,
+    ) -> dict[str, Any] | None:
         """
         获取Zkillboard对应类型的统计数据ß
         :param type_: 类型
@@ -39,10 +41,10 @@ class ZkillboardApi(BaseClient):
 
     @cache_result(expire_time=cache.TIME_HOUR, prefix="zkill:get_killmail_list", exclude_args=[0])
     async def get_killmail_list(
-            self,
-            type_: str,
-            id_: str | int,
-    ) -> Optional[dict[str, Any]]:
+        self,
+        type_: str,
+        id_: str | int,
+    ) -> dict[str, Any] | None:
         """
         获取击杀列表
         :param type_:

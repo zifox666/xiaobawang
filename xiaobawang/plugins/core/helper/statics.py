@@ -1,10 +1,10 @@
-import json
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
-from sqlalchemy import func, text, select
+import json
+from typing import Any
 
-from nonebot_plugin_orm import get_session
 from nonebot import logger
+from nonebot_plugin_orm import get_session
+from sqlalchemy import func, select, text
 
 from ..db.models.record import CommandRecord, KillmailPushRecord
 
@@ -15,11 +15,7 @@ class DataAnalysisHelper:
     """
 
     @classmethod
-    async def get_command_stats(
-            cls,
-            days: int = 7,
-            group_by: str = "day"
-    ) -> Dict[str, Any]:
+    async def get_command_stats(cls, days: int = 7, group_by: str = "day") -> dict[str, Any]:
         """
         获取指定天数内的命令使用统计
 
@@ -34,85 +30,57 @@ class DataAnalysisHelper:
 
                 if group_by == "day":
                     query = (
-                        select(
-                            func.strftime('%Y-%m-%d', CommandRecord.time).label("day"),
-                            func.count().label("count")
-                        )
+                        select(func.strftime("%Y-%m-%d", CommandRecord.time).label("day"), func.count().label("count"))
                         .where(CommandRecord.time >= start_date)
                         .group_by(text("day"))
                         .order_by(text("day"))
                     )
                     result = await session.execute(query)
-                    data = [{"日期": row.day, "命令数": row.count}
-                            for row in result.fetchall()]
+                    data = [{"日期": row.day, "命令数": row.count} for row in result.fetchall()]
 
                 elif group_by == "hour":
                     query = (
-                        select(
-                            func.strftime('%H', CommandRecord.time).label("hour"),
-                            func.count().label("count")
-                        )
+                        select(func.strftime("%H", CommandRecord.time).label("hour"), func.count().label("count"))
                         .where(CommandRecord.time >= start_date)
                         .group_by(text("hour"))
                         .order_by(text("hour"))
                     )
                     result = await session.execute(query)
-                    data = [{"小时": f"{int(row.hour)}时", "命令数": row.count}
-                            for row in result.fetchall()]
+                    data = [{"小时": f"{int(row.hour)}时", "命令数": row.count} for row in result.fetchall()]
 
                 elif group_by == "command":
                     query = (
-                        select(
-                            CommandRecord.event,
-                            func.count().label("count")
-                        )
+                        select(CommandRecord.event, func.count().label("count"))
                         .where(CommandRecord.time >= start_date)
                         .group_by(CommandRecord.event)
                         .order_by(text("count DESC"))
                         .limit(10)
                     )
                     result = await session.execute(query)
-                    data = [{"命令": row.event, "使用次数": row.count}
-                            for row in result.fetchall()]
+                    data = [{"命令": row.event, "使用次数": row.count} for row in result.fetchall()]
 
                 elif group_by == "source":
                     query = (
-                        select(
-                            CommandRecord.source,
-                            func.count().label("count")
-                        )
+                        select(CommandRecord.source, func.count().label("count"))
                         .where(CommandRecord.time >= start_date)
                         .group_by(CommandRecord.source)
                         .order_by(text("count DESC"))
                     )
                     result = await session.execute(query)
-                    data = [{"来源": row.source, "命令数": row.count}
-                            for row in result.fetchall()]
+                    data = [{"来源": row.source, "命令数": row.count} for row in result.fetchall()]
 
-                total_query = (
-                    select(func.count())
-                    .select_from(CommandRecord)
-                    .where(CommandRecord.time >= start_date)
-                )
+                total_query = select(func.count()).select_from(CommandRecord).where(CommandRecord.time >= start_date)
                 total_result = await session.execute(total_query)
                 total_count = total_result.scalar() or 0
 
-                return {
-                    "total_count": total_count,
-                    "data": data,
-                    "period": f"过去{days}天"
-                }
+                return {"total_count": total_count, "data": data, "period": f"过去{days}天"}
 
         except Exception as e:
             logger.error(f"获取命令统计数据失败: {e}")
             return {"error": f"获取数据失败: {e}", "data": [], "total_count": 0}
 
     @classmethod
-    async def get_killmail_push_stats(
-            cls,
-            days: int = 7,
-            group_by: str = "day"
-    ) -> Dict[str, Any]:
+    async def get_killmail_push_stats(cls, days: int = 7, group_by: str = "day") -> dict[str, Any]:
         """
         获取指定天数内的击杀邮件推送统计
 
@@ -128,30 +96,24 @@ class DataAnalysisHelper:
                 if group_by == "day":
                     query = (
                         select(
-                            func.strftime('%Y-%m-%d', KillmailPushRecord.time).label("day"),
-                            func.count().label("count")
+                            func.strftime("%Y-%m-%d", KillmailPushRecord.time).label("day"), func.count().label("count")
                         )
                         .where(KillmailPushRecord.time >= start_date)
                         .group_by(text("day"))
                         .order_by(text("day"))
                     )
                     result = await session.execute(query)
-                    data = [{"日期": row.day, "推送数": row.count}
-                            for row in result.fetchall()]
+                    data = [{"日期": row.day, "推送数": row.count} for row in result.fetchall()]
 
                 elif group_by == "platform":
                     query = (
-                        select(
-                            KillmailPushRecord.platform,
-                            func.count().label("count")
-                        )
+                        select(KillmailPushRecord.platform, func.count().label("count"))
                         .where(KillmailPushRecord.time >= start_date)
                         .group_by(KillmailPushRecord.platform)
                         .order_by(text("count DESC"))
                     )
                     result = await session.execute(query)
-                    data = [{"平台": row.platform, "推送数": row.count}
-                            for row in result.fetchall()]
+                    data = [{"平台": row.platform, "推送数": row.count} for row in result.fetchall()]
 
                 elif group_by == "session":
                     query = (
@@ -159,7 +121,7 @@ class DataAnalysisHelper:
                             KillmailPushRecord.session_id,
                             KillmailPushRecord.session_type,
                             KillmailPushRecord.platform,
-                            func.count().label("count")
+                            func.count().label("count"),
                         )
                         .where(KillmailPushRecord.time >= start_date)
                         .group_by(KillmailPushRecord.session_id, KillmailPushRecord.session_type)
@@ -167,29 +129,30 @@ class DataAnalysisHelper:
                         .limit(10)
                     )
                     result = await session.execute(query)
-                    data = [{"会话ID": row.session_id, "平台": row.platform, "会话类型": row.session_type, "推送数": row.count}
-                            for row in result.fetchall()]
+                    data = [
+                        {
+                            "会话ID": row.session_id,
+                            "平台": row.platform,
+                            "会话类型": row.session_type,
+                            "推送数": row.count,
+                        }
+                        for row in result.fetchall()
+                    ]
 
                 total_query = (
-                    select(func.count())
-                    .select_from(KillmailPushRecord)
-                    .where(KillmailPushRecord.time >= start_date)
+                    select(func.count()).select_from(KillmailPushRecord).where(KillmailPushRecord.time >= start_date)
                 )
                 total_result = await session.execute(total_query)
                 total_count = total_result.scalar() or 0
 
-                return {
-                    "total_count": total_count,
-                    "data": data,
-                    "period": f"过去{days}天"
-                }
+                return {"total_count": total_count, "data": data, "period": f"过去{days}天"}
 
         except Exception as e:
             logger.error(f"获取击杀邮件推送统计数据失败: {e}")
             return {"error": f"获取数据失败: {e}", "data": [], "total_count": 0}
 
     @classmethod
-    async def get_active_users(cls, days: int = 7) -> Dict[str, Any]:
+    async def get_active_users(cls, days: int = 7) -> dict[str, Any]:
         """
         获取最活跃的用户统计
         :param days: 查询的天数范围
@@ -200,30 +163,23 @@ class DataAnalysisHelper:
                 start_date = datetime.now() - timedelta(days=days)
 
                 query = (
-                    select(
-                        CommandRecord.sender,
-                        func.count().label("count")
-                    )
+                    select(CommandRecord.sender, func.count().label("count"))
                     .where(CommandRecord.time >= start_date)
                     .group_by(CommandRecord.sender)
                     .order_by(text("count DESC"))
                 )
                 result = await session.execute(query)
 
-                active_users = [{"用户": row.sender, "命令数": row.count}
-                                for row in result.fetchall()]
+                active_users = [{"用户": row.sender, "命令数": row.count} for row in result.fetchall()]
 
-                return {
-                    "data": active_users,
-                    "period": f"过去{days}天"
-                }
+                return {"data": active_users, "period": f"过去{days}天"}
 
         except Exception as e:
             logger.error(f"获取活跃用户统计失败: {e}")
             return {"error": f"获取数据失败: {e}", "data": []}
 
     @classmethod
-    async def get_usage_trend(cls, days: int = 30) -> Dict[str, Any]:
+    async def get_usage_trend(cls, days: int = 30) -> dict[str, Any]:
         """
         获取使用趋势统计（按天统计命令数和击杀邮件推送数）
         :param days: 查询的天数范围
@@ -234,10 +190,7 @@ class DataAnalysisHelper:
                 start_date = datetime.now() - timedelta(days=days)
 
                 cmd_query = (
-                    select(
-                        func.strftime('%Y-%m-%d', CommandRecord.time).label("day"),
-                        func.count().label("count")
-                    )
+                    select(func.strftime("%Y-%m-%d", CommandRecord.time).label("day"), func.count().label("count"))
                     .where(CommandRecord.time >= start_date)
                     .group_by(text("day"))
                     .order_by(text("day"))
@@ -246,10 +199,7 @@ class DataAnalysisHelper:
                 cmd_data = {row.day: row.count for row in cmd_result.fetchall()}
 
                 km_query = (
-                    select(
-                        func.strftime('%Y-%m-%d', KillmailPushRecord.time).label("day"),
-                        func.count().label("count")
-                    )
+                    select(func.strftime("%Y-%m-%d", KillmailPushRecord.time).label("day"), func.count().label("count"))
                     .where(KillmailPushRecord.time >= start_date)
                     .group_by(text("day"))
                     .order_by(text("day"))
@@ -257,28 +207,22 @@ class DataAnalysisHelper:
                 km_result = await session.execute(km_query)
                 km_data = {row.day: row.count for row in km_result.fetchall()}
 
-                date_range = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
-                              for i in range(days, 0, -1)]
+                date_range = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days, 0, -1)]
 
                 trend_data = []
                 for date in date_range:
-                    trend_data.append({
-                        "日期": date,
-                        "命令数": cmd_data.get(date, 0),
-                        "击杀邮件推送数": km_data.get(date, 0)
-                    })
+                    trend_data.append(
+                        {"日期": date, "命令数": cmd_data.get(date, 0), "击杀邮件推送数": km_data.get(date, 0)}
+                    )
 
-                return {
-                    "data": trend_data,
-                    "period": f"过去{days}天"
-                }
+                return {"data": trend_data, "period": f"过去{days}天"}
 
         except Exception as e:
             logger.error(f"获取使用趋势统计失败: {e}")
             return {"error": f"获取数据失败: {e}", "data": []}
 
     @classmethod
-    async def get_month_comparison(cls) -> Dict[str, Any]:
+    async def get_month_comparison(cls) -> dict[str, Any]:
         """
         获取当月与上月的数据对比
 
@@ -298,9 +242,7 @@ class DataAnalysisHelper:
 
                 # 统计当月命令数
                 current_cmd_query = (
-                    select(func.count())
-                    .select_from(CommandRecord)
-                    .where(CommandRecord.time >= current_month_start)
+                    select(func.count()).select_from(CommandRecord).where(CommandRecord.time >= current_month_start)
                 )
                 current_cmd_count = await session.execute(current_cmd_query)
                 current_cmd_count = current_cmd_count.scalar() or 0
@@ -309,10 +251,7 @@ class DataAnalysisHelper:
                 prev_cmd_query = (
                     select(func.count())
                     .select_from(CommandRecord)
-                    .where(
-                        CommandRecord.time >= prev_month_start,
-                        CommandRecord.time < current_month_start
-                    )
+                    .where(CommandRecord.time >= prev_month_start, CommandRecord.time < current_month_start)
                 )
                 prev_cmd_count = await session.execute(prev_cmd_query)
                 prev_cmd_count = prev_cmd_count.scalar() or 0
@@ -337,10 +276,7 @@ class DataAnalysisHelper:
                 prev_km_query = (
                     select(func.count())
                     .select_from(KillmailPushRecord)
-                    .where(
-                        KillmailPushRecord.time >= prev_month_start,
-                        KillmailPushRecord.time < current_month_start
-                    )
+                    .where(KillmailPushRecord.time >= prev_month_start, KillmailPushRecord.time < current_month_start)
                 )
                 prev_km_count = await session.execute(prev_km_query)
                 prev_km_count = prev_km_count.scalar() or 0
@@ -365,10 +301,7 @@ class DataAnalysisHelper:
                 prev_users_query = (
                     select(func.count(func.distinct(CommandRecord.sender)))
                     .select_from(CommandRecord)
-                    .where(
-                        CommandRecord.time >= prev_month_start,
-                        CommandRecord.time < current_month_start
-                    )
+                    .where(CommandRecord.time >= prev_month_start, CommandRecord.time < current_month_start)
                 )
                 prev_users_count = await session.execute(prev_users_query)
                 prev_users_count = prev_users_count.scalar() or 0
@@ -387,10 +320,8 @@ class DataAnalysisHelper:
                     .where(
                         CommandRecord.time >= current_month_start,
                         ~CommandRecord.sender.in_(
-                            select(CommandRecord.sender)
-                            .where(CommandRecord.time < current_month_start)
-                            .distinct()
-                        )
+                            select(CommandRecord.sender).where(CommandRecord.time < current_month_start).distinct()
+                        ),
                     )
                 )
                 new_users_count = await session.execute(new_users_query)
@@ -403,21 +334,21 @@ class DataAnalysisHelper:
                         "current": current_cmd_count,
                         "previous": prev_cmd_count,
                         "growth": cmd_growth,
-                        "growth_rate": round(cmd_growth_rate, 2)
+                        "growth_rate": round(cmd_growth_rate, 2),
                     },
                     "killmails": {
                         "current": current_km_count,
                         "previous": prev_km_count,
                         "growth": km_growth,
-                        "growth_rate": round(km_growth_rate, 2)
+                        "growth_rate": round(km_growth_rate, 2),
                     },
                     "active_users": {
                         "current": current_users_count,
                         "previous": prev_users_count,
                         "growth": users_growth,
                         "growth_rate": round(users_growth_rate, 2),
-                        "new_users": new_users_count
-                    }
+                        "new_users": new_users_count,
+                    },
                 }
 
         except Exception as e:
@@ -425,7 +356,7 @@ class DataAnalysisHelper:
             return {"error": f"获取数据失败: {e}"}
 
     @classmethod
-    async def get_user_statistics(cls, days: int = 30) -> Dict[str, Any]:
+    async def get_user_statistics(cls, days: int = 30) -> dict[str, Any]:
         """
         获取用户统计数据，包括总用户数、活跃用户数和新增用户数
 
@@ -436,10 +367,7 @@ class DataAnalysisHelper:
             async with get_session() as session:
                 start_date = datetime.now() - timedelta(days=days)
 
-                total_users_query = (
-                    select(func.count(func.distinct(CommandRecord.sender)))
-                    .select_from(CommandRecord)
-                )
+                total_users_query = select(func.count(func.distinct(CommandRecord.sender))).select_from(CommandRecord)
                 total_users_result = await session.execute(total_users_query)
                 total_users = total_users_result.scalar() or 0
 
@@ -457,10 +385,8 @@ class DataAnalysisHelper:
                     .where(
                         CommandRecord.time >= start_date,
                         ~CommandRecord.sender.in_(
-                            select(CommandRecord.sender)
-                            .where(CommandRecord.time < start_date)
-                            .distinct()
-                        )
+                            select(CommandRecord.sender).where(CommandRecord.time < start_date).distinct()
+                        ),
                     )
                 )
                 new_users_result = await session.execute(new_users_query)
@@ -472,8 +398,8 @@ class DataAnalysisHelper:
 
                 daily_new_users_query = (
                     select(
-                        func.strftime('%Y-%m-%d', CommandRecord.time).label("day"),
-                        func.count(func.distinct(CommandRecord.sender)).label("count")
+                        func.strftime("%Y-%m-%d", CommandRecord.time).label("day"),
+                        func.count(func.distinct(CommandRecord.sender)).label("count"),
                     )
                     .select_from(CommandRecord)
                     .where(CommandRecord.time >= start_date)
@@ -489,7 +415,7 @@ class DataAnalysisHelper:
                     "new_users": new_users,
                     "active_rate": round(active_rate, 2),
                     "daily_new_users": daily_new_users,
-                    "period": f"过去{days}天"
+                    "period": f"过去{days}天",
                 }
 
         except Exception as e:
@@ -497,7 +423,7 @@ class DataAnalysisHelper:
             return {"error": f"获取数据失败: {e}"}
 
     @classmethod
-    async def generate(cls, days: int = 30) -> Optional[dict]:
+    async def generate(cls, days: int = 30) -> dict | None:
         """
         生成完整的报表
 
@@ -545,19 +471,19 @@ class DataAnalysisHelper:
                     "by_day": command_stats_day,
                     "by_hour": command_stats_hour,
                     "by_command": command_stats_cmd,
-                    "by_source": command_stats_source
+                    "by_source": command_stats_source,
                 },
                 "killmail_stats": {
                     "total": killmail_stats_day.get("total_count", 0),
                     "by_day": killmail_stats_day,
                     "by_platform": killmail_stats_platform,
-                    "by_session": killmail_stats_session
+                    "by_session": killmail_stats_session,
                 },
                 "active_users": active_users,
                 "usage_trend": usage_trend,
                 "month_comparison": month_comparison,
                 "user_statistics": user_statistics,
-                "chart_data": chart_data
+                "chart_data": chart_data,
             }
 
             return report_data
@@ -565,5 +491,6 @@ class DataAnalysisHelper:
         except Exception as e:
             logger.error(f"生成HTML报表失败: {e}")
             return None
+
 
 data_analysis = DataAnalysisHelper()

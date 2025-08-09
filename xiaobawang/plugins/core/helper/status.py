@@ -1,11 +1,11 @@
-from typing import Optional, Dict, Any
+from typing import Any
 
-from nonebot import require, logger
+from nonebot import logger, require
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_orm import get_session
-from sqlalchemy import Sequence, Select
-from sqlalchemy.ext.asyncio import AsyncSession
 from nonebot_plugin_uninfo import Uninfo
+from sqlalchemy import Select, Sequence
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..api.esi.universe import esi_client
 from ..db.models.event_sub import EVEServerStatusSub
@@ -22,14 +22,12 @@ class EVEServerStatus:
     """
 
     def __init__(self):
-        self.status: Optional[Dict[str, Any]] = None
-        self.api_status: Optional[Dict[str, Any]] = None
+        self.status: dict[str, Any] | None = None
+        self.api_status: dict[str, Any] | None = None
 
-        self.previous_server_online: Optional[bool] = None
+        self.previous_server_online: bool | None = None
 
-        scheduler.add_job(
-            self.check, "cron", second="*/30", id="eve_server_status_check"
-        )
+        scheduler.add_job(self.check, "cron", second="*/30", id="eve_server_status_check")
 
     async def check(self):
         """
@@ -39,7 +37,7 @@ class EVEServerStatus:
             self.status = await esi_client.get_server_status()
             self.api_status = await esi_client.get_api_status()
         except Exception as e:
-            logger.error(f"获取EVE服务器状态失败: {str(e)}")
+            logger.error(f"获取EVE服务器状态失败: {e!s}")
             raise e
 
         if self.status:
@@ -57,7 +55,9 @@ class EVEServerStatus:
 
         if current_online != self.previous_server_online:
             logger.info(
-                f"EVE服务器状态变化: 从{'在线' if self.previous_server_online else '离线'}变为{'在线' if current_online else '离线'}")
+                f"EVE服务器状态变化:"
+                f" 从{'在线' if self.previous_server_online else '离线'}变为{'在线' if current_online else '离线'}"
+            )
             await self.notify_status_change()
             self.previous_server_online = current_online
 
@@ -68,10 +68,7 @@ class EVEServerStatus:
         """
         try:
             async with get_session() as session:
-                subs = await self.get_subs(
-                    session=session,
-                    is_enabled=True
-                )
+                subs = await self.get_subs(session=session, is_enabled=True)
 
                 if not subs:
                     logger.info("没有找到活跃的EVE服务器状态订阅")
@@ -87,13 +84,13 @@ class EVEServerStatus:
                             bot_id=sub.bot_id,
                             session_id=sub.session_id,
                             session_type=sub.session_type,
-                            msg=UniMessage(status_message)
+                            msg=UniMessage(status_message),
                         )
                         logger.debug(f"向订阅 {sub.platform}:{sub.session_id} 推送状态变化成功")
                     except Exception as e:
-                        logger.error(f"向订阅 {sub.platform}:{sub.session_id} 推送状态变化失败: {str(e)}")
+                        logger.error(f"向订阅 {sub.platform}:{sub.session_id} 推送状态变化失败: {e!s}")
         except Exception as e:
-            logger.error(f"推送EVE服务器状态变化通知时出错: {str(e)}")
+            logger.error(f"推送EVE服务器状态变化通知时出错: {e!s}")
 
     @classmethod
     async def add_sub(cls, session: AsyncSession, user_info: Uninfo) -> bool:
@@ -105,10 +102,10 @@ class EVEServerStatus:
         """
         result = await session.execute(
             Select(EVEServerStatusSub).where(
-                (EVEServerStatusSub.platform == user_info.adapter) &
-                (EVEServerStatusSub.bot_id == user_info.self_id) &
-                (EVEServerStatusSub.session_id == user_info.scene.id) &
-                (EVEServerStatusSub.session_type == user_info.scene.type)
+                (EVEServerStatusSub.platform == user_info.adapter)
+                & (EVEServerStatusSub.bot_id == user_info.self_id)
+                & (EVEServerStatusSub.session_id == user_info.scene.id)
+                & (EVEServerStatusSub.session_type == user_info.scene.type)
             )
         )
 
@@ -121,7 +118,7 @@ class EVEServerStatus:
             bot_id=user_info.self_id,
             session_id=user_info.scene.id,
             session_type=user_info.scene.type,
-            is_enabled=True
+            is_enabled=True,
         )
 
         session.add(sub)
@@ -139,11 +136,11 @@ class EVEServerStatus:
         """
         result = await session.execute(
             Select(EVEServerStatusSub).where(
-                (EVEServerStatusSub.platform == user_info.adapter) &
-                (EVEServerStatusSub.bot_id == user_info.self_id) &
-                (EVEServerStatusSub.session_id == user_info.scene.id) &
-                (EVEServerStatusSub.session_type == user_info.scene.type) &
-                (EVEServerStatusSub.is_enabled == True)
+                (EVEServerStatusSub.platform == user_info.adapter)
+                & (EVEServerStatusSub.bot_id == user_info.self_id)
+                & (EVEServerStatusSub.session_id == user_info.scene.id)
+                & (EVEServerStatusSub.session_type == user_info.scene.type)
+                & (EVEServerStatusSub.is_enabled.is_(True))
             )
         )
 
@@ -158,11 +155,11 @@ class EVEServerStatus:
 
     @classmethod
     async def get_subs(
-            cls,
-            session: AsyncSession,
-            platform: str = None,
-            bot_id: str = None,
-            is_enabled: bool = True
+        cls,
+        session: AsyncSession,
+        platform: str | None = None,
+        bot_id: str | None = None,
+        is_enabled: bool | None = True,
     ) -> Sequence[EVEServerStatusSub]:
         """
         获取服务器状态订阅列表，可按条件筛选
@@ -195,14 +192,18 @@ class EVEServerStatus:
     def __str__(self) -> str:
         server_status = self.status
         api_status = self.api_status
-        msg = f"""EVE Tranquility Status\n"""
+        msg = """EVE Tranquility Status\n"""
         if server_status.get("players", 0):
             vip = "\nVIP MODE: ON" if server_status.get("vip", False) else ""
-            msg += f"""------\nServer Status: ON{vip}\n - Online Players: {server_status['players']}\n - Version: {server_status['server_version']}\n"""
+            msg += f"""------\nServer Status: ON{vip}\n
+             - Online Players: {server_status["players"]}\n
+              - Version: {server_status["server_version"]}\n"""
         else:
-            msg += f"""------\nServer Status: OFF\n"""
+            msg += """------\nServer Status: OFF\n"""
         if api_status:
-            msg += f"""------\nAPI Status:\n - 🟢 {api_status['green']} 🟡 {api_status['yellow']} 🔴 {api_status['red']}\n - Total: {api_status['total']}\n"""
+            msg += f"""------\nAPI Status:\n
+             - 🟢 {api_status["green"]} 🟡 {api_status["yellow"]} 🔴 {api_status["red"]}\n
+              - Total: {api_status["total"]}\n"""
         return msg
 
 

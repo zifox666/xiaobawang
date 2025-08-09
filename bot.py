@@ -1,7 +1,6 @@
 import nonebot
 from nonebot import logger
 
-
 logger.add(
     "./data/xiaobawang.log",
     level="INFO",
@@ -19,14 +18,14 @@ try:
     from nonebot.adapters.onebot.v11 import Adapter as ONEBOT_V11Adapter
 
     driver.register_adapter(ONEBOT_V11Adapter)
-except:
+except Exception:
     logger.info("onebot 适配器未安装")
 
 try:
     from nonebot.adapters.telegram import Adapter as TELEGRAMAdapter
 
     driver.register_adapter(TELEGRAMAdapter)
-except:
+except Exception:
     logger.info("telegram 适配器未安装")
 
 

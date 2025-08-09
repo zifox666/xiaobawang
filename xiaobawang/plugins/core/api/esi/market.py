@@ -1,14 +1,13 @@
 import asyncio
-import traceback
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+import traceback
+from typing import Any
 
 from nonebot import logger, require
-from sqlalchemy import Delete
 
+from ...config import plugin_config
 from ...utils.common.cache import cache
 from ...utils.common.http_client import get_client
-from ...config import plugin_config
 
 require("nonebot_plugin_apscheduler")
 
@@ -22,15 +21,13 @@ class MarketHandle:
 
         if plugin_config.EVE_MARKET_API == "esi_cache":
             logger.info("启用定时市场缓存")
-            scheduler.add_job(
-                self._market_refresh_mission, "cron", minute='*/30', id="market_refresh_mission"
-            )
+            scheduler.add_job(self._market_refresh_mission, "cron", minute="*/30", id="market_refresh_mission")
 
     async def _mult_get(
-            self,
-            region_id: int = 10000002,
-            type_id: int = 0,
-    ) -> List[Dict[str, Any]]:
+        self,
+        region_id: int = 10000002,
+        type_id: int = 0,
+    ) -> list[dict[str, Any]]:
         """
         并发获取多页数据
         :param region_id: 区域ID
@@ -72,7 +69,7 @@ class MarketHandle:
             logger.error(f"获取市场数据失败: {e}\n{traceback.format_exc()}")
             return []
 
-    async def _get_market_page(self, url: str, params: dict) -> List[Dict[str, Any]]:
+    async def _get_market_page(self, url: str, params: dict) -> list[dict[str, Any]]:
         """
         获取市场数据的单个页面
         :param url: 请求URL
@@ -89,17 +86,14 @@ class MarketHandle:
             return []
 
     @classmethod
-    async def _process_market_data(
-            cls,
-            orders: List[Dict[str, Any]]
-    ) -> Dict[int, Dict[str, Any]]:
+    async def _process_market_data(cls, orders: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
         """
         处理市场数据，按type_id分类，找出最高买单和最低卖单
 
         :param orders: 市场订单列表
         :return: 按type_id分类的市场数据字典
         """
-        result: Dict = {}
+        result: dict = {}
 
         for order in orders:
             type_id = order["type_id"]
@@ -111,7 +105,7 @@ class MarketHandle:
                     "highest_buy": None,
                     "lowest_sell": None,
                     "buy_volume": 0,
-                    "sell_volume": 0
+                    "sell_volume": 0,
                 }
 
             if order["is_buy_order"]:
@@ -127,7 +121,7 @@ class MarketHandle:
                 data["highest_buy"] = {
                     "price": data["buy_orders"][0]["price"],
                     "volume_remain": data["buy_orders"][0]["volume_remain"],
-                    "buy_volume_remain": data["buy_volume"]
+                    "buy_volume_remain": data["buy_volume"],
                 }
 
             if data["sell_orders"]:
@@ -135,7 +129,7 @@ class MarketHandle:
                 data["lowest_sell"] = {
                     "price": data["sell_orders"][0]["price"],
                     "volume_remain": data["sell_orders"][0]["volume_remain"],
-                    "sell_volume_remain": data["sell_volume"]
+                    "sell_volume_remain": data["sell_volume"],
                 }
 
             data.pop("buy_orders")
@@ -149,10 +143,7 @@ class MarketHandle:
         market_data = await self._mult_get()
         processed_data = await self._process_market_data(market_data)
 
-        cache_dict = {
-            f"market:10000002:{type_id}": data
-            for type_id, data in processed_data.items()
-        }
+        cache_dict = {f"market:10000002:{type_id}": data for type_id, data in processed_data.items()}
 
         await cache.mset(cache_dict, 3600)
 
@@ -166,9 +157,9 @@ class MarketHandle:
         logger.info(f"定时缓存任务完成，共缓存 {len(processed_data)} 条市场数据")
 
     async def get_price(
-            self,
-            type_ids: list[int | str],
-            region_id: int = 10000002,
+        self,
+        type_ids: list[int | str],
+        region_id: int = 10000002,
     ):
         """
         获取市场数据
@@ -176,10 +167,10 @@ class MarketHandle:
         :param region_id: 区域ID
         :return: 市场数据字典
         """
-        result: Dict = {}
+        result: dict = {}
         for type_id in type_ids:
             cache_key = f"market:{region_id}:{type_id}"
-            result[type_id] =  await cache.get(cache_key)
+            result[type_id] = await cache.get(cache_key)
 
             if result[type_id] is None:
                 logger.debug(f"缓存未命中 region_id: {region_id} type_id: {type_id}")
@@ -196,10 +187,10 @@ class MarketHandle:
         await self._market_refresh_mission()
 
     async def get_history(
-            self,
-            type_id: int,
-            region_id: int = 10000002,
-    ) -> Optional[Dict[str, Any]]:
+        self,
+        type_id: int,
+        region_id: int = 10000002,
+    ) -> dict[str, Any] | None:
         """
         获取市场历史数据
         :param type_id: 物品ID
@@ -230,10 +221,13 @@ class MarketHandle:
                 "region_id": region_id,
                 "history": filtered_data,
                 "total_volume": sum(item["volume"] for item in filtered_data),
-                "avg_price": sum(item["average"] * item["volume"] for item in filtered_data) /
-                             (sum(item["volume"] for item in filtered_data) if sum(
-                                 item["volume"] for item in filtered_data) > 0 else 1),
-                "updated_at": datetime.now().isoformat()
+                "avg_price": sum(item["average"] * item["volume"] for item in filtered_data)
+                / (
+                    sum(item["volume"] for item in filtered_data)
+                    if sum(item["volume"] for item in filtered_data) > 0
+                    else 1
+                ),
+                "updated_at": datetime.now().isoformat(),
             }
 
             await cache.set(cache_key, result, 24 * 3600)

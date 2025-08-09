@@ -1,37 +1,28 @@
 import asyncio
-from arclet.alconna import Alconna, Subcommand, Args, MultiVar, Option, CommandMeta, Arparma
-from nonebot.permission import SUPERUSER
 
+from arclet.alconna import Alconna, Args, Arparma, CommandMeta, MultiVar, Option, Subcommand
+from nonebot import logger
+from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import on_alconna
 from nonebot_plugin_orm import AsyncSession
-from nonebot import logger
-from nonebot_plugin_uninfo import Uninfo, SceneType
+from nonebot_plugin_uninfo import SceneType, Uninfo
 
 from ..api.esi.universe import esi_client
 from ..helper.subscription import KillmailSubscriptionManager
 from ..helper.zkb.listener import zkb_listener
 
-
-__all__ = ["start_km_listen", "sub", "sub_high", "start_km_listen_", "stop_km_listen_"]
-
-
-start_km_alc = Alconna(
-    "wss",
-    Subcommand("start"),
-    Subcommand("stop")
-)
+__all__ = ["start_km_listen", "start_km_listen_", "stop_km_listen_", "sub", "sub_high"]
 
 
-start_km_listen = on_alconna(
-    start_km_alc,
-    use_cmd_start=True,
-    permission=SUPERUSER
-)
+start_km_alc = Alconna("wss", Subcommand("start"), Subcommand("stop"))
+
+
+start_km_listen = on_alconna(start_km_alc, use_cmd_start=True, permission=SUPERUSER)
 
 
 @start_km_listen.assign("start")
 async def start_km_listen_():
-    _ = asyncio.create_task(zkb_listener.start())
+    _ = asyncio.create_task(zkb_listener.start())  # noqa: RUF006
     logger.info("开始监听zkb")
 
 
@@ -60,20 +51,16 @@ sub = on_alconna(
         "sub",
         Subcommand(
             "add",
-            Args['type', str]['name', MultiVar(str)],
+            Args["type", str]["name", MultiVar(str)],
             Option("-a|--attack", Args["value", int, 30_000_000]),
             Option("-v|--victim", Args["value", int, 30_000_000]),
         ),
         Subcommand(
             "remove",
-            Args['type', str]['name', MultiVar(str)],
+            Args["type", str]["name", MultiVar(str)],
         ),
-        Subcommand(
-            "list"
-        ),
-        meta=CommandMeta(
-            fuzzy_match=True
-        )
+        Subcommand("list"),
+        meta=CommandMeta(fuzzy_match=True),
     ),
     use_cmd_start=True,
 )
@@ -84,9 +71,7 @@ sub_high = on_alconna(
         "sub_high",
         Args["value", int, 18_000_000_000],
         Option("-r|--remove", help_text="移除高价值订阅"),
-        meta=CommandMeta(
-            fuzzy_match=True
-        )
+        meta=CommandMeta(fuzzy_match=True),
     ),
     use_cmd_start=True,
 )
@@ -94,12 +79,12 @@ sub_high = on_alconna(
 
 @sub.assign("add")
 async def _add_sub(
-        result: Arparma,
-        user_info: Uninfo,
-        session: AsyncSession,
+    result: Arparma,
+    user_info: Uninfo,
+    session: AsyncSession,
 ):
     if user_info.member and user_info.member.role.id not in ["CHANNEL_ADMINISTRATOR", "ADMINISTRATOR", "OWNER"]:
-        await sub.finish(f"你还不是群管理员，无法使用此功能")
+        await sub.finish("你还不是群管理员，无法使用此功能")
 
     platform = user_info.adapter
     target_name = " ".join(result.name)
@@ -108,7 +93,7 @@ async def _add_sub(
             type_=f"{category_type_list[result.type]}s",
             name=target_name,
         )
-    except:
+    except Exception:
         await sub.finish(f"[{target_name}]不存在，请检查")
 
     if id_data.get("id"):
@@ -118,12 +103,12 @@ async def _add_sub(
         session_id = user_info.scene.id
         session_type = user_info.scene.type
 
-        attack_limit = result.add.options.get('attack').args.get('value')
-        victim_limit = result.add.options.get('victim').args.get('value')
+        attack_limit = result.add.options.get("attack").args.get("value")
+        victim_limit = result.add.options.get("victim").args.get("value")
 
         async with session:
             sub_manager = KillmailSubscriptionManager(session)
-            if int(attack_limit) != int(0):
+            if int(attack_limit) != 0:
                 attack_limit = attack_limit if attack_limit >= 20_000_000 else 50_000_000
 
                 a_flag = await sub_manager.add_subscription(
@@ -138,7 +123,7 @@ async def _add_sub(
                     min_value=attack_limit,
                     is_victim=False,
                 )
-            if int(victim_limit) != int(0):
+            if int(victim_limit) != 0:
                 victim_limit = victim_limit if victim_limit >= 20_000_000 else 50_000_000
 
                 v_flag = await sub_manager.add_subscription(
@@ -159,25 +144,25 @@ async def _add_sub(
 [{platform}]{user_info.self_id}
 [{SceneType(user_info.scene.type).name}]{session_id}
 [{category_type_list[result.type]}]{target_name}({target_id})
-[击杀推送阈值]{attack_limit if a_flag else '关闭'}
-[损失推送阈值]{victim_limit if v_flag else '关闭'}""")
+[击杀推送阈值]{attack_limit if a_flag else "关闭"}
+[损失推送阈值]{victim_limit if v_flag else "关闭"}""")
 
             await sub.finish(f"""订阅已增加
 [{platform}]{user_info.self_id}
 [{SceneType(user_info.scene.type).name}]{session_id}
 [{category_type_list[result.type]}]{target_name}({target_id})
-[击杀推送阈值]{attack_limit if a_flag else '关闭'}
-[损失推送阈值]{victim_limit if v_flag else '关闭'}""")
+[击杀推送阈值]{attack_limit if a_flag else "关闭"}
+[损失推送阈值]{victim_limit if v_flag else "关闭"}""")
 
 
 @sub.assign("remove")
 async def _remove_sub(
-        result: Arparma,
-        user_info: Uninfo,
-        session: AsyncSession,
+    result: Arparma,
+    user_info: Uninfo,
+    session: AsyncSession,
 ):
     if user_info.member and user_info.member.role.id not in ["CHANNEL_ADMINISTRATOR", "ADMINISTRATOR", "OWNER"]:
-        await sub.finish(f"你还不是群管理员，无法使用此功能")
+        await sub.finish("你还不是群管理员，无法使用此功能")
 
     platform = user_info.adapter
     target_name = " ".join(result.name)
@@ -186,7 +171,7 @@ async def _remove_sub(
             type_=f"{category_type_list[result.type]}s",
             name=target_name,
         )
-    except:
+    except Exception:
         await sub.finish(f"[{target_name}]不存在，请检查")
 
     if id_data.get("id"):
@@ -200,19 +185,14 @@ async def _remove_sub(
             sub_manager = KillmailSubscriptionManager(session)
 
             subscriptions = await sub_manager.get_session_subscriptions(
-                platform=platform,
-                bot_id=user_info.self_id,
-                session_id=session_id,
-                session_type=session_type
+                platform=platform, bot_id=user_info.self_id, session_id=session_id, session_type=session_type
             )
 
             removed = False
             for cond_sub in subscriptions["condition_subscriptions"]:
-                if (cond_sub["target_type"] == category_type_list[result.type] and
-                        cond_sub["target_id"] == target_id):
+                if cond_sub["target_type"] == category_type_list[result.type] and cond_sub["target_id"] == target_id:
                     sub_removed = await sub_manager.remove_subscription(
-                        subscription_id=cond_sub["id"],
-                        sub_type="condition"
+                        subscription_id=cond_sub["id"], sub_type="condition"
                     )
                     if sub_removed:
                         removed = True
@@ -227,17 +207,17 @@ async def _remove_sub(
 [{SceneType(user_info.scene.type).name}]{session_id}
 [{category_type_list[result.type]}]{target_name}({target_id})""")
         else:
-            await sub.finish(f"没有找到符合条件的订阅")
+            await sub.finish("没有找到符合条件的订阅")
 
 
 @sub_high.handle()
 async def _handle_sub_high(
-        result: Arparma,
-        user_info: Uninfo,
-        session: AsyncSession,
+    result: Arparma,
+    user_info: Uninfo,
+    session: AsyncSession,
 ):
     if user_info.member and user_info.member.role.id not in ["CHANNEL_ADMINISTRATOR", "ADMINISTRATOR", "OWNER"]:
-        await sub.finish(f"你还不是群管理员，无法使用此功能")
+        await sub.finish("你还不是群管理员，无法使用此功能")
 
     platform = user_info.adapter
     session_id = user_info.scene.id
@@ -245,18 +225,14 @@ async def _handle_sub_high(
 
     async with session:
         sub_manager = KillmailSubscriptionManager(session)
-        if result.options.get('remove'):
+        if result.options.get("remove"):
             subscriptions = await sub_manager.get_session_subscriptions(
-                platform=platform,
-                bot_id=user_info.self_id,
-                session_id=session_id,
-                session_type=session_type
+                platform=platform, bot_id=user_info.self_id, session_id=session_id, session_type=session_type
             )
 
             if subscriptions["high_value_subscription"]:
                 removed = await sub_manager.remove_subscription(
-                    subscription_id=subscriptions["high_value_subscription"]["id"],
-                    sub_type="high_value"
+                    subscription_id=subscriptions["high_value_subscription"]["id"], sub_type="high_value"
                 )
 
                 if removed:
@@ -280,7 +256,7 @@ async def _handle_sub_high(
                 session_id=session_id,
                 session_type=session_type,
                 sub_type="high_value",
-                min_value=min_value
+                min_value=min_value,
             )
 
             if added:
@@ -298,15 +274,15 @@ async def _handle_sub_high(
 
 @sub.assign("list")
 async def _handle_sub_list(
-        user_info: Uninfo,
-        session: AsyncSession,
+    user_info: Uninfo,
+    session: AsyncSession,
 ):
     sub_manager = KillmailSubscriptionManager(session)
     data = await sub_manager.get_session_subscriptions(
         platform=user_info.adapter,
         bot_id=user_info.self_id,
         session_id=user_info.scene.id,
-        session_type=user_info.scene.type
+        session_type=user_info.scene.type,
     )
 
     result_parts = ["当前订阅列表："]
@@ -314,7 +290,9 @@ async def _handle_sub_list(
     hv_sub = data["high_value_subscription"]
     if hv_sub:
         min_value = hv_sub["min_value"]
-        value_str = f"{min_value / 1_000_000_000:.2f}B" if min_value >= 1_000_000_000 else f"{min_value / 1_000_000:.2f}M"
+        value_str = (
+            f"{min_value / 1_000_000_000:.2f}B" if min_value >= 1_000_000_000 else f"{min_value / 1_000_000:.2f}M"
+        )
         result_parts.append(f"● 高价值击杀订阅 (最低{value_str})")
 
     if data["condition_subscriptions"]:
@@ -328,7 +306,7 @@ async def _handle_sub_list(
                     "name": cond["target_name"],
                     "type": cond["target_type"],
                     "attack": None,
-                    "victim": None
+                    "victim": None,
                 }
 
             value = cond["min_value"]
@@ -345,7 +323,7 @@ async def _handle_sub_list(
                 "corporation": "军团",
                 "alliance": "联盟",
                 "system": "星系",
-                "inventory_type": "舰船"
+                "inventory_type": "舰船",
             }.get(target["type"], target["type"])
 
             attack_str = f"击杀 {target['attack']}" if target["attack"] else "击杀 关闭"
@@ -359,4 +337,3 @@ async def _handle_sub_list(
 
     result_text = "\n".join(result_parts)
     await sub.finish(result_text)
-

@@ -1,9 +1,11 @@
-from sqlalchemy import Column, Integer, String, Text, Float, Boolean, Numeric, Index
+from sqlalchemy import Boolean, Column, Float, Index, Integer, Numeric, String, Text
+
 from .db import Base
 
 TC_TYPES_ID = 8
 TC_GROUP_ID = 7
 TC_CATEGORY_ID = 6
+
 
 class InvFlags(Base):
     __tablename__ = "invFlags"
@@ -12,6 +14,7 @@ class InvFlags(Base):
     flagName = Column(String(200))
     flagText = Column(String(100))
     orderID = Column(Integer)
+
 
 class InvTypes(Base):
     __tablename__ = "invTypes"
@@ -32,9 +35,8 @@ class InvTypes(Base):
     soundID = Column(Integer)
     graphicID = Column(Integer)
 
-    __table_args__ = (
-        Index("ix_invTypes_groupID", "groupID"),
-    )
+    __table_args__ = (Index("ix_invTypes_groupID", "groupID"),)
+
 
 class InvGroups(Base):
     __tablename__ = "invGroups"
@@ -49,9 +51,8 @@ class InvGroups(Base):
     fittableNonSingleton = Column(Boolean)
     published = Column(Boolean)
 
-    __table_args__ = (
-        Index("ix_invGroups_categoryID", "categoryID"),
-    )
+    __table_args__ = (Index("ix_invGroups_categoryID", "categoryID"),)
+
 
 class InvCategories(Base):
     __tablename__ = "invCategories"
@@ -60,6 +61,7 @@ class InvCategories(Base):
     categoryName = Column(String(100))
     iconID = Column(Integer)
     published = Column(Boolean)
+
 
 class TrnTranslations(Base):
     __tablename__ = "trnTranslations"

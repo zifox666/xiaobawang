@@ -1,22 +1,17 @@
 import asyncio
 
 import httpx
-from typing import Optional
-
 from httpx import AsyncClient
 from nonebot import logger
 
-from ...config import plugin_config, HEADERS
+from ...config import HEADERS, plugin_config
 
 # 全局客户端实例
-_client: Optional[httpx.AsyncClient] = None
+_client: httpx.AsyncClient | None = None
 
 
 async def init_client(
-        timeout: float = 30.0,
-        max_connections: int = 1000,
-        max_keepalive_connections: int = 200,
-        **kwargs
+    timeout: float = 30.0, max_connections: int = 1000, max_keepalive_connections: int = 200, **kwargs
 ) -> AsyncClient:
     """初始化全局httpx异步客户端"""
     global _client
@@ -25,19 +20,14 @@ async def init_client(
         logger.warning("HTTP客户端已经初始化，将重新初始化")
         await close_client()
 
-    logger.info(f"初始化HTTP异步客户端 (timeout={timeout}s, max_connections={max_connections}, proxy={plugin_config.proxy}, headers={HEADERS})")
-    limits = httpx.Limits(
-        max_connections=max_connections,
-        max_keepalive_connections=max_keepalive_connections
+    logger.info(
+        f"初始化HTTP异步客户端 "
+        f"(timeout={timeout}s, max_connections={max_connections}, proxy={plugin_config.proxy}, headers={HEADERS})"
     )
+    limits = httpx.Limits(max_connections=max_connections, max_keepalive_connections=max_keepalive_connections)
 
     _client = httpx.AsyncClient(
-        timeout=timeout,
-        limits=limits,
-        proxy=plugin_config.proxy,
-        follow_redirects=True,
-        headers=HEADERS,
-        **kwargs
+        timeout=timeout, limits=limits, proxy=plugin_config.proxy, follow_redirects=True, headers=HEADERS, **kwargs
     )
 
     return _client

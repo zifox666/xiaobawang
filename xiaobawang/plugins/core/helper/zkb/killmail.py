@@ -1,21 +1,20 @@
+import asyncio
+from datetime import datetime, timezone
 import math
 import traceback
-from typing import List, Dict, Any, Optional, Tuple
-import asyncio
-
-from datetime import datetime, timezone
+from typing import Any
 
 from nonebot import logger
 from nonebot_plugin_orm import get_session
 
-from ..message_queue import queue_killmail_message
-from ...helper.subscription import KillmailSubscriptionManager
-from ...api.killmail import get_zkb_killmail
-from ...api.esi.universe import esi_client
-from ...utils.common import is_blueprint
-from ...utils.render import templates_path, render_template
-
 from xiaobawang.plugins.sde.oper import sde_search
+
+from ...api.esi.universe import esi_client
+from ...api.killmail import get_zkb_killmail
+from ...helper.subscription import KillmailSubscriptionManager
+from ...utils.common import is_blueprint
+from ...utils.render import render_template, templates_path
+from ..message_queue import queue_killmail_message
 
 
 class KillmailHelper:
@@ -23,17 +22,15 @@ class KillmailHelper:
         self.session = get_session()
         self.subscription_manager = KillmailSubscriptionManager(self.session)
 
-    async def get(self, kill_id: int) -> Dict:
+    async def get(self, kill_id: int) -> dict:
         """
         获取处理好的km json数据
         Res:
             kill_id
         """
-        return await self._create_killmail_details(
-            await get_zkb_killmail(kill_id)
-        )
+        return await self._create_killmail_details(await get_zkb_killmail(kill_id))
 
-    async def check(self, data: Dict[str, Any]):
+    async def check(self, data: dict[str, Any]):
         """
         处理接收到的 killmail 数据并检查是否需要推送
 
@@ -72,7 +69,7 @@ class KillmailHelper:
             logger.exception(f"[{killmail_id}]处理 Killmail 失败: {e}")
 
     @classmethod
-    async def _check_killmail_value(cls, data: Dict[str, Any]) -> bool:
+    async def _check_killmail_value(cls, data: dict[str, Any]) -> bool:
         """检查击杀价值是否符合最低要求"""
         zkb_data = data.get("zkb", {})
         total_value = float(zkb_data.get("totalValue", 0))
@@ -84,11 +81,11 @@ class KillmailHelper:
         return True
 
     @classmethod
-    async def _check_killmail_time(cls, data: Dict[str, Any]) -> bool:
+    async def _check_killmail_time(cls, data: dict[str, Any]) -> bool:
         """检查击杀时间是否在10天以内"""
         killmail_time_str = data.get("killmail_time", "")
         if not killmail_time_str:
-            logger.warning(f"收到无效的 killmail 数据: 缺少时间信息")
+            logger.warning("收到无效的 killmail 数据: 缺少时间信息")
             return False
 
         try:
@@ -110,7 +107,7 @@ class KillmailHelper:
         condition_subs = await self.subscription_manager.get_condition_subscriptions()
         return high_value_subs, condition_subs
 
-    def _extract_kill_info(self, data: Dict[str, Any]):
+    def _extract_kill_info(self, data: dict[str, Any]):
         """提取击杀和受害者信息"""
         victim = data.get("victim", {})
         victim_info = {
@@ -131,19 +128,19 @@ class KillmailHelper:
             "final_blow_corporation_id": self._ensure_int(final_blow_attacker.get("corporation_id", 0)),
             "final_blow_alliance_id": self._ensure_int(final_blow_attacker.get("alliance_id", 0)),
             "final_blow_ship_type_id": self._ensure_int(final_blow_attacker.get("ship_type_id", 0)),
-            "attackers": attackers
+            "attackers": attackers,
         }
 
         return victim_info, attacker_info
 
     async def _match_subscriptions(
         self,
-        data: Dict[str, Any],
-        victim_info: Dict[str, Any],
-        attacker_info: Dict[str, Any],
-        high_value_subs: List[Dict],
-        condition_subs: List[Dict]
-    ) -> Dict[Tuple, List[str]]:
+        data: dict[str, Any],
+        victim_info: dict[str, Any],
+        attacker_info: dict[str, Any],
+        high_value_subs: list[dict],
+        condition_subs: list[dict],
+    ) -> dict[tuple, list[str]]:
         """匹配订阅条件并返回匹配的会话信息"""
         matched_sessions = {}  # {(platform, bot_id, session_id, session_type): [reasons]}
 
@@ -152,7 +149,7 @@ class KillmailHelper:
         for sub in high_value_subs:
             if total_value >= sub["min_value"]:
                 session_key = (sub["platform"], sub["bot_id"], sub["session_id"], sub["session_type"], total_value)
-                reason = f"高价值击杀"
+                reason = "高价值击杀"
                 matched_sessions.setdefault(session_key, []).append(reason)
 
         # 预处理参与攻击信息
@@ -160,10 +157,7 @@ class KillmailHelper:
         attacker_corporation_ids = set()
         attacker_alliance_ids = set()
 
-        need_all_attackers = any(
-            not sub["is_victim"] and not sub["is_final_blow"]
-            for sub in condition_subs
-        )
+        need_all_attackers = any(not sub["is_victim"] and not sub["is_final_blow"] for sub in condition_subs)
 
         if need_all_attackers:
             for attacker in attacker_info["attackers"]:
@@ -197,8 +191,12 @@ class KillmailHelper:
                     matched, reason = self._match_final_blow_condition(sub, target_id, target_type, attacker_info)
                 else:
                     matched, reason = self._match_attacker_condition(
-                        sub, target_id, target_type,
-                        attacker_character_ids, attacker_corporation_ids, attacker_alliance_ids
+                        sub,
+                        target_id,
+                        target_type,
+                        attacker_character_ids,
+                        attacker_corporation_ids,
+                        attacker_alliance_ids,
                     )
 
             if matched:
@@ -272,7 +270,7 @@ class KillmailHelper:
             await asyncio.gather(*tasks, return_exceptions=True)
 
     @classmethod
-    def _ensure_int(cls, value) -> Optional[int]:
+    def _ensure_int(cls, value) -> int | None:
         """确保值为整数类型"""
         if value is None:
             return None
@@ -283,15 +281,15 @@ class KillmailHelper:
 
     @classmethod
     async def send_killmail(
-            cls,
-            platform: str,
-            bot_id: str,
-            session_id: str,
-            session_type: str,
-            pic: bytes,
-            reason: str,
-            kill_id: str,
-            total_value: float = 0
+        cls,
+        platform: str,
+        bot_id: str,
+        session_id: str,
+        session_type: str,
+        pic: bytes,
+        reason: str,
+        kill_id: str,
+        total_value: float = 0,
     ):
         """发送击杀邮件到指定会话"""
         try:
@@ -305,13 +303,13 @@ class KillmailHelper:
                 pic=pic,
                 reason=reason,
                 kill_id=kill_id,
-                immediate=True if reason == "高价值击杀" or total_value >= 8_000_000_000 else False
+                immediate=True if reason == "高价值击杀" or total_value >= 8_000_000_000 else False,
             )
 
         except Exception as e:
             logger.error(f"准备发送 killmail 失败: {e}\n{traceback.format_exc()}")
 
-    async def _create_killmail_details(self, killmail_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _create_killmail_details(self, killmail_data: dict[str, Any]) -> dict[str, Any]:
         """
         生成详细km数据，处理嵌套物品、计算距离并格式化数据以符合Jinja2模板要求
 
@@ -386,10 +384,7 @@ class KillmailHelper:
 
                 for category, items in names_data.items():
                     for entity_id, name in items.items():
-                        entity_names[int(entity_id)] = {
-                            "category": category,
-                            "name": name
-                        }
+                        entity_names[int(entity_id)] = {"category": category, "name": name}
 
             if type_ids_to_query:
                 item_names = await sde_search.get_type_names(list(type_ids_to_query))
@@ -433,13 +428,12 @@ class KillmailHelper:
                 "zkb": killmail_data.get("", {}),
                 "total_value": formatted_total_value,
                 "drop_value": formatted_drop_value,
-                "position": killmail_data.get("position", {})
+                "position": killmail_data.get("position", {}),
             }
 
             if killmail_data.get("victim").get("position"):
                 result["nearest_celestial"] = await self._calculate_nearest_celestial(
-                    killmail_data.get("victim").get("position"),
-                    killmail_data["zkb"].get("locationID", 0)
+                    killmail_data.get("victim").get("position"), killmail_data["zkb"].get("locationID", 0)
                 )
                 result["location_name"] = result["nearest_celestial"].get("location_name", "未知位置")
                 result["distance_str"] = result["nearest_celestial"].get("distance_str", "未知距离")
@@ -449,12 +443,14 @@ class KillmailHelper:
         except Exception as e:
             logger.error(f"处理击杀邮件详细数据失败: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return {}
 
     @classmethod
-    async def _format_victim(cls, victim: Dict[str, Any], entity_names: Dict[int, Dict], item_names: Dict[int, Dict]) -> \
-    Dict[str, Any]:
+    async def _format_victim(
+        cls, victim: dict[str, Any], entity_names: dict[int, dict], item_names: dict[int, dict]
+    ) -> dict[str, Any]:
         """格式化受害者信息"""
         victim_id = victim.get("character_id", 0)
         corp_id = victim.get("corporation_id", 0)
@@ -463,23 +459,25 @@ class KillmailHelper:
         ship_group_name = await sde_search.get_type_group(victim.get("ship_type_id", 0))
         damage_taken = victim.get("damage_taken", 0)
 
-        result = {"victim_id": victim_id, "victim_name": entity_names.get(victim_id, {}).get("name", "Unknown"),
-                  "victim_corp_id": corp_id, "victim_corp": entity_names.get(corp_id, {}).get("name", "Unknown"),
-                  "victim_alliance_id": alliance_id,
-                  "victim_alliance_name": entity_names.get(alliance_id, {}).get("name", ""),
-                  "ship_type_id": ship_type_id,
-                  "ship_type_name": item_names.get(ship_type_id, {}).get("translation", "Unknown Ship"),
-                  "damage_taken": f"{damage_taken:,.0f}", "ship_group_name": ship_group_name}
+        result = {
+            "victim_id": victim_id,
+            "victim_name": entity_names.get(victim_id, {}).get("name", "Unknown"),
+            "victim_corp_id": corp_id,
+            "victim_corp": entity_names.get(corp_id, {}).get("name", "Unknown"),
+            "victim_alliance_id": alliance_id,
+            "victim_alliance_name": entity_names.get(alliance_id, {}).get("name", ""),
+            "ship_type_id": ship_type_id,
+            "ship_type_name": item_names.get(ship_type_id, {}).get("translation", "Unknown Ship"),
+            "damage_taken": f"{damage_taken:,.0f}",
+            "ship_group_name": ship_group_name,
+        }
 
         return result
 
     @classmethod
     def _format_attackers(
-            cls,
-            attackers: List[Dict],
-            entity_names: Dict[int, Dict],
-            item_names: Dict[int, Dict]
-    ) ->List[Dict]:
+        cls, attackers: list[dict], entity_names: dict[int, dict], item_names: dict[int, dict]
+    ) -> list[dict]:
         """格式化攻击者信息"""
         formatted_attackers = []
 
@@ -520,132 +518,134 @@ class KillmailHelper:
 
         return formatted_attackers
 
-    def _format_items(self, items: List[Dict], item_names: Dict[int, Dict], flag_info: Dict[int, str]) -> Dict[str, Any]:
-            """
-            格式化物品信息，按槽位类型分类并处理嵌套物品
-            """
-            slot_type_groups = {}
+    def _format_items(
+        self, items: list[dict], item_names: dict[int, dict], flag_info: dict[int, str]
+    ) -> dict[str, Any]:
+        """
+        格式化物品信息，按槽位类型分类并处理嵌套物品
+        """
+        slot_type_groups = {}
 
-            # 临时存储，用于按物品ID和状态(drop/destroyed)合并相同物品
-            # 结构: {slot_type: {item_id: {"drop": {}, "destroyed": {}}}}
-            item_tracking = {}
+        # 临时存储，用于按物品ID和状态(drop/destroyed)合并相同物品
+        # 结构: {slot_type: {item_id: {"drop": {}, "destroyed": {}}}}
+        item_tracking = {}
 
-            for item in items:
-                flag = item.get("flag", 0)
-                item_type_id = item.get("item_type_id", 0)
-                quantity_dropped = item.get("quantity_dropped", 0)
-                quantity_destroyed = item.get("quantity_destroyed", 0)
-                singleton = item.get("singleton", 0)
+        for item in items:
+            flag = item.get("flag", 0)
+            item_type_id = item.get("item_type_id", 0)
+            quantity_dropped = item.get("quantity_dropped", 0)
+            quantity_destroyed = item.get("quantity_destroyed", 0)
+            singleton = item.get("singleton", 0)
 
-                flag_name = flag_info.get(flag, f"Flag: {flag}")
+            flag_name = flag_info.get(flag, f"Flag: {flag}")
 
-                slot_type = self._get_slot_type(flag_name)
-                slot_image = self._get_slot_image_name(slot_type)
-                slot_display_name = self._get_slot_display_name(slot_type)
+            slot_type = self._get_slot_type(flag_name)
+            slot_image = self._get_slot_image_name(slot_type)
+            slot_display_name = self._get_slot_display_name(slot_type)
 
-                if slot_type not in slot_type_groups:
-                    slot_type_groups[slot_type] = {
-                        "slotName": slot_display_name,
-                        "slotPng": slot_image,
-                        "slot_items": [],
-                        "slotType": slot_type,
-                    }
-                    item_tracking[slot_type] = {}
+            if slot_type not in slot_type_groups:
+                slot_type_groups[slot_type] = {
+                    "slotName": slot_display_name,
+                    "slotPng": slot_image,
+                    "slot_items": [],
+                    "slotType": slot_type,
+                }
+                item_tracking[slot_type] = {}
 
-                item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
+            item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
 
-                if is_blueprint(item_name):
-                    item_name = f"{item_name} ({'拷贝' if singleton == 2 else '原图'})"
-                    blueprint = True
-                else:
-                    blueprint = False
+            if is_blueprint(item_name):
+                item_name = f"{item_name} ({'拷贝' if singleton == 2 else '原图'})"
+                blueprint = True
+            else:
+                blueprint = False
 
-                nested_items = []
-                has_nested = "items" in item
-                if has_nested:
-                    nested_items = self._process_nested_items(item["items"], item_names,
-                                                              "drop" if quantity_dropped > 0 else "destroyed")
+            nested_items = []
+            has_nested = "items" in item
+            if has_nested:
+                nested_items = self._process_nested_items(
+                    item["items"], item_names, "drop" if quantity_dropped > 0 else "destroyed"
+                )
 
-                    if quantity_dropped > 0:
-                        slot_type_groups[slot_type]["slot_items"].append({
+                if quantity_dropped > 0:
+                    slot_type_groups[slot_type]["slot_items"].append(
+                        {
                             "item_id": item_type_id,
                             "item_name": item_name,
                             "item_number": quantity_dropped,
                             "drop": "drop",
                             "nested_items": nested_items,
                             "singleton": singleton,
-                            "blueprint": blueprint
-                        })
+                            "blueprint": blueprint,
+                        }
+                    )
 
-                    if quantity_destroyed > 0:
-                        slot_type_groups[slot_type]["slot_items"].append({
+                if quantity_destroyed > 0:
+                    slot_type_groups[slot_type]["slot_items"].append(
+                        {
                             "item_id": item_type_id,
                             "item_name": item_name,
                             "item_number": quantity_destroyed,
                             "drop": "destroyed",
                             "nested_items": nested_items,
                             "singleton": singleton,
-                            "blueprint": blueprint
-                        })
-                else:
-                    item_key = (item_type_id, singleton)
-                    if item_key not in item_tracking[slot_type]:
-                        item_tracking[slot_type][item_key] = {
-                            "drop": {"count": 0, "name": item_name, "singleton": singleton, "blueprint": blueprint},
-                            "destroyed": {"count": 0, "name": item_name, "singleton": singleton, "blueprint": blueprint}
+                            "blueprint": blueprint,
                         }
+                    )
+            else:
+                item_key = (item_type_id, singleton)
+                if item_key not in item_tracking[slot_type]:
+                    item_tracking[slot_type][item_key] = {
+                        "drop": {"count": 0, "name": item_name, "singleton": singleton, "blueprint": blueprint},
+                        "destroyed": {"count": 0, "name": item_name, "singleton": singleton, "blueprint": blueprint},
+                    }
 
-                    if quantity_dropped > 0:
-                        item_tracking[slot_type][item_key]["drop"]["count"] += quantity_dropped
+                if quantity_dropped > 0:
+                    item_tracking[slot_type][item_key]["drop"]["count"] += quantity_dropped
 
-                    if quantity_destroyed > 0:
-                        item_tracking[slot_type][item_key]["destroyed"]["count"] += quantity_destroyed
+                if quantity_destroyed > 0:
+                    item_tracking[slot_type][item_key]["destroyed"]["count"] += quantity_destroyed
 
-            for slot_type, items_map in item_tracking.items():
-                for item_key, states in items_map.items():
-                    item_id, singleton = item_key
-                    if states["drop"]["count"] > 0:
-                        slot_type_groups[slot_type]["slot_items"].append({
+        for slot_type, items_map in item_tracking.items():
+            for item_key, states in items_map.items():
+                item_id, singleton = item_key
+                if states["drop"]["count"] > 0:
+                    slot_type_groups[slot_type]["slot_items"].append(
+                        {
                             "item_id": item_id,
                             "item_name": states["drop"]["name"],
                             "item_number": states["drop"]["count"],
                             "drop": "drop",
                             "nested_items": None,
                             "singleton": states["drop"]["singleton"],
-                            "blueprint": states["drop"]["blueprint"]
-                        })
+                            "blueprint": states["drop"]["blueprint"],
+                        }
+                    )
 
-                    if states["destroyed"]["count"] > 0:
-                        slot_type_groups[slot_type]["slot_items"].append({
+                if states["destroyed"]["count"] > 0:
+                    slot_type_groups[slot_type]["slot_items"].append(
+                        {
                             "item_id": item_id,
                             "item_name": states["destroyed"]["name"],
                             "item_number": states["destroyed"]["count"],
                             "drop": "destroyed",
                             "nested_items": None,
                             "singleton": states["destroyed"]["singleton"],
-                            "blueprint": states["destroyed"]["blueprint"]
-                        })
+                            "blueprint": states["destroyed"]["blueprint"],
+                        }
+                    )
 
-            # 按优先级排序槽位组
-            slot_order = {
-                "high": 1,
-                "med": 2,
-                "low": 3,
-                "rig": 4,
-                "subsystem": 5,
-                "drone": 6,
-                "fighter": 7,
-                "cargo": 8
-            }
+        # 按优先级排序槽位组
+        slot_order = {"high": 1, "med": 2, "low": 3, "rig": 4, "subsystem": 5, "drone": 6, "fighter": 7, "cargo": 8}
 
-            slot_list = list(slot_type_groups.values())
-            slot_list.sort(key=lambda x: slot_order.get(x["slotType"], 999))
+        slot_list = list(slot_type_groups.values())
+        slot_list.sort(key=lambda x: slot_order.get(x["slotType"], 999))
 
-            return {
-                "slotList": slot_list,
-            }
+        return {
+            "slotList": slot_list,
+        }
 
-    def _process_nested_items(self, nested_items: List[Dict], item_names: Dict, drop: str = "destroyed") -> List[Dict]:
+    def _process_nested_items(self, nested_items: list[dict], item_names: dict, drop: str = "destroyed") -> list[dict]:
         """
         递归处理嵌套物品，返回嵌套物品列表
 
@@ -678,35 +678,35 @@ class KillmailHelper:
                 sub_items = self._process_nested_items(item["items"], item_names)
 
             if quantity_dropped > 0:
-                formatted_items.append({
-                    "item_id": item_type_id,
-                    "item_name": item_name,
-                    "item_number": quantity_dropped,
-                    "drop": drop,
-                    "nested_items": sub_items if sub_items else None,
-                    "singleton": singleton,
-                    "blueprint": blueprint
-                })
+                formatted_items.append(
+                    {
+                        "item_id": item_type_id,
+                        "item_name": item_name,
+                        "item_number": quantity_dropped,
+                        "drop": drop,
+                        "nested_items": sub_items if sub_items else None,
+                        "singleton": singleton,
+                        "blueprint": blueprint,
+                    }
+                )
 
             if quantity_destroyed > 0:
-                formatted_items.append({
-                    "item_id": item_type_id,
-                    "item_name": item_name,
-                    "item_number": quantity_destroyed,
-                    "drop": drop,
-                    "nested_items": sub_items if sub_items else None,
-                    "singleton": singleton,
-                    "blueprint": blueprint
-                })
+                formatted_items.append(
+                    {
+                        "item_id": item_type_id,
+                        "item_name": item_name,
+                        "item_number": quantity_destroyed,
+                        "drop": drop,
+                        "nested_items": sub_items if sub_items else None,
+                        "singleton": singleton,
+                        "blueprint": blueprint,
+                    }
+                )
 
         return formatted_items
 
     @classmethod
-    async def _calculate_nearest_celestial(
-            cls,
-            position: Dict[str, float],
-            location_id: int
-    ) -> Dict[str, Any]:
+    async def _calculate_nearest_celestial(cls, position: dict[str, float], location_id: int) -> dict[str, Any]:
         """
         计算距离最近的天体
 
@@ -720,10 +720,10 @@ class KillmailHelper:
         try:
             data = await esi_client.get_moon_info(location_id)
 
-            dx = math.fabs(position['x'] - data['position']['x'])
-            dy = math.fabs(position['y'] - data['position']['y'])
-            dz = math.fabs(position['z'] - data['position']['z'])
-            distance = math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
+            dx = math.fabs(position["x"] - data["position"]["x"])
+            dy = math.fabs(position["y"] - data["position"]["y"])
+            dz = math.fabs(position["z"] - data["position"]["z"])
+            distance = math.sqrt(dx**2 + dy**2 + dz**2)
 
             if distance > 149597870700 * 0.1:
                 distance_au = distance / 149597870700
@@ -739,10 +739,7 @@ class KillmailHelper:
 
         except Exception as e:
             logger.error(f"计算最近天体距离失败: {e}")
-            return {
-                "location_name": "Unknown",
-                "distance_str": 0
-            }
+            return {"location_name": "Unknown", "distance_str": 0}
 
     @classmethod
     def _get_slot_image_name(cls, flag_name: str) -> str:
@@ -877,48 +874,48 @@ class KillmailHelper:
 
     @classmethod
     def _format_time_difference(cls, past_time: datetime, current_time: datetime) -> str:
-            """
-            计算并格式化两个时间之间的差异
+        """
+        计算并格式化两个时间之间的差异
 
-            Args:
-                past_time: 过去的时间
-                current_time: 当前时间
+        Args:
+            past_time: 过去的时间
+            current_time: 当前时间
 
-            Returns:
-                格式化的时间差字符串
-            """
-            if past_time.tzinfo is None:
-                past_time = past_time.replace(tzinfo=timezone.utc)
+        Returns:
+            格式化的时间差字符串
+        """
+        if past_time.tzinfo is None:
+            past_time = past_time.replace(tzinfo=timezone.utc)
 
-            if current_time.tzinfo is None:
-                current_time = current_time.astimezone()
+        if current_time.tzinfo is None:
+            current_time = current_time.astimezone()
 
-            past_time = past_time.astimezone(current_time.tzinfo)
-            time_diff = current_time - past_time
+        past_time = past_time.astimezone(current_time.tzinfo)
+        time_diff = current_time - past_time
 
-            seconds = int(time_diff.total_seconds())
+        seconds = int(time_diff.total_seconds())
 
-            if seconds < 60:
-                return f"{seconds}秒前"
+        if seconds < 60:
+            return f"{seconds}秒前"
 
-            minutes = seconds // 60
-            if minutes < 60:
-                return f"{minutes}分钟前"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}分钟前"
 
-            hours = minutes // 60
-            if hours < 24:
-                return f"{hours}小时前"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}小时前"
 
-            days = hours // 24
-            if days < 30:
-                return f"{days}天前"
+        days = hours // 24
+        if days < 30:
+            return f"{days}天前"
 
-            months = days // 30
-            if months < 12:
-                return f"{months}个月前"
+        months = days // 30
+        if months < 12:
+            return f"{months}个月前"
 
-            years = months // 12
-            return f"{years}年前"
+        years = months // 12
+        return f"{years}年前"
 
 
 km = KillmailHelper()

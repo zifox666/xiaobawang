@@ -1,27 +1,22 @@
 import asyncio
-import traceback
-from datetime import datetime
-from typing import Dict, List, Any, Tuple
-import time
 from collections import defaultdict
+from datetime import datetime
+import time
+import traceback
+from typing import Any
 
 from nonebot import logger
-from nonebot_plugin_alconna import Target, UniMessage, get_bot, CustomNode
+from nonebot_plugin_alconna import CustomNode, Target, UniMessage, get_bot
 from nonebot_plugin_orm import get_session
 
-from ..config import plugin_config
 from ..api.statics import upload_statistics
+from ..config import plugin_config
 from ..db.models.record import KillmailPushRecord
 from ..utils.common.cache import save_msg_cache
 
 
 class MessageQueueSender:
-    def __init__(
-            self,
-            check_interval: int = 45,
-            max_wait_time: int = 180,
-            threshold_for_extended_wait: int = 5
-    ):
+    def __init__(self, check_interval: int = 45, max_wait_time: int = 180, threshold_for_extended_wait: int = 5):
         """
         初始化消息队列发送器
 
@@ -38,9 +33,7 @@ class MessageQueueSender:
         self.running = False
         self.task = None
 
-        self.platform_handlers = {
-            "OneBot V11": self._handle_onebot_v11
-        }
+        self.platform_handlers = {"OneBot V11": self._handle_onebot_v11}
 
     async def start(self):
         """启动消息队列处理任务"""
@@ -66,14 +59,14 @@ class MessageQueueSender:
         logger.info("消息队列发送器已停止")
 
     async def add_message(
-            self,
-            platform: str,
-            bot_id: str,
-            session_id: str,
-            session_type: str,
-            message_content: Any,
-            metadata: Dict = None,
-            immediate: bool = False
+        self,
+        platform: str,
+        bot_id: str,
+        session_id: str,
+        session_type: str,
+        message_content: Any,
+        metadata: dict | None = None,
+        immediate: bool | None = False,
     ):
         """
         添加消息到队列
@@ -89,11 +82,7 @@ class MessageQueueSender:
         """
         queue_key = (platform, bot_id, session_id, session_type)
 
-        message = {
-            "content": message_content,
-            "metadata": metadata or {},
-            "timestamp": time.time()
-        }
+        message = {"content": message_content, "metadata": metadata or {}, "timestamp": time.time()}
 
         if immediate:
             await self._handle_default(platform, bot_id, session_id, session_type, [message])
@@ -101,15 +90,13 @@ class MessageQueueSender:
         else:
             self.queue_last_active[queue_key] = time.time()
             self.message_queue[queue_key].append(message)
-            logger.debug(f"已添加消息到队列: {platform}:{session_id} 当前队列长度: {len(self.message_queue[queue_key])}")
+            logger.debug(
+                f"已添加消息到队列: {platform}:{session_id} 当前队列长度: {len(self.message_queue[queue_key])}"
+            )
 
         await self._record_pushed_killmail(queue_key, metadata.get("kill_id", 0))
 
-    async def _record_pushed_killmail(
-            self,
-            query_key: Tuple[str, str, str, str],
-            kill_id: int
-    ):
+    async def _record_pushed_killmail(self, query_key: tuple[str, str, str, str], kill_id: int):
         """
         记录已推送的击杀邮件
         :param query_key:
@@ -154,15 +141,13 @@ class MessageQueueSender:
                     wait_time = current_time - last_active
 
                     if len(messages) > self.threshold_for_extended_wait:
-                        adjusted_wait_time = min(
-                            self.check_interval * (1 + len(messages) / 10),
-                            self.max_wait_time
-                        )
+                        adjusted_wait_time = min(self.check_interval * (1 + len(messages) / 10), self.max_wait_time)
 
                         if wait_time >= adjusted_wait_time or wait_time >= self.max_wait_time * 0.8:
                             queues_to_process.append(queue_key)
                             logger.debug(
-                                f"队列 {queue_key} 消息数量: {len(messages)}，已等待: {wait_time:.1f}秒, 开始推送")
+                                f"队列 {queue_key} 消息数量: {len(messages)}，已等待: {wait_time:.1f}秒, 开始推送"
+                            )
                     else:
                         if wait_time >= self.check_interval:
                             queues_to_process.append(queue_key)
@@ -201,12 +186,7 @@ class MessageQueueSender:
                 logger.error(f"处理队列 {platform}:{session_id} 时出错: {e}")
 
     async def _handle_default(
-            self,
-            platform: str,
-            bot_id: str,
-            session_id: str,
-            session_type: str,
-            messages: List[Dict]
+        self, platform: str, bot_id: str, session_id: str, session_type: str, messages: list[dict]
     ):
         """默认的消息处理方法"""
         if not messages:
@@ -214,19 +194,13 @@ class MessageQueueSender:
 
         try:
             bot = await get_bot(adapter=platform, bot_id=bot_id)
-            target = Target(
-                id=session_id,
-                private=(session_type == 0)
-            )
+            target = Target(id=session_id, private=(session_type == 0))
 
             for msg in messages:
                 content = msg["content"]
                 metadata = msg["metadata"]
 
-                send_event = await UniMessage(content).send(
-                    bot=bot,
-                    target=target
-                )
+                send_event = await UniMessage(content).send(bot=bot, target=target)
 
                 if "url" in metadata:
                     await save_msg_cache(send_event, metadata["url"])
@@ -234,24 +208,15 @@ class MessageQueueSender:
         except Exception as e:
             logger.error(f"发送消息到 {platform}:{session_id} 失败: {e}")
 
-    async def _handle_onebot_v11(
-            self,
-            bot_id: str,
-            session_id: str,
-            session_type: str,
-            messages: List[Dict]
-    ):
+    async def _handle_onebot_v11(self, bot_id: str, session_id: str, session_type: str, messages: list[dict]):
         """OneBot V11 平台的特殊处理，支持合并发送"""
         if not messages:
             return
 
         try:
             bot = await get_bot(adapter="OneBot V11", bot_id=bot_id)
-            is_private = (session_type == 0)
-            target = Target(
-                id=session_id,
-                private=is_private
-            )
+            is_private = session_type == 0
+            target = Target(id=session_id, private=is_private)
 
             if len(messages) > 2:
                 merged_nodes = []
@@ -268,21 +233,13 @@ class MessageQueueSender:
                     metadata = msg["metadata"]
 
                     node = CustomNode(
-                        uid=bot_id,
-                        name="小霸王Bot",
-                        content=content + UniMessage.text(metadata.get("url", ""))
+                        uid=bot_id, name="小霸王Bot", content=content + UniMessage.text(metadata.get("url", ""))
                     )
                     merged_nodes.append(node)
 
                     last_url = metadata.get("url")
 
-                await save_msg_cache(
-                    await UniMessage.reference(*merged_nodes).send(
-                        bot=bot,
-                        target=target
-                    ),
-                    last_url
-                )
+                await save_msg_cache(await UniMessage.reference(*merged_nodes).send(bot=bot, target=target), last_url)
 
                 logger.info(f"已发送合并消息到 {session_id}，共{len(messages)}条")
             else:
@@ -290,15 +247,12 @@ class MessageQueueSender:
                     content = msg["content"]
                     metadata = msg["metadata"]
 
-                    send_event = await UniMessage(content).send(
-                        bot=bot,
-                        target=target
-                    )
+                    send_event = await UniMessage(content).send(bot=bot, target=target)
 
                     if "url" in metadata:
                         await save_msg_cache(send_event, metadata["url"])
 
-        except Exception as e:
+        except Exception:
             logger.error(f"发送消息到 OneBot V11:{session_id} 失败: {traceback.format_exc()}")
 
     def register_platform_handler(self, platform: str, handler):
@@ -310,24 +264,21 @@ message_sender = MessageQueueSender(check_interval=45, max_wait_time=180, thresh
 
 
 async def queue_killmail_message(
-        platform: str,
-        bot_id: str,
-        session_id: str,
-        session_type: str,
-        pic: bytes,
-        reason: str,
-        kill_id: str,
-        immediate: bool = False
+    platform: str,
+    bot_id: str,
+    session_id: str,
+    session_type: str,
+    pic: bytes,
+    reason: str,
+    kill_id: str,
+    immediate: bool = False,
 ):
     """将击杀邮件添加到消息队列"""
     if not pic:
         return
 
     content = UniMessage.text(reason) + UniMessage.image(raw=pic)
-    metadata = {
-        "url": f'https://zkillboard.com/kill/{kill_id}/',
-        "kill_id": kill_id
-    }
+    metadata = {"url": f"https://zkillboard.com/kill/{kill_id}/", "kill_id": kill_id}
 
     await message_sender.add_message(
         platform=platform,
@@ -336,19 +287,20 @@ async def queue_killmail_message(
         session_type=session_type,
         message_content=content,
         metadata=metadata,
-        immediate=immediate
+        immediate=immediate,
     )
     if not immediate:
         logger.debug(f"已添加击杀邮件 {kill_id} 到队列")
 
+
 async def queue_common(
-        platform: str,
-        bot_id: str,
-        session_id: str,
-        session_type: str,
-        msg: UniMessage,
-        metadata: Dict = None,
-        immediate: bool = True
+    platform: str,
+    bot_id: str,
+    session_id: str,
+    session_type: str,
+    msg: UniMessage,
+    metadata: dict | None = None,
+    immediate: bool | None = True,
 ):
     """
     统一消息队列
@@ -367,5 +319,5 @@ async def queue_common(
         session_type=session_type,
         message_content=msg,
         metadata=metadata or {},
-        immediate=immediate
+        immediate=immediate,
     )

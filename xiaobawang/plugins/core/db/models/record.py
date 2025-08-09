@@ -2,7 +2,7 @@ from datetime import datetime
 
 from nonebot_plugin_orm import Model
 from sqlalchemy import DateTime
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class CommandRecord(Model):
@@ -36,4 +36,3 @@ class BlackList(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True, unique=True)
     session_id: Mapped[int] = mapped_column()
-

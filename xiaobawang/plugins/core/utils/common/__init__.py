@@ -26,7 +26,7 @@ def is_chinese(text: str) -> bool:
     :return: 如果包含中文字符，返回True；否则返回False
     """
     for char in text:
-        if '\u4e00' <= char <= '\u9fff':
+        if "\u4e00" <= char <= "\u9fff":
             return True
     return False
 
@@ -37,16 +37,16 @@ def type_word(args: str) -> str:
     :param args: 合同内容
     :return: 整理后的合同内容
     """
-    args = args.replace('\r', '\n')
-    lines = args.split('\n')
-    converted_text = ''
+    args = args.replace("\r", "\n")
+    lines = args.split("\n")
+    converted_text = ""
     for line in lines:
-        fields = line.split('\t')
-        converted_text += '\t'.join(fields) + '\n'
+        fields = line.split("\t")
+        converted_text += "\t".join(fields) + "\n"
     return converted_text
 
 
-def format_value(value: str | int | float) -> str:
+def format_value(value: str | float) -> str:
     """
     根据数值大小自动转换为 K、M、B、T 格式
 

@@ -1,12 +1,12 @@
 import traceback
 
 from arclet.alconna import Arparma
-from nonebot import require, logger
+from nonebot import logger, require
 from nonebot.adapters.telegram.model import Message as TelegramMessage
 from nonebot_plugin_alconna.uniseg import Receipt
 
-from ...config import plugin_config
 from ...api.statics import upload_statistics
+from ...config import plugin_config
 from ...db.models.record import CommandRecord
 
 require("nonebot_plugin_alconna")
@@ -63,7 +63,7 @@ def get_msg_id(send_event: Receipt) -> str | int:
             msg_id = send_event.msg_ids[0].message_id
         else:
             msg_id = send_event.msg_ids[0]["message_id"]
-    except Exception as e:
+    except Exception:
         logger.error(f"获取消息id失败\n{traceback.format_exc()}")
         return 0
     return msg_id

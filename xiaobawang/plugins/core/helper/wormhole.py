@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 from nonebot import logger
 
 from ..api.anoik import anoik_api
@@ -7,15 +5,15 @@ from ..api.anoik import anoik_api
 
 class WormholeHelper:
     def __init__(self):
-        self._static_data: Optional[dict] = {}
-        self._constellations: Optional[dict] = {}
-        self._effects: Optional[dict] = {}
-        self._wormholes: Optional[dict] = {}
-        self._celestialtypes: Optional[dict] = {}
-        self._wormholeclasses: Optional[dict] = {}
-        self._roman: Optional[list] = []
-        self._systems: Optional[dict] = {}
-        self._regions: Optional[dict] = {}
+        self._static_data: dict | None = {}
+        self._constellations: dict | None = {}
+        self._effects: dict | None = {}
+        self._wormholes: dict | None = {}
+        self._celestialtypes: dict | None = {}
+        self._wormholeclasses: dict | None = {}
+        self._roman: list | None = []
+        self._systems: dict | None = {}
+        self._regions: dict | None = {}
         self._connect: dict = {}
 
     def _format_wormhole(self):
@@ -65,22 +63,22 @@ class WormholeHelper:
         """
         if name == "K162":
             result = {
-                'name': 'K162',
-                'dest': '由对面先发现',
-                'src': [],
-                'max_mass_per_jump': 0,
-                'total_mass': 0,
-                'lifetime': 24,
-                'dest_info': {},
-                'color': 'hsl(100, 100%, 100%)',
-                'src_info': [],
-                'max_mass_formatted': '0',
-                'mass_per_jump_ratio': 3.0,
-                'mass_per_jump_ratio_formatted': '0',
-                'total_mass_formatted': '0',
-                'static': '漫游 ',
-                'mass_regen': 0,
-                'ship_support': '',
+                "name": "K162",
+                "dest": "由对面先发现",
+                "src": [],
+                "max_mass_per_jump": 0,
+                "total_mass": 0,
+                "lifetime": 24,
+                "dest_info": {},
+                "color": "hsl(100, 100%, 100%)",
+                "src_info": [],
+                "max_mass_formatted": "0",
+                "mass_per_jump_ratio": 3.0,
+                "mass_per_jump_ratio_formatted": "0",
+                "total_mass_formatted": "0",
+                "static": "漫游 ",
+                "mass_regen": 0,
+                "ship_support": "",
             }
             return result
 
@@ -110,14 +108,16 @@ class WormholeHelper:
                     src_data = {
                         "class": src_class,
                         "name": src_class,
-                        "color": self._wormholeclasses[src_class].get("color", "#FFFFFF")
+                        "color": self._wormholeclasses[src_class].get("color", "#FFFFFF"),
                     }
                     result["src_info"].append(src_data)
 
         # 格式化质量信息
         if result["max_mass_per_jump"] > 0:
             result["max_mass_formatted"] = "{:,.0f}".format(result["max_mass_per_jump"])
-            result["mass_per_jump_ratio"] = result["total_mass"] / result["max_mass_per_jump"] if result["max_mass_per_jump"] != 0 else 0
+            result["mass_per_jump_ratio"] = (
+                result["total_mass"] / result["max_mass_per_jump"] if result["max_mass_per_jump"] != 0 else 0
+            )
             result["mass_per_jump_ratio_formatted"] = "{:.2f}".format(result["mass_per_jump_ratio"])
 
         if result["total_mass"] > 0:
@@ -160,10 +160,7 @@ class WormholeHelper:
             for effect_name, effect_data in effect_info.items():
                 effect_details.append(f"{effect_name}: {effect_data[result['class_info']['effectPower']]}")
 
-            result["effect"] = {
-                "name": effect,
-                "effect_details": effect_details
-            }
+            result["effect"] = {"name": effect, "effect_details": effect_details}
         else:
             result["effect"] = {}
 
@@ -198,8 +195,7 @@ class WormholeHelper:
 
         return result
 
-
-    async def get(self, name: str) -> Tuple[Optional[dict], str]:
+    async def get(self, name: str) -> tuple[dict | None, str]:
         """
         获取虫洞数据
         :param name: 洞名称
@@ -214,4 +210,3 @@ class WormholeHelper:
             return self._make_system(self._systems[name]), "system"
         else:
             return None, "Not Found"
-

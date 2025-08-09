@@ -1,6 +1,6 @@
-import httpx
+from typing import Any
 
-from typing import Optional, Dict, Any
+import httpx
 from nonebot import logger
 
 from ..utils.common.http_client import get_client
@@ -12,14 +12,10 @@ class BaseClient:
     """
 
     def __init__(self):
-        self._client: Optional[httpx.AsyncClient] = get_client()
+        self._client: httpx.AsyncClient | None = get_client()
         self._base_url: str = ""
 
-    async def _get(
-            self,
-            endpoint: str,
-            params: Optional[Dict[str, Any]] = None
-    ) -> Dict:
+    async def _get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict:
         """
         GET
         :param endpoint: 接口地址
@@ -37,10 +33,10 @@ class BaseClient:
             raise e
 
     async def _post(
-            self,
-            endpoint: str,
-            data: Optional[Dict[str, Any] | list] = None,
-    ) -> Dict:
+        self,
+        endpoint: str,
+        data: dict[str, Any] | list | None = None,
+    ) -> dict:
         """
         POST
         :param endpoint: 接口地址

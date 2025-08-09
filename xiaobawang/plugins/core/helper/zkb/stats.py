@@ -1,13 +1,12 @@
 import asyncio
-import traceback
 from datetime import datetime
-from typing import Optional
+import traceback
 
 from nonebot import logger
 
-from ...api.zkillboard import zkb_api
 from ...api.esi.universe import esi_client
 from ...api.killmail import get_zkb_killmail
+from ...api.zkillboard import zkb_api
 from ...utils.common import format_value
 from ...utils.render import render_template, templates_path
 
@@ -16,6 +15,7 @@ class ZkbStats:
     """
     zkillboard 统计处理
     """
+
     def __init__(self, data: dict):
         self.data = data
 
@@ -47,14 +47,18 @@ class ZkbStats:
         if self._type == "characterID":
             self.corporation_id: int = self.info.get("corporation_id", 0)
             self.alliance_id: int = self.info.get("alliance_id", 0)
-            self.birthday: datetime = datetime.strptime(self.info.get("birthday", "1999-01-01T00:00:00Z"), "%Y-%m-%dT%H:%M:%SZ")
+            self.birthday: datetime = datetime.strptime(
+                self.info.get("birthday", "1999-01-01T00:00:00Z"), "%Y-%m-%dT%H:%M:%SZ"
+            )
             self.security_status: float = self.info.get("secStatus", 0.00)
-            self.title: Optional[str] = self.info.get("title", None)
+            self.title: str | None = self.info.get("title", None)
         if self._type == "corporationID":
             self.alliance_id: int = self.info.get("alliance_id", 0)
             self.ticker: str = self.info.get("ticker", "")
             self.ceo_id: int = self.info.get("ceo_id", 0)
-            self.date_founded: datetime = datetime.strptime(self.info.get("date_founded", "1999-01-01T00:00:00Z"), "%Y-%m-%dT%H:%M:%SZ")
+            self.date_founded: datetime = datetime.strptime(
+                self.info.get("date_founded", "1999-01-01T00:00:00Z"), "%Y-%m-%dT%H:%M:%SZ"
+            )
             self.member_count: int = self.info.get("member_count", 0)
         if self._type == "allianceID":
             # TODO: stats 补全计划
@@ -167,7 +171,7 @@ class ZkbStats:
             result["lose"] = True if self._id in query_ids else False
 
             return result
-        except Exception as e:
+        except Exception:
             logger.error(f"处理killmail失败\n{traceback.format_exc()}")
             return {}
 
@@ -207,7 +211,6 @@ class ZkbStats:
         if limit and self.active_pvp:
             await self._handle_recent_killmail(limit)
 
-
     async def render(self, limit: int = 3, command: str = "zkb") -> bytes:
         """
         渲染图片
@@ -223,8 +226,3 @@ class ZkbStats:
             width=1080,
             height=900,
         )
-
-
-
-
-

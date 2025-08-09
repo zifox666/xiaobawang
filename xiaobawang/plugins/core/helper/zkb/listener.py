@@ -1,14 +1,12 @@
-import json
 import asyncio
+import json
 import traceback
 
 from nonebot import logger
-from nonebot_plugin_orm import get_session
 
-from ..subscription import KillmailSubscriptionManager
-from .killmail import km
-from ...config import plugin_config, HEADERS
+from ...config import HEADERS, plugin_config
 from ...utils.common.http_client import get_client
+from .killmail import km
 
 
 class ZkbListener:
@@ -38,9 +36,7 @@ class ZkbListener:
             try:
                 logger.info("正在连接到 zkillboard websocket...")
                 async with websockets.connect(
-                        plugin_config,
-                        proxy=plugin_config.proxy,
-                        additional_headers=HEADERS
+                    plugin_config, proxy=plugin_config.proxy, additional_headers=HEADERS
                 ) as websocket:
                     logger.info("已连接到 zkillboard websocket")
                     await websocket.send(json.dumps({"action": "sub", "channel": "killstream"}))
@@ -52,19 +48,20 @@ class ZkbListener:
                             message = await websocket.recv()
                             data = json.loads(message)
 
-                            asyncio.create_task(km.check(data))
-                        except (websockets.exceptions.ConnectionClosed,
-                                websockets.exceptions.ConnectionClosedError,
-                                websockets.exceptions.ConnectionClosedOK) as e:
+                            task = asyncio.create_task(km.check(data))
+                            task.add_done_callback(lambda t: t.exception() if t.exception() else None)
+                        except (
+                            websockets.exceptions.ConnectionClosed,
+                            websockets.exceptions.ConnectionClosedError,
+                            websockets.exceptions.ConnectionClosedOK,
+                        ) as e:
                             logger.warning(f"Websocket 连接关闭: {e}")
                             break
                         except Exception as e:
                             logger.error(f"处理 killmail 时出错: {e}")
                             continue
 
-            except (websockets.exceptions.WebSocketException,
-                    ConnectionRefusedError,
-                    ConnectionError) as e:
+            except (websockets.exceptions.WebSocketException, ConnectionRefusedError, ConnectionError) as e:
                 if not self.running:
                     break
 
@@ -89,8 +86,9 @@ class ZkbListener:
                 data = r.json().get("package", None)
                 if data:
                     zkb_data = data.get("killmail")
-                    zkb_data['zkb'] = data.get("zkb")
-                    asyncio.create_task(km.check(zkb_data))
+                    zkb_data["zkb"] = data.get("zkb")
+                    task = asyncio.create_task(km.check(zkb_data))
+                    task.add_done_callback(lambda t: t.exception() if t.exception() else None)
                     await asyncio.sleep(0.1)
                 else:
                     await asyncio.sleep(5)

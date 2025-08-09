@@ -1,15 +1,13 @@
-from typing import Dict
-
 from nonebot import logger
 
-from ..utils.common.cache import cache_result, cache
+from ..utils.common.cache import cache, cache_result
 from ..utils.common.http_client import get_client
 
 
 @cache_result(expire_time=cache.TIME_HOUR)
 async def get_zkb_killmail(
-        kill_id: int,
-) -> Dict:
+    kill_id: int,
+) -> dict:
     """
     获取zkb组合信息
     Res:

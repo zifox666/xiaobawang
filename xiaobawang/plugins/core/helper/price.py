@@ -1,12 +1,11 @@
-from typing import Dict, List, Any, Optional
-from nonebot import require, logger
-from sqlalchemy import select
+from typing import Any
 
-from .alias import AliasHelper
+from nonebot import logger, require
+
 from ..api.esi.market import market
-from ..db.models.alias import TypeAlias
 from ..utils.common.cache import cache
 from ..utils.common.line import generate_minimal_chart
+from .alias import AliasHelper
 
 require("xiaobawang.plugins.sde")
 
@@ -22,7 +21,11 @@ class PriceHelper:
         self.cache_key_prefix: str = "price_"
         self.alias_cache_key_prefix: str = "alias_"
         self.low_priority_keywords = [
-            "蓝图", "blueprint", "SKIN", "皮肤", "涂装",
+            "蓝图",
+            "blueprint",
+            "SKIN",
+            "皮肤",
+            "涂装",
         ]
         self.alias_helper = AliasHelper()
         self.alias_plex = {
@@ -33,10 +36,10 @@ class PriceHelper:
             "两年卡": 6600,
             "plex": 500,
             "PLEX": 500,
-            "伊甸币": 500
+            "伊甸币": 500,
         }
 
-    async def get(self, session, word: str, num: int = 1, current_page: int = 1) -> Dict[str, Any]:
+    async def get(self, session, word: str, num: int = 1, current_page: int = 1) -> dict[str, Any]:
         """
         获取物品价格，支持分页
 
@@ -74,11 +77,7 @@ class PriceHelper:
                     search_result = await sde_search.search_item_by_name(alias_name, market=True)
                     if search_result["total"] > 0:
                         prioritized_items = await self._prioritize_items(alias_name, search_result["items"])
-                        cache_data = {
-                            "total": search_result["total"],
-                            "items": prioritized_items,
-                            "word": alias_name
-                        }
+                        cache_data = {"total": search_result["total"], "items": prioritized_items, "word": alias_name}
                         await cache.set(cache_key, cache_data, 7 * 24 * 3600)
                         all_items.extend(prioritized_items)
                 else:
@@ -94,21 +93,13 @@ class PriceHelper:
                     return {"success": False, "message": f"未找到物品：{word}"}
 
                 prioritized_items = await self._prioritize_items(word, search_result["items"])
-                cache_data = {
-                    "total": search_result["total"],
-                    "items": prioritized_items,
-                    "word": word
-                }
+                cache_data = {"total": search_result["total"], "items": prioritized_items, "word": word}
                 await cache.set(cache_key, cache_data, 7 * 24 * 3600)
                 all_items = prioritized_items
             else:
                 all_items = cached_data["items"]
 
-        combined_data = {
-            "total": len(all_items),
-            "items": all_items,
-            "word": word
-        }
+        combined_data = {"total": len(all_items), "items": all_items, "word": word}
 
         page_data = await self._get_page_data(combined_data, current_page)
         result = await self._query_and_format_prices(
@@ -117,13 +108,12 @@ class PriceHelper:
             num=num,
             current_page=current_page,
             total_count=len(all_items),
-            region_id=region_id
+            region_id=region_id,
         )
 
         return result
 
-
-    async def _prioritize_items(self, word: str, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _prioritize_items(self, word: str, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         调整物品优先级，将蓝图、皮肤等物品调低优先级
 
@@ -142,10 +132,10 @@ class PriceHelper:
 
             for item in items:
                 is_low_priority = (
-                        item.get("marketGroupID") == self.SKIN_GROUP_ID or
-                        item.get("groupID") == self.GRADE_GROUP_ID or
-                        any(kw in item.get("typeName", "").lower() for kw in self.low_priority_keywords) or
-                        any(kw in item.get("transName", "").lower() for kw in self.low_priority_keywords)
+                    item.get("marketGroupID") == self.SKIN_GROUP_ID
+                    or item.get("groupID") == self.GRADE_GROUP_ID
+                    or any(kw in item.get("typeName", "").lower() for kw in self.low_priority_keywords)
+                    or any(kw in item.get("transName", "").lower() for kw in self.low_priority_keywords)
                 )
 
                 if is_low_priority:
@@ -157,7 +147,7 @@ class PriceHelper:
 
         return items
 
-    async def _get_page_data(self, cached_data: Dict[str, Any], current_page: int) -> Dict[str, Any]:
+    async def _get_page_data(self, cached_data: dict[str, Any], current_page: int) -> dict[str, Any]:
         """
         获取指定页面的数据
 
@@ -187,18 +177,18 @@ class PriceHelper:
             "current_page": current_page,
             "total_pages": total_pages,
             "total_count": total_count,
-            "word": cached_data["word"]
+            "word": cached_data["word"],
         }
 
     async def _query_and_format_prices(
-            self,
-            page_data: Dict[str, Any],
-            word: str,
-            num: int,
-            current_page: int,
-            total_count: int,
-            region_id: Optional[int] = 10000002
-    ) -> Dict[str, Any]:
+        self,
+        page_data: dict[str, Any],
+        word: str,
+        num: int,
+        current_page: int,
+        total_count: int,
+        region_id: int | None = 10000002,
+    ) -> dict[str, Any]:
         """
         查询价格并格式化结果
 
@@ -264,7 +254,7 @@ class PriceHelper:
                 "total_mid": item_mid,
                 "buy_volume_remain": buy_volume_remain,
                 "sell_volume_remain": sell_volume_remain,
-                "history_line": history_line
+                "history_line": history_line,
             }
             formatted_items.append(formatted_item)
 
@@ -273,32 +263,23 @@ class PriceHelper:
             "total_pages": page_data["total_pages"],
             "total_count": total_count,
             "has_next": current_page < page_data["total_pages"],
-            "has_prev": current_page > 1
+            "has_prev": current_page > 1,
         }
 
-        result = {
-            "success": True,
-            "items": formatted_items,
-            "pagination": pagination,
-            "word": word,
-            "num": num
-        }
+        result = {"success": True, "items": formatted_items, "pagination": pagination, "word": word, "num": num}
 
         if is_all_grade:
-            result["group_total"] = {
-                "sell": total_sell,
-                "buy": total_buy,
-                "mid": total_mid
-            }
+            result["group_total"] = {"sell": total_sell, "buy": total_buy, "mid": total_mid}
 
         return result
 
-    async def next(self, session, word: str, current_page: int, num: int = 1) -> Dict[str, Any]:
+    async def next(self, session, word: str, current_page: int, num: int = 1) -> dict[str, Any]:
         """获取下一页结果"""
         return await self.get(session, word, num, current_page + 1)
 
-    async def prev(self, session, word: str, current_page: int, num: int = 1) -> Dict[str, Any]:
+    async def prev(self, session, word: str, current_page: int, num: int = 1) -> dict[str, Any]:
         """获取上一页结果"""
         return await self.get(session, word, num, current_page - 1)
+
 
 price_helper = PriceHelper()

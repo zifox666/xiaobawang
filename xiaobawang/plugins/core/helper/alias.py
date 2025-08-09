@@ -1,5 +1,3 @@
-from typing import Optional, List
-
 from sqlalchemy import select
 
 from ..db.models.alias import TypeAlias
@@ -10,7 +8,7 @@ class AliasHelper:
     def __init__(self):
         self.alias_cache_key_prefix: str = "alias_"
 
-    async def check(self, session, word: str) -> Optional[List[str]]:
+    async def check(self, session, word: str) -> list[str] | None:
         """
         检查输入是否为物品别名
 

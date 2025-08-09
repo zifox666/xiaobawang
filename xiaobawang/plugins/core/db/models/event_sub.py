@@ -9,6 +9,7 @@ class EVEServerStatusSub(Model):
     """
     EVE服务器状态订阅推送
     """
+
     __tablename_ = "eve_server_status_subscription"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

@@ -1,7 +1,8 @@
-from nonebot_plugin_orm import Model
-from sqlalchemy import Float, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
+
+from nonebot_plugin_orm import Model
+from sqlalchemy import Boolean, Float
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class KillmailHighValueSubscription(Model):

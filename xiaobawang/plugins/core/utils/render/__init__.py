@@ -1,8 +1,8 @@
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 
-from nonebot import require, logger
+from nonebot import logger, require
 from PIL import Image
 
 from ...config import SRC_PATH
@@ -10,13 +10,13 @@ from ...config import SRC_PATH
 require("nonebot_plugin_htmlrender")
 
 from nonebot_plugin_htmlrender import (
+    get_new_page,
     md_to_pic,
     template_to_pic,
-    get_new_page,
 )
 
 # 定义模板路径
-templates_path = SRC_PATH  / 'templates'
+templates_path = SRC_PATH / "templates"
 
 
 async def md2pic(content: str) -> bytes:
@@ -24,11 +24,7 @@ async def md2pic(content: str) -> bytes:
     return await md_to_pic(md=content)
 
 
-async def html2pic(
-        html_content: str,
-        width: int = 700,
-        height: int = 400
-) -> bytes:
+async def html2pic(html_content: str, width: int = 700, height: int = 400) -> bytes:
     """将 HTML 内容转换为图片"""
     async with get_new_page(viewport={"width": width, "height": height}, device_scale_factor=2) as page:
         await page.set_content(html_content)
@@ -37,14 +33,14 @@ async def html2pic(
 
 
 async def capture_element(
-        url: Optional[str] = None,
-        html_content: Optional[str] = None,
-        element: str = "body",
-        hide_elements: Optional[List[str]] = None,
-        output_file: str = "./html2pic.png",
-        viewport_width: int = 1920,
-        viewport_height: int = 1080,
-        full_page: bool = False
+    url: str | None = None,
+    html_content: str | None = None,
+    element: str = "body",
+    hide_elements: list[str] | None = None,
+    output_file: str = "./html2pic.png",
+    viewport_width: int = 1920,
+    viewport_height: int = 1080,
+    full_page: bool = False,
 ) -> bytes:
     """
     通用网页元素截图函数
@@ -63,8 +59,7 @@ async def capture_element(
         图片二进制数据
     """
     async with get_new_page(
-            viewport={"width": viewport_width, "height": viewport_height},
-            device_scale_factor=1
+        viewport={"width": viewport_width, "height": viewport_height}, device_scale_factor=1
     ) as page:
         if url:
             await page.goto(url)
@@ -75,7 +70,8 @@ async def capture_element(
             raise ValueError("必须提供 url 或 html_content 其中之一")
 
         if hide_elements:
-            await page.evaluate("""
+            await page.evaluate(
+                """
                 (selectors) => {
                     selectors.forEach(selector => {
                         const elements = document.querySelectorAll(selector);
@@ -84,7 +80,9 @@ async def capture_element(
                         });
                     });
                 }
-            """, hide_elements)
+            """,
+                hide_elements,
+            )
 
         element_handle = await page.wait_for_selector(element)
         if element_handle is None:
@@ -94,8 +92,8 @@ async def capture_element(
         if not bounding_box:
             raise ValueError(f"无法获取元素 '{element}' 的边界框")
 
-        element_width = bounding_box['width']
-        element_height = bounding_box['height']
+        element_width = bounding_box["width"]
+        element_height = bounding_box["height"]
 
         if full_page:
             screenshots = []
@@ -107,15 +105,15 @@ async def capture_element(
 
                 screenshot = await page.screenshot(
                     clip={
-                        "x": bounding_box['x'],
-                        "y": bounding_box['y'] - offset if bounding_box['y'] > offset else 0,
+                        "x": bounding_box["x"],
+                        "y": bounding_box["y"] - offset if bounding_box["y"] > offset else 0,
                         "width": element_width,
-                        "height": min(viewport_height, element_height - offset)
+                        "height": min(viewport_height, element_height - offset),
                     }
                 )
                 screenshots.append(screenshot)
 
-            stitched_image = Image.new('RGB', (int(element_width), int(element_height)))
+            stitched_image = Image.new("RGB", (int(element_width), int(element_height)))
             current_height = 0
             for screenshot in screenshots:
                 img = Image.open(BytesIO(screenshot))
@@ -127,12 +125,7 @@ async def capture_element(
 
             # 截图整个元素
             screenshot = await page.screenshot(
-                clip={
-                    "x": bounding_box['x'],
-                    "y": bounding_box['y'],
-                    "width": element_width,
-                    "height": element_height
-                }
+                clip={"x": bounding_box["x"], "y": bounding_box["y"], "width": element_width, "height": element_height}
             )
             stitched_image = Image.open(BytesIO(screenshot))
 
@@ -143,11 +136,11 @@ async def capture_element(
 
 
 async def render_template(
-        template_path: Path,
-        template_name: str,
-        data: Dict[str, Any] | Any,
-        width: int = 550,
-        height: int = 10,
+    template_path: Path,
+    template_name: str,
+    data: dict[str, Any] | Any,
+    width: int = 550,
+    height: int = 10,
 ) -> bytes | str:
     """通用模板渲染函数"""
     return await template_to_pic(
@@ -162,12 +155,12 @@ async def render_template(
 
 
 async def html2pic_br(
-        html_content: str = None,
-        url: str = None,
-        element: str = None,
-        hide_elements: list = None,
-        trim_class: str = "hOohQec_",
-        click_selector: Optional[str] = None,
+    html_content: str | None = None,
+    url: str | None = None,
+    element: str | None = None,
+    hide_elements: list | None = None,
+    trim_class: str = "hOohQec_",
+    click_selector: str | None = None,
 ) -> bytes | str:
     """
     BR网页元素截图函数
@@ -187,7 +180,8 @@ async def html2pic_br(
             await page.set_content(html_content)
 
         if hide_elements:
-            await page.evaluate("""
+            await page.evaluate(
+                """
                 (selectors) => {
                     selectors.forEach(selector => {
                         const elements = document.querySelectorAll(selector);
@@ -196,7 +190,9 @@ async def html2pic_br(
                         });
                     });
                 }
-            """, hide_elements)
+            """,
+                hide_elements,
+            )
 
         trim_width = 0
         if trim_class:
@@ -204,14 +200,14 @@ async def html2pic_br(
             if trim_element:
                 trim_box = await trim_element.bounding_box()
                 if trim_box:
-                    trim_width = trim_box['width'] * 0.9
+                    trim_width = trim_box["width"] * 0.9
         element_handle = await page.wait_for_selector(element)
         if element_handle is None:
             raise ValueError(f"Element '{element}' not found on the page.")
 
         bounding_box = await element_handle.bounding_box()
-        element_width = bounding_box['width']
-        element_height = bounding_box['height']
+        element_width = bounding_box["width"]
+        element_height = bounding_box["height"]
 
         await page.set_viewport_size({"width": int(element_width), "height": int(element_height)})
 
@@ -225,15 +221,10 @@ async def html2pic_br(
                     await page.wait_for_timeout(1000)
                     await page.wait_for_load_state("networkidle")
             except Exception as e:
-                logger.error(f"点击元素 '{click_selector}' 失败: {str(e)}")
+                logger.error(f"点击元素 '{click_selector}' 失败: {e!s}")
 
         screenshot = await page.screenshot(
-            clip={
-                "x": bounding_box['x'],
-                "y": bounding_box['y'],
-                "width": element_width,
-                "height": element_height
-            }
+            clip={"x": bounding_box["x"], "y": bounding_box["y"], "width": element_width, "height": element_height}
         )
 
         if trim_width > 0:
@@ -242,12 +233,7 @@ async def html2pic_br(
 
             actual_trim = min(trim_width, original_width / 2 - 10)
 
-            cropped_img = img.crop((
-                actual_trim,
-                0,
-                original_width - actual_trim,
-                original_height
-            ))
+            cropped_img = img.crop((actual_trim, 0, original_width - actual_trim, original_height))
 
             with BytesIO() as output:
                 cropped_img.save(output, format="PNG")
@@ -259,4 +245,3 @@ async def html2pic_br(
             with BytesIO() as output:
                 stitched_image.save(output, format="PNG")
                 return output.getvalue()
-

@@ -1,33 +1,36 @@
-[tool.poetry]
+[project]
+authors = [
+    {name = "zifox666"},
+]
+requires-python = "<4.0,>=3.10"
+dependencies = [
+    "httpx>=0.28.1",
+    "jieba>=0.42.1",
+    "nonebot-plugin-orm[sqlite]>=0.7.7",
+    "redis>=5.2.1",
+    "tqdm>=4.67.1",
+    "pillow>=11.2.1",
+    "matplotlib>=3.10.1",
+    "numpy>=2.2.4",
+    "nonebot2[fastapi]<3.0.0,>=2.3.3",
+    "uvicorn[standard]<0.35.0,>=0.34.1",
+    "nonebot-plugin-apscheduler>=0.5.0",
+    "nonebot-plugin-alconna>=0.54.0",
+    "nonebot-plugin-htmlrender>=0.6.0",
+    "nonebot-plugin-session>=0.2.3",
+    "aiofiles>=23.2.1",
+    "ujson>=5.9.0",
+    "tenacity>=9.0.0",
+    "nonebot-adapter-onebot>=2.3.1",
+    "nonebot-adapter-telegram>=0.1.0b20",
+    "imageio<3.0.0,>=2.37.0",
+    "nonebot-plugin-uninfo<1.0.0,>=0.7.3",
+]
 name = "xiaobawang"
 version = "0.1.0"
-description =  ""
-authors = ["zifox666"]
+description = ""
 readme = "README.md"
 
-[tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-httpx = ">=0.28.1"
-jieba = ">=0.42.1"
-nonebot-plugin-orm = {extras = ["sqlite"], version = ">=0.7.7"}
-redis = ">=5.2.1"
-tqdm = ">=4.67.1"
-pillow = ">=11.2.1"
-matplotlib = ">=3.10.1"
-numpy = ">=2.2.4"
-nonebot2 = { extras = ["fastapi"], version = "^2.3.3" }
-uvicorn = {extras = ["standard"], version = ">=0.34.1,<0.35.0"}
-nonebot-plugin-apscheduler = ">=0.5.0"
-nonebot-plugin-alconna = ">=0.54.0"
-nonebot-plugin-htmlrender = ">=0.6.0"
-nonebot-plugin-session = ">=0.2.3"
-aiofiles = ">=23.2.1"
-ujson = ">=5.9.0"
-tenacity = ">=9.0.0"
-nonebot-adapter-onebot = ">=2.3.1"
-nonebot-adapter-telegram = ">=0.1.0b20"
-imageio = "^2.37.0"
-nonebot-plugin-uninfo = "^0.7.3"
 
 [tool.nonebot]
 plugins = [
@@ -43,6 +46,57 @@ adapters = [
     { name = "Telegram", module_name = "nonebot.adapters.telegram" }
 ]
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+  "ruff>=0.12.7,<1.0.0",
+  "nonebot-adapter-onebot>=2.4.6,<3.0.0",
+]
+
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = [
+  "F",     # Pyflakes
+  "W",     # pycodestyle warnings
+  "E",     # pycodestyle errors
+  "I",     # isort
+  "UP",    # pyupgrade
+  "ASYNC", # flake8-async
+  "C4",    # flake8-comprehensions
+  "T10",   # flake8-debugger
+  "T20",   # flake8-print
+  "PYI",   # flake8-pyi
+  "PT",    # flake8-pytest-style
+  "Q",     # flake8-quotes
+  "TID",   # flake8-tidy-imports
+  "RUF",   # Ruff-specific rules
+]
+ignore = [
+  "E402",   # module-import-not-at-top-of-file
+  "UP037",  # quoted-annotation
+  "RUF001", # ambiguous-unicode-character-string
+  "RUF002", # ambiguous-unicode-character-docstring
+  "RUF003", # ambiguous-unicode-character-comment
+  "W191",   # indentation contains tabs
+  "TID252", # relative import
+]
+
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+known-first-party = ["tests/*"]
+extra-standard-library = ["typing_extensions"]
+
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
+
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true

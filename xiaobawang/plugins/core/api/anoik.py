@@ -1,5 +1,5 @@
+from ..utils.common.cache import cache, cache_result
 from .base import BaseClient
-from ..utils.common.cache import cache_result, cache
 
 
 class AnoikApi(BaseClient):

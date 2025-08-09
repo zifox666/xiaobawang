@@ -1,11 +1,11 @@
-from .cache import cache, cache_result
-from .models import TrnTranslations, TC_TYPES_ID, InvTypes, TC_GROUP_ID, InvFlags
-from .utils import text_processor
+from nonebot import logger
+from sqlalchemy import and_, or_, select
+
+from .cache import cache_result
 from .config import plugin_config
 from .db import get_session
-
-from nonebot import logger
-from sqlalchemy import or_, and_, select
+from .models import TC_GROUP_ID, TC_TYPES_ID, InvFlags, InvTypes, TrnTranslations
+from .utils import text_processor
 
 
 class SDESearch:
@@ -13,12 +13,7 @@ class SDESearch:
         self.default_lang = plugin_config.sde_default_language
 
     @cache_result(prefix="type_search_", exclude_args=[0])
-    async def search_item_by_name(
-            self,
-            name: str,
-            market: bool = True,
-            limit: int = 1000
-    ):
+    async def search_item_by_name(self, name: str, market: bool = True, limit: int = 1000):
         """
         按物品名称搜索，支持中英文模糊查询
         """
@@ -31,8 +26,8 @@ class SDESearch:
                     TrnTranslations.tcID == TC_TYPES_ID,
                     or_(
                         and_(TrnTranslations.languageID == self.default_lang, conditions),
-                        and_(TrnTranslations.languageID == "en", conditions)
-                    )
+                        and_(TrnTranslations.languageID == "en", conditions),
+                    ),
                 )
             )
             trans_results = await session.execute(trans_query)
@@ -46,12 +41,7 @@ class SDESearch:
             types_query = select(InvTypes).where(InvTypes.typeID.in_(matched_type_ids))
 
             if market:
-                types_query = types_query.where(
-                    and_(
-                        InvTypes.marketGroupID.is_not(None),
-                        InvTypes.published == True
-                    )
-                )
+                types_query = types_query.where(and_(InvTypes.marketGroupID.is_not(None), InvTypes.published.is_(True)))
 
             types_results = await session.execute(types_query)
             types = types_results.scalars().all()
@@ -63,21 +53,20 @@ class SDESearch:
 
             items = []
             for type_item in types:
-                items.append({
-                    "typeID": type_item.typeID,
-                    "typeName": type_item.typeName,
-                    "transName": translations_map.get(type_item.typeID, type_item.typeName),
-                    "marketGroupID": type_item.marketGroupID,
-                    "groupID": type_item.groupID,
-                })
+                items.append(
+                    {
+                        "typeID": type_item.typeID,
+                        "typeName": type_item.typeName,
+                        "transName": translations_map.get(type_item.typeID, type_item.typeName),
+                        "marketGroupID": type_item.marketGroupID,
+                        "groupID": type_item.groupID,
+                    }
+                )
 
             total = len(items)
             items = items[:limit]
 
-            return {
-                "total": total,
-                "items": items
-            }
+            return {"total": total, "items": items}
 
     @classmethod
     async def _build_search_conditions(cls, text: str):
@@ -126,16 +115,14 @@ class SDESearch:
             and_(
                 TrnTranslations.tcID == TC_TYPES_ID,
                 TrnTranslations.keyID == type_id,
-                TrnTranslations.languageID == language
+                TrnTranslations.languageID == language,
             )
         )
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
     async def get_type_names(
-            self,
-            type_ids: list[int | str],
-            language_id: str = None
+        self, type_ids: list[int | str], language_id: str | None = None
     ) -> dict[int, dict[str, str]]:
         """
         批量获取多个物品的名称
@@ -165,7 +152,7 @@ class SDESearch:
                 and_(
                     TrnTranslations.tcID == TC_TYPES_ID,
                     TrnTranslations.keyID.in_(int_type_ids),
-                    TrnTranslations.languageID == language_id
+                    TrnTranslations.languageID == language_id,
                 )
             )
             translations_result = await session.execute(translations_query)
@@ -176,13 +163,13 @@ class SDESearch:
                     inv_type = inv_types[type_id]
                     result[type_id] = {
                         "typeName": inv_type.typeName,
-                        "translation": translations.get(type_id, inv_type.typeName)
+                        "translation": translations.get(type_id, inv_type.typeName),
                     }
 
         return result
 
     @cache_result(prefix="type_group_", exclude_args=[0])
-    async def get_type_group(self, type_id: int | str, language: str = 'zh') -> str | None:
+    async def get_type_group(self, type_id: int | str, language: str = "zh") -> str | None:
         """
         从物品ID获取GROUP名称
         Args:
@@ -205,7 +192,7 @@ class SDESearch:
                 and_(
                     TrnTranslations.tcID == TC_GROUP_ID,
                     TrnTranslations.keyID == group_id,
-                    TrnTranslations.languageID == language
+                    TrnTranslations.languageID == language,
                 )
             )
             group_name_result = await session.execute(tns_query)
@@ -215,11 +202,7 @@ class SDESearch:
 
     @cache_result(prefix="fuzzy_search_", exclude_args=[0])
     async def trans_items(
-            self,
-            search_item: str,
-            limit: int = 10,
-            source_lang: str = None,
-            target_lang: str = "en"
+        self, search_item: str, limit: int = 10, source_lang: str | None = None, target_lang: str = "en"
     ) -> tuple[list[dict], int]:
         """
         根据输入词查找最相似的物品，支持中英文互转
@@ -248,11 +231,7 @@ class SDESearch:
             conditions = and_(*[TrnTranslations.text.ilike(f"%{token}%") for token in tokens])
 
             source_query = select(TrnTranslations).where(
-                and_(
-                    TrnTranslations.tcID == TC_TYPES_ID,
-                    TrnTranslations.languageID == source_lang,
-                    conditions
-                )
+                and_(TrnTranslations.tcID == TC_TYPES_ID, TrnTranslations.languageID == source_lang, conditions)
             )
             source_results = await session.execute(source_query)
             source_translations = source_results.scalars().all()
@@ -268,7 +247,7 @@ class SDESearch:
                 and_(
                     TrnTranslations.tcID == TC_TYPES_ID,
                     TrnTranslations.languageID == target_lang,
-                    TrnTranslations.keyID.in_(matched_type_ids)
+                    TrnTranslations.keyID.in_(matched_type_ids),
                 )
             )
             target_results = await session.execute(target_query)
@@ -277,10 +256,7 @@ class SDESearch:
             target_map = {trans.keyID: trans.text for trans in target_translations}
 
             types_query = select(InvTypes).where(
-                and_(
-                    InvTypes.typeID.in_(matched_type_ids),
-                    InvTypes.published == True
-                )
+                and_(InvTypes.typeID.in_(matched_type_ids), InvTypes.published is True)
             )
             types_results = await session.execute(types_query)
             types = types_results.scalars().all()
@@ -294,23 +270,19 @@ class SDESearch:
                 if source_text and target_text:
                     score = sum(1 for token in tokens if token.lower() in source_text.lower())
 
-                    results.append({
-                        "typeID": type_id,
-                        "typeName": type_item.typeName,
-                        "source": {
-                            "lang": source_lang,
-                            "text": source_text
-                        },
-                        "translation": {
-                            "lang": target_lang,
-                            "text": target_text
-                        },
-                        "score": score,
-                    })
-
+                    results.append(
+                        {
+                            "typeID": type_id,
+                            "typeName": type_item.typeName,
+                            "source": {"lang": source_lang, "text": source_text},
+                            "translation": {"lang": target_lang, "text": target_text},
+                            "score": score,
+                        }
+                    )
 
             results.sort(key=lambda x: x["score"], reverse=True)
             total = len(results)
             return results[:limit], total
+
 
 sde_search = SDESearch()
