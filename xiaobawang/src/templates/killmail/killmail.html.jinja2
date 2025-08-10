@@ -33,7 +33,7 @@
                {% endif %}
            </div>
             <br class="clear" />
-            <div style="margin-top: 3px;">
+            <div style="margin-top: 1px;">
                 <img src="https://images.evetech.net/corporations/{{ victim.victim_corp_id }}/logo?size=32" />
                 <img src="https://images.evetech.net/alliances/{{ victim.victim_alliance_id }}/logo?size=32" />
                 <span>
@@ -42,7 +42,7 @@
                 </span>
                 <div class="clear" style="font-size: 13px;">
                     {% if victim.victim_name != "Unknown" %}
-                    <div class="clear" style="margin-top: 7px;"><span>{{ victim.ship_type_name }} </span><span style="margin-left: 0.5ex; font-weight: 500;">({{ victim.ship_group_name }})</span></div>
+                    <div class="clear" style="margin-top: 10px;"><span>{{ victim.ship_type_name }} </span><span style="margin-left: 0.5ex; font-weight: 500;">({{ victim.ship_group_name }})</span></div>
                     {% endif %}
                     <div class="clear" style="position: absolute; left: 287px; top: 142px; font-weight: 500;">{{ time }} ({{ time_difference }})</div>
                     <div class="clear" style="position: absolute; left: 287px; top: 157px; font-weight: 500;"><span>{{ solar_system }} </span><span style="margin-left: 0.5ex; color:var({{ sec_color }})">{{ sec }}</span><span style="margin-left: 0.5ex;">&lt; {{ constellation }} &lt; {{ region }}</span></div>
