@@ -1,5 +1,5 @@
-from xiaobawang.plugins.core.utils.common.cache import cache, cache_result
-from xiaobawang.plugins.core.utils.common.http_client import get_client
+from ..utils.common.cache import cache, cache_result
+from ..utils.common.http_client import get_client
 
 
 @cache_result(expire_time=cache.TIME_HOUR)

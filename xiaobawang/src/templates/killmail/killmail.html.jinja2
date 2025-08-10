@@ -16,15 +16,24 @@
             <img src="https://images.evetech.net/types/{{ victim.ship_type_id }}/render?size=128" />
         </div>
         <div style="margin-left: 11px; margin-top: 10px;">
-            <div><span style="font-size: 18px; margin-top: 2px">
-                {% if victim.victim_name != "Unknown" %}
-                    {{ victim.victim_name }}
-                {% else %}
-                    {{ victim.ship_type_name }} <span style="margin-left: 0.5ex; font-weight: 500;">({{ victim.ship_group_name }})</span>
-                {% endif %}
-            </span></div>
+           <div class="victim-info">
+               {% if victim.victim_name != "Unknown" %}
+                   <div class="victim-name">
+                       {{ victim.victim_name }}
+                   </div>
+                   {% if victim.victim_title %}
+                       <div class="victim-title">
+                           {{ victim.victim_title | e }}
+                       </div>
+                   {% endif %}
+               {% else %}
+                   <div class="victim-ship">
+                       {{ victim.ship_type_name }} ({{ victim.ship_group_name }})
+                   </div>
+               {% endif %}
+           </div>
             <br class="clear" />
-            <div>
+            <div style="margin-top: 3px;">
                 <img src="https://images.evetech.net/corporations/{{ victim.victim_corp_id }}/logo?size=32" />
                 <img src="https://images.evetech.net/alliances/{{ victim.victim_alliance_id }}/logo?size=32" />
                 <span>
@@ -33,7 +42,7 @@
                 </span>
                 <div class="clear" style="font-size: 13px;">
                     {% if victim.victim_name != "Unknown" %}
-                    <div class="clear" style="margin-top: 12px;"><span>{{ victim.ship_type_name }} </span><span style="margin-left: 0.5ex; font-weight: 500;">({{ victim.ship_group_name }})</span></div>
+                    <div class="clear" style="margin-top: 7px;"><span>{{ victim.ship_type_name }} </span><span style="margin-left: 0.5ex; font-weight: 500;">({{ victim.ship_group_name }})</span></div>
                     {% endif %}
                     <div class="clear" style="position: absolute; left: 287px; top: 142px; font-weight: 500;">{{ time }} ({{ time_difference }})</div>
                     <div class="clear" style="position: absolute; left: 287px; top: 157px; font-weight: 500;"><span>{{ solar_system }} </span><span style="margin-left: 0.5ex; color:var({{ sec_color }})">{{ sec }}</span><span style="margin-left: 0.5ex;">&lt; {{ constellation }} &lt; {{ region }}</span></div>

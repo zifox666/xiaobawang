@@ -62,8 +62,8 @@ class SDEDownloader:
         )
 
         def _decompress():
-            async with open(self.download_path, "rb") as source:
-                async with open(self.target_path, "wb") as dest:
+            with open(self.download_path, "rb") as source:
+                with open(self.target_path, "wb") as dest:
                     decompressor = bz2.BZ2Decompressor()
                     for data in iter(lambda: source.read(1024 * 1024), b""):
                         progress_bar.update(len(data))

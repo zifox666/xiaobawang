@@ -202,5 +202,19 @@ class ESIClient(BaseClient):
             logger.error(f"获取服务器状态失败: {e}")
             return {}
 
+    @cache_result(expire_time=cache.TIME_DAY, exclude_args=[0])
+    async def get_character_public_info(self, character_id: int) -> dict[str, Any] | None:
+        """
+        获取角色的公共信息
+        :param character_id: 角色ID
+        :return: 角色的公共信息
+        """
+        try:
+            endpoint = f"/characters/{character_id}/?datasource=tranquility"
+            return await self._get(endpoint)
+        except Exception as e:
+            logger.error(f"获取角色公共信息失败: {e}")
+            return None
+
 
 esi_client = ESIClient()

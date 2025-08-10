@@ -129,7 +129,38 @@ body, html {
     margin-right: 5px;
 }
 
-* {
+.victim-info {
+    font-weight: 900;
+    display: flex;
+    flex-direction: column;
+}
+
+.victim-name {
+    font-size: 18px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.victim-title {
+    font-size: 9px;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.victim-ship {
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ship-group {
+    margin-left: 0.5ex;
+    font-weight: 500;
 }
 
 ::-webkit-scrollbar {

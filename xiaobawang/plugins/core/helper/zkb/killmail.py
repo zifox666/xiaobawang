@@ -12,7 +12,7 @@ from xiaobawang.plugins.sde.oper import sde_search
 from ...api.esi.universe import esi_client
 from ...api.killmail import get_zkb_killmail
 from ...helper.subscription import KillmailSubscriptionManager
-from ...utils.common import is_blueprint
+from ...utils.common import clean_colored_text, is_blueprint
 from ...utils.render import render_template, templates_path
 from ..message_queue import queue_killmail_message
 
@@ -255,8 +255,6 @@ class KillmailHelper:
             template_path=templates_path / "killmail",
             template_name="killmail.html.jinja2",
             data=html_data,
-            width=665,
-            height=100,
         )
 
         tasks = []
@@ -459,8 +457,17 @@ class KillmailHelper:
         ship_group_name = await sde_search.get_type_group(victim.get("ship_type_id", 0))
         damage_taken = victim.get("damage_taken", 0)
 
+        if victim_id:
+            victim_info = await esi_client.get_character_public_info(victim_id)
+            victim_title = victim_info.get("title", None)
+            if victim_title:
+                victim_title = clean_colored_text(victim_title)
+        else:
+            victim_title = None
+
         result = {
             "victim_id": victim_id,
+            "victim_title": victim_title,
             "victim_name": entity_names.get(victim_id, {}).get("name", "Unknown"),
             "victim_corp_id": corp_id,
             "victim_corp": entity_names.get(corp_id, {}).get("name", "Unknown"),

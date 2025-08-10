@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 from nonebot.internal.adapter import Bot, Event
 from nonebot_plugin_alconna.uniseg import reply_fetch
@@ -81,3 +82,20 @@ def is_blueprint(item_name: str) -> bool:
         return False
 
     return "蓝图" in item_name or "Blueprint" in item_name
+
+
+def clean_colored_text(text: str) -> str:
+    """
+    清除文本中的颜色标签，包括HTML和Unity富文本格式
+    :param text: 输入文本
+    """
+    pattern = r"<color=.*?>|</color>|<c>|</c>"
+    text = re.sub(pattern, "", text)
+
+    pattern = r"<[^>]*>"
+    text = re.sub(pattern, "", text)
+
+    text = text.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
