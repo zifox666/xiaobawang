@@ -255,6 +255,8 @@ class KillmailHelper:
             template_path=templates_path / "killmail",
             template_name="killmail.html.jinja2",
             data=html_data,
+            width=665,
+            height=100,
         )
 
         tasks = []
