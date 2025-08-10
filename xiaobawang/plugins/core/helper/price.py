@@ -9,7 +9,7 @@ from .alias import AliasHelper
 
 require("xiaobawang.plugins.sde")
 
-from xiaobawang.plugins.sde import sde_search
+from xiaobawang.plugins.sde.oper import sde_search
 
 
 class PriceHelper:

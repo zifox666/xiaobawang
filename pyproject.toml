@@ -39,6 +39,7 @@ plugins = [
     "nonebot_plugin_htmlrender",
     "nonebot_plugin_session",
     "nonebot_plugin_uninfo",
+    "nonebot_plugin_orm"
 ]
 plugin_dirs = ["xiaobawang/plugins"]
 adapters = [
