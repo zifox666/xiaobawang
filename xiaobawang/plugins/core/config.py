@@ -20,6 +20,8 @@ class Config(BaseModel):
     zkb_listener_method: str = "websocket"
     zkb_listener_url: str = "ws://127.0.0.1:8080"
 
+    tq_status_url: str = None
+
     upload_statistics: bool = True
     upload_statistics_url: str = "https://xbw.newdoublex.space/statics"
 

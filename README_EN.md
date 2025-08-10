@@ -36,15 +36,20 @@ pip install uv
 uv sync
 
 # Install scaffolding
-pip install nb-cli
+uv tool install nb-cli
 
 # Start running
-nb run
+uv run nb run
 ```
 
 ## 📝 Simple Configuration
 
 Fill in your bot configuration items in the .env.dev file
+
+> [!NOTE] 
+> zkillboard's wss killmail stream subscription has been migrated to RedisQ<br>
+> If TQ_STATUS_URL is not configured, the TQ status will be retrieved from CCP ESI, which may cause errors during downtime. It is recommended to research your own TQ status retrieval method<br>
+> zkillboard's wss blocks Python websockets, so using wss is not recommended
 
 ## 📋 Feature List
 

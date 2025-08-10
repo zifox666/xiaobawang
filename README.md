@@ -36,15 +36,20 @@ pip install uv
 uv sync
 
 # 安装脚手架
-pip install nb-cli
+uv tool install nb-cli
 
 # 开始运行
-nb run
+uv run nb run
 ```
 
 ## 📝 简单配置
 
-在 .env.dev 文件中填写你的机器人配置项
+在 .env.dev 文件中填写你的机器人配置项<br>
+
+> [!NOTE]
+> zkillboard的wss killmail stream订阅已迁移到 [RedisQ](https://github.com/zKillboard/RedisQ)<br>
+> 不配置`TQ_STATUS_URL`将会从ccp esi获取tq状态 在dt那段时间esi会出错 建议自行研究tq获取方式<br>
+> zkillboard的wss 对Python websockets进行阻断 所以不推荐使用wss
 
 ## 📋 功能列表
 

@@ -1,5 +1,6 @@
 from typing import Any
 
+import httpx
 from nonebot import logger, require
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_orm import get_session
@@ -8,7 +9,9 @@ from sqlalchemy import Select, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..api.esi.universe import esi_client
+from ..config import plugin_config
 from ..db.models.event_sub import EVEServerStatusSub
+from ..utils.common.http_client import get_client
 from .message_queue import queue_common
 
 require("nonebot_plugin_apscheduler")
@@ -26,6 +29,7 @@ class EVEServerStatus:
         self.api_status: dict[str, Any] | None = None
 
         self.previous_server_online: bool | None = None
+        self._client: httpx.AsyncClient | None = None
 
         scheduler.add_job(self.check, "cron", second="*/30", id="eve_server_status_check")
 
@@ -34,7 +38,20 @@ class EVEServerStatus:
         Check the server status.
         """
         try:
-            self.status = await esi_client.get_server_status()
+            if not plugin_config.tq_status_url:
+                self.status = await esi_client.get_server_status()
+            else:
+                self._client = get_client()
+                r = await self._client.get(plugin_config.tq_status_url)
+                r.raise_for_status()
+                if r.json().get("code") == 200:
+                    data = r.json().get("data")
+                    self.status = {
+                        "players": int(data.get("tqCount", 0) if data.get("tqStatus") == "ONLINE" else 0),
+                        "server_version": data.get("server_version", ""),
+                        "vip": data.get("vip", False),
+                    }
+
             self.api_status = await esi_client.get_api_status()
         except Exception as e:
             logger.error(f"获取EVE服务器状态失败: {e!s}")
