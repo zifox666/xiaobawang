@@ -2,6 +2,7 @@ import asyncio
 import json
 import traceback
 
+from httpx import ReadTimeout
 from nonebot import logger
 
 from ...config import HEADERS, plugin_config
@@ -97,7 +98,7 @@ class ZkbListener:
                 else:
                     await asyncio.sleep(5)
 
-            except httpx.ReadTimeout:
+            except ReadTimeout:
                 logger.warning("请求超时")
                 await asyncio.sleep(5)
 
