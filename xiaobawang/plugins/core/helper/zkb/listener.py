@@ -80,27 +80,31 @@ class ZkbListener:
         self._client = get_client()
         while self.running:
             try:
-                url = f"{plugin_config.zkb_listener_url}?queueID={plugin_config.user_agent}&ttw=1"
+                url = f"{plugin_config.zkb_listener_url}?queueID={plugin_config.user_agent}&ttw=5"
                 r = await self._client.get(url)
+                if r.status_code == 429:
+                    logger.warning("请求过于频繁")
+                    await asyncio.sleep(5)
+                    continue
+
                 r.raise_for_status()
                 data = r.json().get("package", None)
                 if data:
                     zkb_data = data.get("killmail")
                     zkb_data["zkb"] = data.get("zkb")
-                    task = asyncio.create_task(km.check(zkb_data))
-                    task.add_done_callback(lambda t: t.exception() if t.exception() else None)
+                    asyncio.create_task(km.check(zkb_data))
                     await asyncio.sleep(0.1)
                 else:
                     await asyncio.sleep(5)
 
+            except httpx.ReadTimeout:
+                logger.warning("请求超时")
+                await asyncio.sleep(5)
+
             except Exception as e:
-                if r.status_code == 429:
-                    logger.warning("请求过于频繁")
-                    await asyncio.sleep(5)
-                else:
-                    logger.error(f"获取 redisQ 连接失败: {e}\n{traceback.format_exc()}")
-                    await asyncio.sleep(self.reconnect_delay)
-                    self.reconnect_delay = min(self.reconnect_delay * 2, self.max_reconnect_delay)
+                logger.error(f"获取 redisQ 连接失败: {e}\n{traceback.format_exc()}")
+                await asyncio.sleep(self.reconnect_delay)
+                self.reconnect_delay = min(self.reconnect_delay * 2, self.max_reconnect_delay)
 
     async def start(self):
         """启动 Killmail 监听器"""
