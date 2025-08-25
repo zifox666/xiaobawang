@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from nonebot import logger, require
@@ -25,12 +25,11 @@ class EVEServerStatus:
     """
 
     def __init__(self):
-        self._client: Optional[httpx.AsyncClient] = get_client()
         self.status: dict[str, Any] | None = None
         self.api_status: dict[str, Any] | None = None
 
         self.previous_server_online: bool | None = None
-        self._client: httpx.AsyncClient | None = None
+        self._client: httpx.AsyncClient | None = get_client()
 
         scheduler.add_job(self.check, "cron", second="*/30", id="eve_server_status_check")
 
@@ -54,7 +53,6 @@ class EVEServerStatus:
                             "vip": False,
                         }
             else:
-                self._client = get_client()
                 r = await self._client.get(plugin_config.tq_status_url)
                 r.raise_for_status()
                 if r.json().get("code") == 200:
