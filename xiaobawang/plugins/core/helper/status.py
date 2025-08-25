@@ -52,15 +52,14 @@ class EVEServerStatus:
                         "server_version": data.get("server_version", ""),
                         "vip": data.get("vip", False),
                     }
-        except httpx.ReadTimeout:
-            logger.debug("API端口超时")
-            if self.api_status.get("eve_status") == "red":
-                self.status = {
-                    "players": 0,
-                    "server_version": "0",
-                    "start_time": "2000-01-01T00:00:00Z",
-                    "vip": False,
-                }
+                elif r.json().get("code") // 100 == 5:
+                    if self.api_status.get("eve_status") == "red":
+                        self.status = {
+                            "players": 0,
+                            "server_version": "0",
+                            "start_time": "2000-01-01T00:00:00Z",
+                            "vip": False,
+                        }
         except Exception as e:
             logger.error(f"获取EVE服务器状态失败: {e!s}")
             raise e
