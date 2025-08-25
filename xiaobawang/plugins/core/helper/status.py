@@ -37,6 +37,7 @@ class EVEServerStatus:
         """
         Check the server status.
         """
+        self.api_status = await esi_client.get_api_status()
         try:
             if not plugin_config.tq_status_url:
                 self.status = await esi_client.get_server_status()
@@ -51,15 +52,22 @@ class EVEServerStatus:
                         "server_version": data.get("server_version", ""),
                         "vip": data.get("vip", False),
                     }
-
-            self.api_status = await esi_client.get_api_status()
+        except httpx.ReadTimeout:
+            logger.debug("API端口超时")
+            if self.api_status.get("eve_status") == "red":
+                self.status = {
+                    "players": 0,
+                    "server_version": "0",
+                    "start_time": "2000-01-01T00:00:00Z",
+                    "vip": False,
+                }
         except Exception as e:
             logger.error(f"获取EVE服务器状态失败: {e!s}")
             raise e
 
         if self.status:
             players_count = self.status.get("players", 0)
-            current_online = players_count > 0
+            current_online = players_count > 100
 
             logger.debug(f"EVE服务器状态: 玩家数={players_count}, 在线={current_online}")
         else:
