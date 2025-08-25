@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 from nonebot import logger, require
@@ -25,6 +25,7 @@ class EVEServerStatus:
     """
 
     def __init__(self):
+        self._client: Optional[httpx.AsyncClient] = get_client()
         self.status: dict[str, Any] | None = None
         self.api_status: dict[str, Any] | None = None
 
@@ -40,7 +41,18 @@ class EVEServerStatus:
         self.api_status = await esi_client.get_api_status()
         try:
             if not plugin_config.tq_status_url:
-                self.status = await esi_client.get_server_status()
+                r = await self._client.get("https://esi.evetech.net/latest/status/?datasource=tranquility")
+                r.raise_for_status()
+                if r.status_code == 200:
+                    self.status = r.json()
+                elif r.status_code // 100 == 5:
+                    if self.api_status.get("eve_status") == "red":
+                        self.status = {
+                            "players": 0,
+                            "server_version": "0",
+                            "start_time": "2000-01-01T00:00:00Z",
+                            "vip": False,
+                        }
             else:
                 self._client = get_client()
                 r = await self._client.get(plugin_config.tq_status_url)
@@ -52,14 +64,6 @@ class EVEServerStatus:
                         "server_version": data.get("server_version", ""),
                         "vip": data.get("vip", False),
                     }
-                elif r.json().get("code") // 100 == 5:
-                    if self.api_status.get("eve_status") == "red":
-                        self.status = {
-                            "players": 0,
-                            "server_version": "0",
-                            "start_time": "2000-01-01T00:00:00Z",
-                            "vip": False,
-                        }
         except Exception as e:
             logger.error(f"获取EVE服务器状态失败: {e!s}")
             raise e
