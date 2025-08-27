@@ -29,7 +29,7 @@ class EVEServerStatus:
         self.api_status: dict[str, Any] | None = None
 
         self.previous_server_online: bool | None = None
-        self._client: httpx.AsyncClient | None = None
+        self._client: httpx.AsyncClient | None = get_client()
 
         scheduler.add_job(self.check, "cron", second="*/30", id="eve_server_status_check")
 
@@ -37,11 +37,22 @@ class EVEServerStatus:
         """
         Check the server status.
         """
+        self.api_status = await esi_client.get_api_status()
         try:
             if not plugin_config.tq_status_url:
-                self.status = await esi_client.get_server_status()
+                r = await self._client.get("https://esi.evetech.net/latest/status/?datasource=tranquility")
+                if r.status_code == 200:
+                    self.status = r.json()
+                elif r.status_code // 100 == 5:
+                    self.status = {
+                        "players": 0,
+                        "server_version": "0",
+                        "start_time": "2000-01-01T00:00:00Z",
+                        "vip": False,
+                    }
+                else:
+                    r.raise_for_status()
             else:
-                self._client = get_client()
                 r = await self._client.get(plugin_config.tq_status_url)
                 r.raise_for_status()
                 if r.json().get("code") == 200:
@@ -51,15 +62,13 @@ class EVEServerStatus:
                         "server_version": data.get("server_version", ""),
                         "vip": data.get("vip", False),
                     }
-
-            self.api_status = await esi_client.get_api_status()
         except Exception as e:
             logger.error(f"获取EVE服务器状态失败: {e!s}")
             raise e
 
         if self.status:
             players_count = self.status.get("players", 0)
-            current_online = players_count > 0
+            current_online = players_count > 100
 
             logger.debug(f"EVE服务器状态: 玩家数={players_count}, 在线={current_online}")
         else:

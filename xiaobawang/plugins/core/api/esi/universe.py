@@ -170,7 +170,7 @@ class ESIClient(BaseClient):
             r = await self._client.get(url=endpoint)
             r.raise_for_status()
             data = r.json()
-            green, yellow, red = 0, 0, 0
+            green, yellow, red, eve_status = 0, 0, 0,  "eve_status"
             for i in data:
                 status = i.get("status")
                 if status == "green":
@@ -179,12 +179,15 @@ class ESIClient(BaseClient):
                     yellow += 1
                 else:
                     red += 1
+                if i.get("endpoint") == "esi-status-protobuf":
+                    eve_status = status
 
             return {
                 "green": green,
                 "yellow": yellow,
                 "red": red,
                 "total": len(data),
+                "eve_status": eve_status
             }
         except Exception as e:
             logger.error(f"获取API状态失败: {e}")
