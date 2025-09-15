@@ -297,6 +297,7 @@ async def html2pic_war_beacon(
         await element_handle.scroll_into_view_if_needed()
 
         await wait_for_all_images_in_viewport(page)
+        await page.wait_for_timeout(500)
 
         bounding_box = await element_handle.bounding_box()
         if not bounding_box:
@@ -307,7 +308,7 @@ async def html2pic_war_beacon(
 
         if element_class == "compact-teams":
             await page.set_viewport_size(
-                {"width": int(element_width + 20 * count), "height": int(element_height + 180)}
+                {"width": int(element_width + 20 * count), "height": max(1080, int(element_height + 180))}
             )
         else:
             await page.set_viewport_size({"width": 1920, "height": int(element_height + 100)})
@@ -316,18 +317,13 @@ async def html2pic_war_beacon(
 
         await page.evaluate("""
         () => {
-            // 尝试找到可能的虚拟滚动容器
             const scrollContainers = Array.from(document.querySelectorAll('.compact-teams, .battle-report-involved'));
             scrollContainers.forEach(container => {
-                // 如果容器有滚动功能，强制显示全部内容
                 if (container.scrollHeight > container.clientHeight) {
-                    // 临时禁用虚拟滚动，强制渲染所有内容
                     const originalStyle = container.style.cssText;
                     container.style.height = 'auto';
                     container.style.maxHeight = 'none';
                     container.style.overflow = 'visible';
-
-                    // 保留修改，让后续截图包含全部内容
                 }
             });
         }
@@ -347,16 +343,16 @@ async def html2pic_war_beacon(
         if element_class == "compact-teams":
             clip = {
                 "x": bounding_box["x"] - (20 * count) / 2,
-                "y": bounding_box["y"],
+                "y": bounding_box["y"] - 10,
                 "width": element_width + (20 * count) * 2,
-                "height": element_height + 140,
+                "height": max(1080, (element_height + 140)),
             }
         else:
             clip = {
                 "x": bounding_box["x"],
-                "y": bounding_box["y"],
+                "y": bounding_box["y"] - 10,
                 "width": element_width,
-                "height": element_height,
+                "height": element_height + 10,
             }
 
         screenshot = await page.screenshot(
