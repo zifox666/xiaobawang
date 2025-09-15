@@ -6,7 +6,13 @@ from nonebot import logger, require
 from PIL import Image
 
 from ...config import SRC_PATH
-from .utils import scroll_and_load_all_content, wait_for_all_images_in_viewport
+from .utils import (
+    expand_scrollable_containers,
+    get_element_dimensions,
+    get_teams_count,
+    scroll_and_load_all_content,
+    wait_for_all_images_in_viewport,
+)
 
 require("nonebot_plugin_htmlrender")
 
@@ -245,27 +251,38 @@ async def html2pic_war_beacon(
     element_class: str = "compact-teams",
 ) -> bytes:
     """
-    截图指定URL的特定元素，支持懒加载和虚拟滚动
+    截图战争信标(War Beacon)网页的特定元素，支持懒加载和虚拟滚动
+
+    Args:
+        url: 要截图的网页URL
+        click_text: 需要点击的文本内容
+        element_class: 要截图的主要元素类名
+
+    Returns:
+        bytes: 截图的二进制数据
     """
     if not url:
         raise ValueError("必须提供URL")
 
     async with get_new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1) as page:
+        # 配置页面
         await page.route("**/*", lambda route: route.continue_())
-
         await page.goto(url)
 
+        # 设置本地存储以改变语言和隐藏提示
         await page.evaluate("""
             localStorage.setItem('eve-warbeacon-locale', 'zh');
             localStorage.setItem('hideDragDropTip', 'true');
         """)
 
+        # 重新加载页面以应用设置
         await page.reload()
         await page.wait_for_load_state("networkidle")
 
-        load_status = await scroll_and_load_all_content(page)
-        logger.info(f"内容加载状态: {load_status}")
+        # 滚动加载所有内容
+        await scroll_and_load_all_content(page)
 
+        # 如果需要点击特定文本
         if click_text:
             try:
                 element_with_text = await page.wait_for_selector(f"text='{click_text}'", timeout=2000)
@@ -273,90 +290,89 @@ async def html2pic_war_beacon(
                     await element_with_text.click()
                     await page.wait_for_timeout(1000)
                     await page.wait_for_load_state("networkidle")
-
                     await scroll_and_load_all_content(page)
             except Exception as e:
                 logger.error(f"点击文字 '{click_text}' 失败: {e!s}")
 
-        count = await page.evaluate("""
-            () => {
-                const teamsContainer = document.querySelector('.compact-teams');
-                if (!teamsContainer) {
-                    return 2;
-                }
+        # 获取队伍数量
+        count = await get_teams_count(page)
 
-                const teamCards = teamsContainer.querySelectorAll('.compact-team-card');
-                return teamCards.length;
-            }
-        """)
-
-        element_handle = await page.wait_for_selector(f".{element_class}")
-        if element_handle is None:
+        # 获取主元素和捕获元素的尺寸
+        main_element_box = await get_element_dimensions(page, f".{element_class}")
+        if not main_element_box:
             raise ValueError(f"未找到元素 '.{element_class}'")
 
-        await element_handle.scroll_into_view_if_needed()
 
+        element_handle = await page.wait_for_selector(f".{element_class}")
+        if element_handle:
+            await element_handle.scroll_into_view_if_needed()
+
+        # 等待图片加载
         await wait_for_all_images_in_viewport(page)
         await page.wait_for_timeout(500)
 
-        bounding_box = await element_handle.bounding_box()
-        if not bounding_box:
-            raise ValueError(f"无法获取元素 '.{element_class}' 的边界框")
-
-        element_width = bounding_box["width"]
-        element_height = bounding_box["height"]
-
-        if element_class == "compact-teams":
-            await page.set_viewport_size(
-                {"width": int(element_width + 20 * count), "height": max(1080, int(element_height + 180))}
-            )
-        else:
-            await page.set_viewport_size({"width": 1920, "height": int(element_height + 100)})
-
-        await page.wait_for_timeout(1000)
-
-        await page.evaluate("""
-        () => {
-            const scrollContainers = Array.from(document.querySelectorAll('.compact-teams, .battle-report-involved'));
-            scrollContainers.forEach(container => {
-                if (container.scrollHeight > container.clientHeight) {
-                    const originalStyle = container.style.cssText;
-                    container.style.height = 'auto';
-                    container.style.maxHeight = 'none';
-                    container.style.overflow = 'visible';
-                }
-            });
-        }
-        """)
-
-        await wait_for_all_images_in_viewport(page)
-
+        # 获取捕获元素的尺寸
         capture_class = ".battle-report-involved"
-        element_handle = await page.wait_for_selector(capture_class)
-        if element_handle is None:
-            raise ValueError(f"未找到元素 {capture_class}")
-
-        bounding_box = await element_handle.bounding_box()
-        if not bounding_box:
+        capture_element_box = await get_element_dimensions(page, capture_class)
+        if not capture_element_box:
             raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
 
+        # 设置适当的视口大小
         if element_class == "compact-teams":
+            # 对于两队情况，增加额外空间
+            extra_height = 320 if count == 2 else 100
+            viewport_size = {
+                "width": int(main_element_box["width"] + 20 * count),
+                "height": max(1080, int(capture_element_box["height"] + extra_height)),
+            }
+        else:
+            viewport_size = {"width": 1920, "height": int(main_element_box["height"] + 100)}
+
+        await page.set_viewport_size(viewport_size)
+        await page.wait_for_timeout(1000)
+        await expand_scrollable_containers(page)
+        await wait_for_all_images_in_viewport(page)
+
+        # 为两队情况再次调整尺寸并展开容器
+        if count == 2:
+            # 第一次调整后重新获取尺寸
+            capture_element_box = await get_element_dimensions(page, capture_class)
+            if not capture_element_box:
+                raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
+
+            # 额外增加高度
+            viewport_size["height"] = int(capture_element_box["height"] + 300)
+            await page.set_viewport_size(viewport_size)
+            await page.wait_for_timeout(1000)
+
+            # 再次展开容器并等待图片加载
+            await expand_scrollable_containers(page)
+            await wait_for_all_images_in_viewport(page)
+
+            # 最后一次获取实际尺寸
+            capture_element_box = await get_element_dimensions(page, capture_class)
+            if not capture_element_box:
+                raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
+
+        # 计算裁剪区域
+        if element_class == "compact-teams":
+            padding_x = 20 * count
+            padding_y = 10 if count > 2 else 11
             clip = {
-                "x": bounding_box["x"] - (20 * count) / 2,
-                "y": bounding_box["y"] - 10,
-                "width": element_width + (20 * count) * 2,
-                "height": max(1080, (element_height + 140)),
+                "x": capture_element_box["x"] - padding_x / 2,
+                "y": capture_element_box["y"] - padding_y,
+                "width": main_element_box["width"] + padding_x * 2,
+                "height": capture_element_box["height"] + padding_y * 2,
             }
         else:
             clip = {
-                "x": bounding_box["x"],
-                "y": bounding_box["y"] - 10,
-                "width": element_width,
-                "height": element_height + 10,
+                "x": capture_element_box["x"],
+                "y": capture_element_box["y"] - 10,
+                "width": main_element_box["width"],
+                "height": main_element_box["height"] + 10,
             }
 
-        screenshot = await page.screenshot(
-            clip=clip
-        )
-
+        # 截图并返回
+        screenshot = await page.screenshot(clip=clip)
         return screenshot
+
