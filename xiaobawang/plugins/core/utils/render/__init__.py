@@ -6,6 +6,7 @@ from nonebot import logger, require
 from PIL import Image
 
 from ...config import SRC_PATH
+from .utils import scroll_and_load_all_content, wait_for_all_images_in_viewport
 
 require("nonebot_plugin_htmlrender")
 
@@ -231,17 +232,135 @@ async def html2pic_br(
             img = Image.open(BytesIO(screenshot))
             original_width, original_height = img.size
 
-            actual_trim = min(trim_width, original_width / 2 - 10)
-
-            cropped_img = img.crop((actual_trim, 0, original_width - actual_trim, original_height))
-
             with BytesIO() as output:
-                cropped_img.save(output, format="PNG")
-                cropped_img.save("./html2pic.png")
                 return output.getvalue()
         else:
-            stitched_image = Image.open(BytesIO(screenshot))
-            stitched_image.save("./html2pic.png")
             with BytesIO() as output:
-                stitched_image.save(output, format="PNG")
                 return output.getvalue()
+
+
+async def html2pic_war_beacon(
+    url: str,
+    click_text: str | None = None,
+    element_class: str = "compact-teams",
+) -> bytes:
+    """
+    截图指定URL的特定元素，支持懒加载和虚拟滚动
+    """
+    if not url:
+        raise ValueError("必须提供URL")
+
+    async with get_new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1) as page:
+        await page.route("**/*", lambda route: route.continue_())
+
+        await page.goto(url)
+
+        await page.evaluate("""
+            localStorage.setItem('eve-warbeacon-locale', 'zh');
+            localStorage.setItem('hideDragDropTip', 'true');
+        """)
+
+        await page.reload()
+        await page.wait_for_load_state("networkidle")
+
+        load_status = await scroll_and_load_all_content(page)
+        logger.info(f"内容加载状态: {load_status}")
+
+        if click_text:
+            try:
+                element_with_text = await page.wait_for_selector(f"text='{click_text}'", timeout=2000)
+                if element_with_text:
+                    await element_with_text.click()
+                    await page.wait_for_timeout(1000)
+                    await page.wait_for_load_state("networkidle")
+
+                    await scroll_and_load_all_content(page)
+            except Exception as e:
+                logger.error(f"点击文字 '{click_text}' 失败: {e!s}")
+
+        count = await page.evaluate("""
+            () => {
+                const teamsContainer = document.querySelector('.compact-teams');
+                if (!teamsContainer) {
+                    return 2;
+                }
+
+                const teamCards = teamsContainer.querySelectorAll('.compact-team-card');
+                return teamCards.length;
+            }
+        """)
+
+        element_handle = await page.wait_for_selector(f".{element_class}")
+        if element_handle is None:
+            raise ValueError(f"未找到元素 '.{element_class}'")
+
+        await element_handle.scroll_into_view_if_needed()
+
+        await wait_for_all_images_in_viewport(page)
+
+        bounding_box = await element_handle.bounding_box()
+        if not bounding_box:
+            raise ValueError(f"无法获取元素 '.{element_class}' 的边界框")
+
+        element_width = bounding_box["width"]
+        element_height = bounding_box["height"]
+
+        if element_class == "compact-teams":
+            await page.set_viewport_size(
+                {"width": int(element_width + 20 * count), "height": int(element_height + 180)}
+            )
+        else:
+            await page.set_viewport_size({"width": 1920, "height": int(element_height + 100)})
+
+        await page.wait_for_timeout(1000)
+
+        await page.evaluate("""
+        () => {
+            // 尝试找到可能的虚拟滚动容器
+            const scrollContainers = Array.from(document.querySelectorAll('.compact-teams, .battle-report-involved'));
+            scrollContainers.forEach(container => {
+                // 如果容器有滚动功能，强制显示全部内容
+                if (container.scrollHeight > container.clientHeight) {
+                    // 临时禁用虚拟滚动，强制渲染所有内容
+                    const originalStyle = container.style.cssText;
+                    container.style.height = 'auto';
+                    container.style.maxHeight = 'none';
+                    container.style.overflow = 'visible';
+
+                    // 保留修改，让后续截图包含全部内容
+                }
+            });
+        }
+        """)
+
+        await wait_for_all_images_in_viewport(page)
+
+        capture_class = ".battle-report-involved"
+        element_handle = await page.wait_for_selector(capture_class)
+        if element_handle is None:
+            raise ValueError(f"未找到元素 {capture_class}")
+
+        bounding_box = await element_handle.bounding_box()
+        if not bounding_box:
+            raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
+
+        if element_class == "compact-teams":
+            clip = {
+                "x": bounding_box["x"] - (20 * count) / 2,
+                "y": bounding_box["y"],
+                "width": element_width + (20 * count) * 2,
+                "height": element_height + 140,
+            }
+        else:
+            clip = {
+                "x": bounding_box["x"],
+                "y": bounding_box["y"],
+                "width": element_width,
+                "height": element_height,
+            }
+
+        screenshot = await page.screenshot(
+            clip=clip
+        )
+
+        return screenshot

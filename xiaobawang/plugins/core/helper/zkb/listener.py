@@ -93,7 +93,7 @@ class ZkbListener:
                 if data:
                     zkb_data = data.get("killmail")
                     zkb_data["zkb"] = data.get("zkb")
-                    asyncio.create_task(km.check(zkb_data))
+                    asyncio.create_task(km.check(zkb_data)) # noqa RUF006
                 else:
                     await asyncio.sleep(5)
 

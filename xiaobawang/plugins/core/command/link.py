@@ -10,7 +10,7 @@ from ..helper.zkb.killmail import km
 from ..utils.common import convert_time, get_reply_message_id
 from ..utils.common.cache import get_msg_cache, save_msg_cache
 from ..utils.common.emoji import emoji_action
-from ..utils.render import html2pic_br
+from ..utils.render import html2pic_br, html2pic_war_beacon
 
 link = on_alconna(
     Alconna(
@@ -28,6 +28,8 @@ br = on_alconna(
 br_preview_time = on_regex(r"https://br.evetools.org/br/([a-zA-Z0-9]{24})")
 br_preview_zkb = on_regex(r"https://zkillboard.com/related/([0-9]{8})/([0-9]{12})/")
 br_preview_alt = on_regex(r"https://br.evetools.org/related/([0-9]{8})/([0-9]{12})")
+wb_preview_alt = on_regex(r"https://warbeacon.net/br/report/([a-zA-Z0-9\-]+)")
+wb_preview_time = on_regex(r"https://warbeacon.net/br/related/([0-9]{8})/([0-9]{12})")
 
 
 @link.handle()
@@ -49,15 +51,15 @@ async def _(
     event: Event,
     result: Arparma,
 ):
-    click_selector = "involved"
+    click_selector = "参与者"
     if result.find("damage"):
-        click_selector = "damage"
+        click_selector = "伤害"
     elif result.find("timeline"):
-        click_selector = "timeline"
+        click_selector = "时间线"
     elif result.find("summary"):
-        click_selector = "summary"
+        click_selector = "统计"
     elif result.find("composition"):
-        click_selector = "composition"
+        click_selector = "构成"
 
     msg_id = await get_reply_message_id(bot, event)
     save_link = await get_msg_cache(msg_id)
@@ -67,7 +69,7 @@ async def _(
         matched = re.search(r"https://zkillboard\.com/kill/(\d+)/", save_link)
         kill_id = matched.group(1)
         data = await km.get(kill_id)
-        br_link = f"https://br.evetools.org/related/{data['solar_system_id']}/{convert_time(data['killmail_time'])}"
+        br_link = f"https://warbeacon.net/br/related/{data['solar_system_id']}/{convert_time(data['killmail_time'])}"
         no_url = False
     else:
         br_link = save_link
@@ -83,12 +85,11 @@ async def _(
             await br.send(
                 UniMessage.reply(msg_id)
                 + UniMessage.image(
-                    raw=await html2pic_br(
-                        url=br_link,
-                        element=".development",
-                        hide_elements=["bp3-navbar", "bp3-fixed-top", "bp3-dark", "_2ds1SVI_", "MNHgrY8N", "bp3-dark"],
-                        click_selector=click_selector,
-                    )
+                    raw=await html2pic_war_beacon(
+                            url=br_link,
+                            element_class="compact-teams" if click_selector != "时间线" else "battle-report-involved",
+                            click_text=click_selector,
+                        )
                 )
             ),
             br_link,
@@ -97,13 +98,20 @@ async def _(
 
 @br_preview_time.handle()
 async def _(event: Event, url: str = RegexStr()):
+    matched = re.search(r"https://br.evetools.org/br/([a-zA-Z0-9]{24})", url)
+    if not matched:
+        return
+
     await emoji_action(event)
+    system, time = matched.groups()
+    url = f"https://warbeacon.net/br/related/{system}/{time}"
+
     await save_msg_cache(
         await UniMessage.image(
-            raw=await html2pic_br(
+            raw=await html2pic_war_beacon(
                 url=url,
-                element=".development",
-                hide_elements=["bp3-navbar", "bp3-fixed-top", "bp3-dark", "_2ds1SVI_"],
+                element_class="compact-teams",
+                click_text=None,
             )
         ).send(target=event, reply_to=True),
         url,
@@ -140,6 +148,22 @@ async def _(event: Event, url: str = RegexStr()):
                 url=url,
                 element=".development",
                 hide_elements=["bp3-navbar", "bp3-fixed-top", "bp3-dark", "_2ds1SVI_"],
+            )
+        ).send(target=event, reply_to=True),
+        url,
+    )
+
+
+@wb_preview_alt.handle()
+@wb_preview_time.handle()
+async def _(event: Event, url: str = RegexStr()):
+    await emoji_action(event)
+    await save_msg_cache(
+        await UniMessage.image(
+            raw=await html2pic_war_beacon(
+                url=url,
+                element_class="compact-teams",
+                click_text=None,
             )
         ).send(target=event, reply_to=True),
         url,
