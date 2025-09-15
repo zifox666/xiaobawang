@@ -134,12 +134,8 @@ async def capture_element(
             screenshot = await page.screenshot(
                 clip={"x": bounding_box["x"], "y": bounding_box["y"], "width": element_width, "height": element_height}
             )
-            stitched_image = Image.open(BytesIO(screenshot))
 
-        stitched_image.save(output_file)
-        with BytesIO() as output:
-            stitched_image.save(output, format="PNG")
-            return output.getvalue()
+        return screenshot
 
 
 async def render_template(
@@ -234,15 +230,7 @@ async def html2pic_br(
             clip={"x": bounding_box["x"], "y": bounding_box["y"], "width": element_width, "height": element_height}
         )
 
-        if trim_width > 0:
-            img = Image.open(BytesIO(screenshot))
-            original_width, original_height = img.size
-
-            with BytesIO() as output:
-                return output.getvalue()
-        else:
-            with BytesIO() as output:
-                return output.getvalue()
+        return screenshot
 
 
 async def html2pic_war_beacon(
@@ -301,7 +289,6 @@ async def html2pic_war_beacon(
         main_element_box = await get_element_dimensions(page, f".{element_class}")
         if not main_element_box:
             raise ValueError(f"未找到元素 '.{element_class}'")
-
 
         element_handle = await page.wait_for_selector(f".{element_class}")
         if element_handle:

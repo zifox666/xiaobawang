@@ -96,9 +96,9 @@ async def _(
         )
 
 
-@br_preview_time.handle()
+@br_preview_alt.handle()
 async def _(event: Event, url: str = RegexStr()):
-    matched = re.search(r"https://br.evetools.org/br/([a-zA-Z0-9]{24})", url)
+    matched = re.search(r"https://br.evetools.org/related/([0-9]{8})/([0-9]{12})", url)
     if not matched:
         return
 
@@ -118,7 +118,7 @@ async def _(event: Event, url: str = RegexStr()):
     )
 
 
-@br_preview_alt.handle()
+@br_preview_time.handle()
 async def _(event: Event, url: str = RegexStr()):
     await emoji_action(event)
     await save_msg_cache(
@@ -140,14 +140,14 @@ async def _(event: Event, url: str = RegexStr()):
         return
     await emoji_action(event)
     system, time = matched.groups()
-    url = f"https://br.evetools.org/related/{system}/{time}"
+    url = f"https://warbeacon.net/br/related/{system}/{time}"
 
     await save_msg_cache(
         await UniMessage.image(
-            raw=await html2pic_br(
+            raw=await html2pic_war_beacon(
                 url=url,
-                element=".development",
-                hide_elements=["bp3-navbar", "bp3-fixed-top", "bp3-dark", "_2ds1SVI_"],
+                element_class="compact-teams",
+                click_text=None,
             )
         ).send(target=event, reply_to=True),
         url,
