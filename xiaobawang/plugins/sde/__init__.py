@@ -2,6 +2,7 @@ from pathlib import Path
 
 from nonebot import get_driver, logger
 from nonebot.plugin import PluginMetadata
+from nonebot_plugin_apscheduler import scheduler
 
 from ..core.helper.message_queue import message_sender
 from .cache import cache
@@ -9,7 +10,7 @@ from .config import SDE_DB_PATH, plugin_config
 from .config import Config as Config
 from .db import close_engine, init_engine
 from .oper import sde_search as sde_search
-from .upgrade import download_and_extract_sde
+from .upgrade import check_sde_update, download_and_extract_sde, get_current_sde_version, get_latest_sde_version
 from .utils import text_processor
 
 __plugin_meta__ = PluginMetadata(
@@ -33,7 +34,7 @@ async def startup():
                 f"SDE数据库文件 {db_path} 不存在，且自动下载已禁用。请手动下载数据库或启用自动下载。"
             )
 
-        await download_and_extract_sde(download_url=plugin_config.sde_download_url, target_path=db_path)
+        await download_and_extract_sde(db_path)
     else:
         logger.info(f"SDE数据库文件已存在: {db_path}")
 
@@ -58,5 +59,31 @@ async def update_sde():
         raise RuntimeError("自动下载已禁用，无法更新SDE数据库")
 
     logger.info("开始更新SDE数据库...")
-    await download_and_extract_sde(download_url=plugin_config.sde_download_url, target_path=db_path)
+
+    # 断开老数据库
+    await close_engine()
+
+    # 下载新数据库
+    await download_and_extract_sde(db_path)
+
+    # 重新初始化数据库
+    await init_engine(db_path)
+    await cache.init()
+
     logger.info("SDE数据库更新完成")
+
+
+@scheduler.scheduled_job("cron", hour=11, minute=30, timezone="UTC")
+async def check_and_update_sde():
+    """检查并更新SDE数据库"""
+    try:
+        db_path = Path(plugin_config.sde_db_path) if plugin_config.sde_db_path else SDE_DB_PATH
+        update_info = await check_sde_update(db_path)
+        
+        if update_info["needs_update"]:
+            logger.info(f"发现SDE数据库更新: {update_info['current_version']} -> {update_info['latest_version']}")
+            await update_sde()
+        else:
+            logger.info("SDE数据库已是最新版本")
+    except Exception as e:
+        logger.error(f"SDE数据库自动更新失败: {e}")
