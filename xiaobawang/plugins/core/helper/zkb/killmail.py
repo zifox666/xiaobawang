@@ -35,7 +35,7 @@ class KillmailHelper:
         处理接收到的 killmail 数据并检查是否需要推送
 
         Args:
-            data: zkillboard websocket 推送的 killmail 数据
+            data: zkillboard 推送的 killmail 数据
         """
         killmail_id = data.get("killmail_id")
         try:

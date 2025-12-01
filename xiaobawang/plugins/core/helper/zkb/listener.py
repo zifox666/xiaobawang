@@ -5,6 +5,7 @@ import traceback
 from httpx import ReadTimeout
 from nonebot import logger
 
+from ...api.killmail import get_zkb_killmail
 from ...config import HEADERS, plugin_config
 from ...utils.common.http_client import get_client
 from .killmail import km
@@ -83,15 +84,16 @@ class ZkbListener:
             try:
                 url = f"{plugin_config.zkb_listener_url}?queueID={plugin_config.user_agent}&ttw=5"
                 r = await self._client.get(url)
+                # https://github.com/zKillboard/RedisQ?tab=readme-ov-file#limitations
                 if r.status_code == 429:
-                    logger.warning("请求过于频繁")
+                    logger.warning("请求过于频繁, https://github.com/zKillboard/RedisQ?tab=readme-ov-file#limitations")
                     await asyncio.sleep(5)
                     continue
 
                 r.raise_for_status()
                 data = r.json().get("package", None)
                 if data:
-                    zkb_data = data.get("killmail")
+                    zkb_data = await get_zkb_killmail(data.get("killID", 0))
                     zkb_data["zkb"] = data.get("zkb")
                     asyncio.create_task(km.check(zkb_data)) # noqa RUF006
                 else:
