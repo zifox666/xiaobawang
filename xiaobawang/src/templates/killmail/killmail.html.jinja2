@@ -56,10 +56,10 @@
             <span class="clear chinese" style="font-size: 14px; margin-top: 6px;">最后一击</span>
 
             <div class="clear" style="font-weight: 900;">
-                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" onerror="this.style.display='none'"/>
+                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" onerror="this.src='https://images.evetech.net/alliances/1/logo?size=64'"/>
                 <div>
-                    <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
-                    <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
+                    <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
+                    <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
                 </div>
                 <div style="font-size: 11px; margin-left: 5px;">
                     <div>
@@ -75,27 +75,28 @@
 
             <div class="clear" style="font-weight: 900;">
                 {% if attackMember|length > 1 %}
-                <img src="https://images.evetech.net/characters/{{ attackMember[1].attacker_id }}/portrait?size=64" />
+                {% set top_damager = attackMember[0] if attackMember[0].final_blow else attackMember[1] %}
+                <img src="https://images.evetech.net/characters/{{ top_damager.attacker_id }}/portrait?size=64" />
                 <div style="display: flex; align-items: flex-end;">
                     <div>
-                        <img src="https://images.evetech.net/types/{{ attackMember[1].ship_type_id }}/icon?size=32" />
-                        <img class="clear" src="https://images.evetech.net/types/{{ attackMember[1].weapon_type_id }}/icon?size=32" />
+                        <img src="https://images.evetech.net/types/{{ top_damager.ship_type_id }}/icon?size=32" />
+                        <img class="clear" src="https://images.evetech.net/types/{{ top_damager.weapon_type_id }}/icon?size=32" />
                     </div>
                     <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
                         <div>
-                            <span>{{ attackMember[1].attacker_name[:20] }}</span>
-                            <span class="clear" style="margin-top: 1px;">{{ attackMember[1].attacker_corp[:20] }}</span>
-                            <span class="clear" style="margin-top: 0;">{{ attackMember[1].attacker_alliance[:20] }}</span>
+                            <span>{{ top_damager.attacker_name[:20] }}</span>
+                            <span class="clear" style="margin-top: 1px;">{{ top_damager.attacker_corp[:20] }}</span>
+                            <span class="clear" style="margin-top: 0;">{{ top_damager.attacker_alliance[:20] }}</span>
                         </div>
-                        <span class="clear" style="font-weight: 500;">{{ attackMember[1].damage_done }} ({{ attackMember[1].damage_percent }}%)</span>
+                        <span class="clear" style="font-weight: 500;">{{ top_damager.damage_done }} ({{ top_damager.damage_percent }}%)</span>
                     </div>
                 </div>
                 {% else %}
-                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" onerror="this.style.display='none'"/>
+                <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" onerror="this.src='https://images.evetech.net/alliances/1/logo?size=64'"/>
                 <div style="display: flex; align-items: flex-end;">
                     <div>
-                        <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.style.display='none'" />
-                        <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
+                        <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'" />
+                        <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
                     </div>
                     <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
                         <div>
@@ -110,16 +111,17 @@
             </div>
 
             <div class="line clear" style="margin: 10px 0 5px;"></div>
-            <div style="height:680px; overflow-y:auto">
+            <div>
 
                 {% if attackMember|length > 1 %}
-                {% for attack in attackMember[2:] %}
+                {% set start_index = 1 if attackMember[0].final_blow else 2 %}
+                {% for attack in attackMember[start_index:] %}
                     <div class="clear" style="font-weight: 900; margin-bottom: 5px;">
-                        <img src="https://images.evetech.net/characters/{{ attack.attacker_id }}/portrait?size=64" />
+                        <img src="https://images.evetech.net/characters/{{ attack.attacker_id }}/portrait?size=64" onerror="this.src='https://images.evetech.net/alliances/1/logo?size=64'"/>
                         <div style="display: flex; align-items: flex-end;">
                             <div>
-                                <img src="https://img.evetools.org/sdeimages/types/{{ attack.ship_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
-                                <img class="clear" src="https://images.evetech.net/types/{{ attack.weapon_type_id }}/icon?size=32" onerror="this.style.display='none'"/>
+                                <img src="https://images.evetech.net/types/{{ attack.ship_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
+                                <img class="clear" src="https://images.evetech.net/types/{{ attack.weapon_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
                             </div>
                             <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
                                 <div>
@@ -137,9 +139,9 @@
             </div>
 
         </div>
-        <div style="margin-left:11px; font-weight: 500; height: 100%;">
+        <div style="margin-left:11px; font-weight: 500;">
             <span class="chinese" style="font-size: 16px;">装备与明细</span><br>
-            <div style="height:880px;overflow-y:auto; margin-top: 8px">
+            <div style="margin-top: 8px">
             {% if slot_list %}
                 {% for slot in slot_list %}
                     <div class="clear slot-line chinese">

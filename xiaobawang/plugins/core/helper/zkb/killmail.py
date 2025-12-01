@@ -262,8 +262,9 @@ class KillmailHelper:
         tasks = []
         for (platform, bot_id, session_id, session_type, total_value), reasons in matched_sessions.items():
             reason = " | ".join(reasons)
+            text_info = self._generate_killmail_text(html_data, reason)
             tasks.append(
-                self.send_killmail(platform, bot_id, session_id, session_type, pic, reason, killmail_id, total_value)
+                self.send_killmail(platform, bot_id, session_id, session_type, pic, text_info, killmail_id, total_value)
             )
 
         if tasks:
@@ -278,6 +279,42 @@ class KillmailHelper:
             return int(value)
         except (ValueError, TypeError):
             return None
+
+    @classmethod
+    def _generate_killmail_text(cls, html_data: dict, reason: str) -> str:
+        """生成击杀邮件的文本信息"""
+        victim = html_data.get("victim", {})
+        zkb_data = html_data.get("zkb", {})
+        
+        victim_name = victim.get("victim_name", "Unknown")
+        victim_title = victim.get("victim_title", "")
+        ship_name = victim.get("ship_type_name", "Unknown")
+        ship_group = victim.get("ship_group_name", "Unknown")
+        solar_system = html_data.get("solar_system", "Unknown")
+        sec = html_data.get("sec", "0.0")
+        region = html_data.get("region", "Unknown")
+        location = html_data.get("location_name", "Unknown")
+        distance = html_data.get("distance_str", "Unknown")
+        time = html_data.get("time", "Unknown")
+        time_difference = html_data.get("time_difference", "Unknown")
+        drop_value = html_data.get("drop_value", "0")
+        total_value = html_data.get("total_value", "0")
+        
+        points = zkb_data.get("points", 0)
+        
+        text = f"{reason}\n"
+        text += f"受害者: {victim_name}\n"
+        if victim_title:
+            text += f"受害者头衔: {victim_title}\n"
+        text += f"舰船: {ship_name} ({ship_group})\n"
+        text += f"星系: {solar_system} ({sec}) / {region}\n"
+        text += f"距离: {location} ({distance})\n"
+        text += f"时间: {time}({time_difference})\n"
+        text += f"分数: {points}\n"
+        text += f"掉落: {drop_value} ISK\n"
+        text += f"总价值: {total_value} ISK"
+        
+        return text
 
     @classmethod
     async def send_killmail(
@@ -425,7 +462,7 @@ class KillmailHelper:
                 "attacker_number": attacker_number,
                 "attackMember": self._format_attackers(attackers, entity_names, item_names),
                 "slot_list": slot_list.get("slotList", []),
-                "zkb": killmail_data.get("", {}),
+                "zkb": killmail_data.get("zkb", {}),
                 "total_value": formatted_total_value,
                 "drop_value": formatted_drop_value,
                 "position": killmail_data.get("position", {}),
