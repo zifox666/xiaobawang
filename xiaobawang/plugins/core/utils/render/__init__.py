@@ -204,6 +204,7 @@ async def html2pic_br(
                 trim_box = await trim_element.bounding_box()
                 if trim_box:
                     trim_width = trim_box["width"] * 0.9
+        logger.debug(f"trim_width: {trim_width}")
         element_handle = await page.wait_for_selector(element)
         if element_handle is None:
             raise ValueError(f"Element '{element}' not found on the page.")

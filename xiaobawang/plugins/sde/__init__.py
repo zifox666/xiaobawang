@@ -10,7 +10,9 @@ from .config import SDE_DB_PATH, plugin_config
 from .config import Config as Config
 from .db import close_engine, init_engine
 from .oper import sde_search as sde_search
-from .upgrade import check_sde_update, download_and_extract_sde, get_current_sde_version, get_latest_sde_version
+from .upgrade import check_sde_update, download_and_extract_sde
+from .upgrade import get_current_sde_version as get_current_sde_version
+from .upgrade import get_latest_sde_version as get_latest_sde_version
 from .utils import text_processor
 
 __plugin_meta__ = PluginMetadata(
@@ -79,7 +81,7 @@ async def check_and_update_sde():
     try:
         db_path = Path(plugin_config.sde_db_path) if plugin_config.sde_db_path else SDE_DB_PATH
         update_info = await check_sde_update(db_path)
-        
+
         if update_info["needs_update"]:
             logger.info(f"发现SDE数据库更新: {update_info['current_version']} -> {update_info['latest_version']}")
             await update_sde()

@@ -1,7 +1,6 @@
 import asyncio
 import bz2
 import json
-import os
 from pathlib import Path
 
 import aiofiles
@@ -167,7 +166,7 @@ async def get_current_sde_version(db_path: Path) -> str | None:
     """获取当前SDE数据库版本"""
     version_file = db_path.parent / "latest-sde.json"
     if version_file.exists():
-        async with aiofiles.open(version_file, "r", encoding="utf-8") as f:
+        async with aiofiles.open(version_file, encoding="utf-8") as f:
             data = json.loads(await f.read())
             return data.get("version")
     return None
