@@ -285,7 +285,7 @@ class KillmailHelper:
         """生成击杀邮件的文本信息"""
         victim = html_data.get("victim", {})
         zkb_data = html_data.get("zkb", {})
-        
+
         victim_name = victim.get("victim_name", "Unknown")
         victim_title = victim.get("victim_title", "")
         ship_name = victim.get("ship_type_name", "Unknown")
@@ -299,9 +299,9 @@ class KillmailHelper:
         time_difference = html_data.get("time_difference", "Unknown")
         drop_value = html_data.get("drop_value", "0")
         total_value = html_data.get("total_value", "0")
-        
+
         points = zkb_data.get("points", 0)
-        
+
         text = f"{reason}\n"
         text += f"受害者: {victim_name}\n"
         if victim_title:
@@ -313,7 +313,7 @@ class KillmailHelper:
         text += f"分数: {points}\n"
         text += f"掉落: {drop_value} ISK\n"
         text += f"总价值: {total_value} ISK"
-        
+
         return text
 
     @classmethod

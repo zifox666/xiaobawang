@@ -25,6 +25,10 @@ class Config(BaseModel):
     upload_statistics: bool = True
     upload_statistics_url: str = "https://xbw.newdoublex.space/statics"
 
+    low_memory_mode: bool = False
+    max_queue_size: int = 20
+    max_total_messages: int = 50
+
 
 plugin_config = get_plugin_config(Config)
 
