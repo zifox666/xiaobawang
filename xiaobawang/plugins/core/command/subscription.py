@@ -2,12 +2,14 @@ import asyncio
 
 from arclet.alconna import Alconna, Args, Arparma, CommandMeta, MultiVar, Option, Subcommand
 from nonebot import logger
+from nonebot.internal.adapter import Event
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import on_alconna
 from nonebot_plugin_orm import AsyncSession
 from nonebot_plugin_uninfo import SceneType, Uninfo
 
 from ..api.esi.universe import esi_client
+from ..helper.rule import is_admin
 from ..helper.subscription import KillmailSubscriptionManager
 from ..helper.zkb.listener import zkb_listener
 
@@ -79,11 +81,12 @@ sub_high = on_alconna(
 
 @sub.assign("add")
 async def _add_sub(
+    event: Event,
     result: Arparma,
     user_info: Uninfo,
     session: AsyncSession,
 ):
-    if user_info.member and user_info.member.role.id not in ["CHANNEL_ADMINISTRATOR", "ADMINISTRATOR", "OWNER"]:
+    if await is_admin(event, user_info):
         await sub.finish("你还不是群管理员，无法使用此功能")
 
     platform = user_info.adapter
@@ -103,13 +106,22 @@ async def _add_sub(
         session_id = user_info.scene.id
         session_type = user_info.scene.type
 
-        attack_limit = result.add.options.get("attack").args.get("value")
-        victim_limit = result.add.options.get("victim").args.get("value")
+        # attack_limit = result.add.options.get("attack").args.get("value")
+        if result.add.options.get("attack"):
+            attack_limit = result.add.options.get("attack").args.get("value")
+        else:
+            attack_limit = 30_000_000
+
+        # victim_limit = result.add.options.get("victim").args.get("value")
+        if result.add.options.get("victim"):
+            victim_limit = result.add.options.get("victim").args.get("value")
+        else:
+            victim_limit = 30_000_000
 
         async with session:
             sub_manager = KillmailSubscriptionManager(session)
             if int(attack_limit) != 0:
-                attack_limit = attack_limit if attack_limit >= 20_000_000 else 50_000_000
+                attack_limit = attack_limit if attack_limit >= 10_000_000 else 50_000_000
 
                 a_flag = await sub_manager.add_subscription(
                     platform=platform,
@@ -124,7 +136,7 @@ async def _add_sub(
                     is_victim=False,
                 )
             if int(victim_limit) != 0:
-                victim_limit = victim_limit if victim_limit >= 20_000_000 else 50_000_000
+                victim_limit = victim_limit if victim_limit >= 10_000_000 else 50_000_000
 
                 v_flag = await sub_manager.add_subscription(
                     platform=platform,
@@ -139,29 +151,33 @@ async def _add_sub(
                     is_victim=True,
                 )
 
+        attack_str = f"{attack_limit:,.2f}" if a_flag else "关闭"
+        victim_str = f"{victim_limit:,.2f}" if v_flag else "关闭"
+
         if a_flag or v_flag:
             logger.info(f"""订阅已增加
 [{platform}]{user_info.self_id}
 [{SceneType(user_info.scene.type).name}]{session_id}
 [{category_type_list[result.type]}]{target_name}({target_id})
-[击杀推送阈值]{attack_limit if a_flag else "关闭"}
-[损失推送阈值]{victim_limit if v_flag else "关闭"}""")
+[击杀推送阈值]{attack_str}
+[损失推送阈值]{victim_str}""")
 
             await sub.finish(f"""订阅已增加
 [{platform}]{user_info.self_id}
 [{SceneType(user_info.scene.type).name}]{session_id}
 [{category_type_list[result.type]}]{target_name}({target_id})
-[击杀推送阈值]{attack_limit if a_flag else "关闭"}
-[损失推送阈值]{victim_limit if v_flag else "关闭"}""")
+[击杀推送阈值]{attack_str}
+[损失推送阈值]{victim_str}""")
 
 
 @sub.assign("remove")
 async def _remove_sub(
+    event: Event,
     result: Arparma,
     user_info: Uninfo,
     session: AsyncSession,
 ):
-    if user_info.member and user_info.member.role.id not in ["CHANNEL_ADMINISTRATOR", "ADMINISTRATOR", "OWNER"]:
+    if await is_admin(event, user_info):
         await sub.finish("你还不是群管理员，无法使用此功能")
 
     platform = user_info.adapter
@@ -212,11 +228,12 @@ async def _remove_sub(
 
 @sub_high.handle()
 async def _handle_sub_high(
+    event: Event,
     result: Arparma,
     user_info: Uninfo,
     session: AsyncSession,
 ):
-    if user_info.member and user_info.member.role.id not in ["CHANNEL_ADMINISTRATOR", "ADMINISTRATOR", "OWNER"]:
+    if await is_admin(event, user_info):
         await sub.finish("你还不是群管理员，无法使用此功能")
 
     platform = user_info.adapter
@@ -263,11 +280,11 @@ async def _handle_sub_high(
                 logger.info(f"""高价值订阅已添加
 [{platform}]{user_info.self_id}
 [{SceneType(user_info.scene.type).name}]{session_id}
-[最低价值]{min_value}""")
+[最低价值]{min_value:,.2f}""")
                 await sub_high.finish(f"""高价值订阅已添加
 [{platform}]{user_info.self_id}
 [{SceneType(user_info.scene.type).name}]{session_id}
-[最低价值]{min_value}""")
+[最低价值]{min_value:,.2f}""")
             else:
                 await sub_high.finish("添加高价值订阅失败")
 
