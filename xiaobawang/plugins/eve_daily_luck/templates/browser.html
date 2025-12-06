@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="EVE老黄历,EVE,星战前夜,星战前夜：晨曦">
+    <title>EVE 老黄历</title>
+    <style>
+        body * {
+            font-family: "Consolas", "Microsoft Yahei", Arial, sans-serif;
+        }
+
+        body {
+            background: white;
+            margin: 0;
+            padding: 10px;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 500px;
+            margin: 0 auto 50px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .container > .title {
+            color: #bbb;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+            background: #555;
+            padding: 5px 15px;
+            height: 30px;
+            border-radius: 4px;
+        }
+
+        .container > .title a {
+            color: #bbb;
+        }
+
+        .container > .title a:hover {
+            color: #00ccff;
+        }
+
+        .date {
+            font-size: 17pt;
+            font-weight: bold;
+            line-height: 30pt;
+            text-align: center;
+            color: #333;
+        }
+
+        .split, .clear {
+            clear: both;
+            height: 1px;
+            overflow-y: hidden;
+        }
+
+        .good, .bad {
+            clear: both;
+            position: relative;
+        }
+
+        .good .title {
+            background: #4CAF50;
+        }
+
+        .bad .title {
+            background: #f44336;
+        }
+
+        .good .title table, .bad .title table {
+            color: white;
+            font-weight: bold;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .good .title table td, .bad .title table td {
+            padding: 5px;
+        }
+
+        .good .content, .bad .content {
+            padding: 10px;
+        }
+
+        .good .content ul, .bad .content ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .good .content li, .bad .content li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .good .content li:last-child, .bad .content li:last-child {
+            border-bottom: none;
+        }
+
+        .good .content .name {
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 4px;
+        }
+
+        .bad .content .name {
+            font-weight: bold;
+            color: #c62828;
+            margin-bottom: 4px;
+        }
+
+        .good .content .description, .bad .content .description {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .luck-level {
+            text-align: center;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .luck-level.da-ji {
+            background-color: #fff1f1;
+            border: 2px solid #d40000;
+            color: #d40000;
+        }
+
+        .luck-level.zhong-ji {
+            background-color: #fff8e1;
+            border: 2px solid #ff8800;
+            color: #ff8800;
+        }
+
+        .luck-level.xiao-ji {
+            background-color: #fffde7;
+            border: 2px solid #ffbb00;
+            color: #ffbb00;
+        }
+
+        .luck-level.ping-ping {
+            background-color: #f5f7f8;
+            border: 2px solid #607d8b;
+            color: #607d8b;
+        }
+
+        .luck-level.xiao-xiong {
+            background-color: #e3f2fd;
+            border: 2px solid #0066cc;
+            color: #0066cc;
+        }
+
+        .luck-level.da-xiong {
+            background-color: #f3e5f5;
+            border: 2px solid #4a148c;
+            color: #4a148c;
+        }
+
+        .luck-level .level {
+            font-size: 28px;
+            margin: 8px 0;
+        }
+
+        .luck-level .goddess-value {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .line-tip {
+            padding: 10px;
+            margin: 8px 0;
+            background: #f9f9f9;
+            border-left: 4px solid #ff8800;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .line-tip strong {
+            color: #333;
+        }
+
+        .line-tip span {
+            color: #ff8800;
+            font-weight: bold;
+        }
+
+        /* 浏览器功能区 */
+        .browser-controls {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+
+        .refresh-btn {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #ff8800;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background-color: #ff6600;
+            box-shadow: 0 2px 8px rgba(255, 136, 0, 0.3);
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.98);
+        }
+
+        .tips {
+            font-size: 12px;
+            color: #666;
+            margin-top: 15px;
+            line-height: 1.6;
+        }
+
+        .tips p {
+            margin: 5px 0;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: 95%;
+                padding: 10px;
+            }
+
+            .refresh-btn {
+                width: 90%;
+                display: block;
+                margin: 10px auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">
+            EVE老黄历<sup>BETA</sup>
+        </div>
+        <div class="date" id="dateDisplay">今天是 2025年12月07日 星期日</div>
+
+        <div class="luck-level" id="luckLevel">
+            <div>你的今日运势是:</div>
+            <div class="level" id="luckText">大吉</div>
+            <div class="goddess-value">女神眷顾值: <span id="goddessValue">4.5</span></div>
+        </div>
+
+        <div class="good">
+            <div class="title">
+                <table>
+                    <tbody>
+                        <tr><td>宜</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="content">
+                <ul id="goodEvents">
+                    <li>
+                        <div class="name">加载中...</div>
+                        <div class="description">正在获取今日运势</div>
+                    </li>
+                </ul>
+            </div>
+            <div class="clear"></div>
+        </div>
+
+        <div class="split"></div>
+
+        <div class="bad">
+            <div class="title">
+                <table>
+                    <tbody>
+                        <tr><td>不宜</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="content">
+                <ul id="badEvents">
+                    <li>
+                        <div class="name">加载中...</div>
+                        <div class="description">正在获取今日运势</div>
+                    </li>
+                </ul>
+            </div>
+            <div class="clear"></div>
+        </div>
+
+        <div class="split"></div>
+
+        <div class="line-tip">
+            <strong>适宜会战地点: </strong><span id="direction">北方</span>
+        </div>
+        <div class="line-tip">
+            <strong>今日幸运舰船: </strong><span id="ships">分裂者级, 爆发级, 探索级</span>
+        </div>
+        <div class="line-tip">
+            <strong>今日幸运星域: </strong><span id="spaces">血脉, 德克廉</span>
+        </div>
+    </div>
+
+    <script>
+        // 生成UUID
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // 获取或创建用户 UUID
+        function getUserUUID() {
+            let uuid = localStorage.getItem('user_uuid');
+            if (!uuid) {
+                uuid = generateUUID();
+                localStorage.setItem('user_uuid', uuid);
+                document.cookie = `user_uuid=${uuid}; max-age=${365*24*60*60}; path=/`;
+            }
+            return uuid;
+        }
+        // API调用函数
+        async function loadLuckData() {
+            try {
+                const cachedData = getCookie('daily_luck_data');
+                const cachedDate = getCookie('daily_luck_date');
+                const today = new Date().toISOString().split('T')[0];
+
+                if (cachedData && cachedDate === today) {
+                    const data = JSON.parse(decodeURIComponent(cachedData));
+                    displayLuckData(data);
+                    return;
+                }
+
+                const response = await fetch(`/api/luck?user_id=${getUserUUID()}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch luck data');
+                }
+
+                const data = await response.json();
+                displayLuckData(data);
+                
+            } catch (error) {
+                console.error('Error loading luck data:', error);
+                document.getElementById('goodEvents').innerHTML = '<li><div class="name">加载失败</div><div class="description">请检查网络连接</div></li>';
+            }
+        }
+
+        // Cookie操作函数
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) {
+                const cookieValue = parts.pop().split(';').shift();
+                return decodeURIComponent(cookieValue);
+            }
+            return null;
+        }
+
+        function displayLuckData(data) {
+            // 更新日期
+            document.getElementById('dateDisplay').textContent = data.today_str;
+
+            // 更新运势等级
+            const luckLevel = document.getElementById('luckLevel');
+            luckLevel.className = 'luck-level ' + getLuckClass(data.luck_level);
+            document.getElementById('luckText').textContent = data.luck_level;
+            document.getElementById('goddessValue').textContent = data.goddess_value.toFixed(1);
+
+            // 更新宜
+            const goodEventsList = document.getElementById('goodEvents');
+            goodEventsList.innerHTML = data.good_events.map(event => `
+                <li>
+                    <div class="name">${event.name}</div>
+                    <div class="description">${event.good}</div>
+                </li>
+            `).join('');
+
+            // 更新不宜
+            const badEventsList = document.getElementById('badEvents');
+            badEventsList.innerHTML = data.bad_events.map(event => `
+                <li>
+                    <div class="name">${event.name}</div>
+                    <div class="description">${event.bad}</div>
+                </li>
+            `).join('');
+
+            // 更新方向、舰船、星域
+            document.getElementById('direction').textContent = data.direction;
+            document.getElementById('ships').textContent = data.ships;
+            document.getElementById('spaces').textContent = data.locals;
+        }
+
+        function getLuckClass(luckLevel) {
+            const classMap = {
+                '大吉': 'da-ji',
+                '中吉': 'zhong-ji',
+                '小吉': 'xiao-ji',
+                '平平无奇': 'ping-ping',
+                '小凶': 'xiao-xiong',
+                '大凶': 'da-xiong'
+            };
+            return classMap[luckLevel] || 'ping-ping';
+        }
+
+        function refreshLuck() {
+            // 清除所有相关Cookie
+            document.cookie = 'daily_luck_data=; max-age=0; path=/';
+            document.cookie = 'daily_luck_date=; max-age=0; path=/';
+            // 重新加载页面
+            location.reload();
+        }
+
+        // 页面加载时获取数据
+        window.addEventListener('load', loadLuckData);
+    </script>
+</body>
+</html>

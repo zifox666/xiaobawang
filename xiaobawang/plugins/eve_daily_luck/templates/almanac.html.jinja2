@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="EVE老黄历,EVE,星战前夜,星战前夜：晨曦">
+    <title>EVE 老黄历</title>
+    {% if is_screenshot %}
+        <link rel="stylesheet" href="./index.css" />
+    {% else %}
+        <link rel="stylesheet" href="./index.css" />
+        <link rel="stylesheet" href="./browser.css" />
+    {% endif %}
+    <script>
+        // 仅在浏览器模式下运行
+        {% if not is_screenshot %}
+        // Cookie操作函数
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) {
+                const cookieValue = parts.pop().split(';').shift();
+                // 解码URL编码的Cookie值
+                return decodeURIComponent(cookieValue);
+            }
+            return null;
+        }
+
+        function checkAndReload() {
+            // 检查是否是新的一天，如果是就重新加载以获取新的运势
+            const storedDate = getCookie('daily_luck_date');
+            const today = new Date().toISOString().split('T')[0];
+            
+            if (storedDate && storedDate !== today) {
+                // 日期不同，清除旧数据并重新加载
+                document.cookie = 'daily_luck_data=; max-age=0;';
+                document.cookie = 'daily_luck_date=; max-age=0;';
+                location.reload();
+            }
+        }
+
+        // 页面加载时检查日期
+        window.addEventListener('load', checkAndReload);
+        {% endif %}
+    </script>
+</head>
+<body>
+
+    <!--
+        EVE老黄历原始程序作者  fake_faith
+        原作者 twitter： @fake_faith  原APP名为：程序员老黄历
+        由 XiaoBaWang 修改
+
+        EVE老黄历程序部分 遵循GPL通用许可证发布。
+        EVE老黄历文字内容部分 遵循 CC-BY-SA 3.0 发布 ，参见 https://creativecommons.org/licenses/by-nc-sa/3.0/deed.zh
+    -->
+
+    <div class="container">
+        <div class="title">
+            EVE老黄历<sup>BETA</sup>
+            <div style="float:right;font-size:10px">
+                Powered By NoneBot-EVEDailyLucky<br>
+            </div>
+        </div>
+        <div class="date">{{ today_str }}</div>
+
+        <div style="text-align:center;margin:10px 0 15px;padding:8px;border:2px solid
+            {% if luck_level == '大吉' %}#d40000
+            {% elif luck_level == '中吉' %}#ff8800
+            {% elif luck_level == '小吉' %}#ffbb00
+            {% elif luck_level == '平平无奇' %}#607d8b
+            {% elif luck_level == '小凶' %}#0066cc
+            {% else %}#4a148c
+            {% endif %};
+            border-radius:8px;background-color:
+            {% if luck_level == '大吉' %}#fff1f1
+            {% elif luck_level == '中吉' %}#fff8e1
+            {% elif luck_level == '小吉' %}#fffde7
+            {% elif luck_level == '平平无奇' %}#f5f7f8
+            {% elif luck_level == '小凶' %}#e3f2fd
+            {% else %}#f3e5f5
+            {% endif %};">
+            <span style="font-size:13px;">用户 {{ user_name[:15] }} 的今日运势是:<br>
+                <span style="
+                    {% if luck_level == '大吉' %}color:#d40000;
+                    {% elif luck_level == '中吉' %}color:#ff8800;
+                    {% elif luck_level == '小吉' %}color:#ffbb00;
+                    {% elif luck_level == '平平无奇' %}color:#607d8b;
+                    {% elif luck_level == '小凶' %}color:#0066cc;
+                    {% else %}color:#4a148c;
+                    {% endif %}font-size:24px;font-weight:bold;margin-top:2px;">{{ luck_level }}</span>
+            </span>
+            <div style="font-size:12px;color:#666;margin-top:1px;">女神眷顾值: {{ goddess_value }}</div>
+        </div>
+
+        <div class="good">
+            <div class="title">
+                <table>
+                    <tbody>
+                        <tr><td>宜</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="content">
+                <ul>
+                    {% for good_event in good_events %}
+                        <li>
+                            <div class="name">{{ good_event.name }}</div>
+                            <div class="description">{{ good_event.good }}</div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="clear"></div>
+        </div>
+
+        <div class="split"></div>
+
+        <div class="bad">
+            <div class="title">
+                <table>
+                    <tbody>
+                        <tr><td>不宜</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="content">
+                <ul>
+                    {% for bad_event in bad_events %}
+                        <li>
+                            <div class="name">{{ bad_event.name }}</div>
+                            <div class="description">{{ bad_event.bad }}</div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="clear"></div>
+        </div>
+
+        <div class="split"></div>
+
+        <div class="line-tip">
+            <strong>适宜会战地点: </strong><span class="direction_value">{{ direction }}</span>
+        </div>
+        <div class="line-tip">
+            <strong>今日幸运舰船: </strong><span class="ships_value">{{ ships }}</span>
+        </div>
+        <div class="line-tip">
+            <strong>今日幸运星域: </strong><span class="spaces">{{ locals }}</span>
+        </div>
+
+        <!-- 刷新和说明区域 仅在浏览器模式显示 -->
+        {% if not is_screenshot %}
+        <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
+            <button id="refreshBtn" onclick="refreshLuck()" style="
+                padding: 8px 16px;
+                margin: 5px;
+                background-color: #ff8800;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            ">刷新数据</button>
+            
+            <div style="font-size: 12px; color: #666; margin-top: 10px;">
+                <p>📍 本页数据已保存至浏览器Cookie</p>
+                <p>🔄 同一天内刷新不会改变数据，新的一天自动更新</p>
+                <p>🗑️ 清除浏览器Cookie可重新获取今日黄历</p>
+            </div>
+        </div>
+
+        <script>
+            function refreshLuck() {
+                // 清除所有相关Cookie
+                document.cookie = 'daily_luck_data=; max-age=0;';
+                document.cookie = 'daily_luck_date=; max-age=0;';
+                // 重新加载页面
+                location.reload();
+            }
+        </script>
+        {% endif %}
+    </div>
+
+</body>
+</html>
