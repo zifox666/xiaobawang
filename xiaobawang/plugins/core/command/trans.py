@@ -28,7 +28,7 @@ async def _trans(
     lang = is_chinese(args)
     name_data = await esi_client.get_universe_id(
         name=args,
-        lang=lang,
+        lang="zh" if lang else "en",
     )
     system_name = None
     if name_data:
