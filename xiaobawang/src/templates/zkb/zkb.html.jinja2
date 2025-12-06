@@ -18,12 +18,37 @@
         .activity-level-2 { background-color: #40c463; }
         .activity-level-3 { background-color: #30a14e; }
         .activity-level-4 { background-color: #216e39; }
+
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
     <div class="container mx-auto px-4 py-8">
         <!-- 基本信息 -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6 relative">
+            <!-- 标签显示 -->
+            {% if stats.labels %}
+            <div class="absolute top-4 right-4 flex flex-wrap items-center justify-end gap-2 max-w-xs text-right">
+                {% if stats.labels is mapping %}
+                    {% set labels_iter = stats.labels.values() %}
+                {% else %}
+                    {% set labels_iter = stats.labels %}
+                {% endif %}
+
+                {% for label in labels_iter %}
+                    {% if label is mapping %}
+                        {% set label_name = label.get('name', '') %}
+                        {% set label_color = label.get('color', 'text-gray-900 bg-black') %}
+                    {% else %}
+                        {% set label_name = label %}
+                        {% set label_color = 'text-gray-900 bg-black' %}
+                    {% endif %}
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold shadow-sm transition duration-150 ease-out hover:-translate-y-0.5 hover:shadow-lg {{ label_color }}">
+                        {{ label_name }}
+                    </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             {% if stats._type == "characterID" %}
             <!-- 角色基本信息 -->
             <div class="flex flex-col md:flex-row items-start md:items-center">

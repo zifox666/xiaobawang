@@ -4,6 +4,7 @@ import traceback
 
 from nonebot import logger
 
+from .label import ZkbLabelHelper
 from ...api.esi.universe import esi_client
 from ...api.killmail import get_zkb_killmail
 from ...api.zkillboard import zkb_api
@@ -74,6 +75,8 @@ class ZkbStats:
                 self.top_characters = item.get("values", [])
 
         self.query_names: dict[int, str] = {}
+
+        self.labels: dict = ZkbLabelHelper(data).make()
 
     async def _query_names(self, query_ids: set[int]):
         data = await esi_client.get_names(list(query_ids))

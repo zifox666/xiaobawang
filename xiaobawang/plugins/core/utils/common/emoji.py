@@ -14,7 +14,7 @@ async def emoji_action(event: Event, emoji: str = "🔥"):
     """
     try:
         if isinstance(event, ob11_GroupMessageEvent):
-            await message_reaction(event=event, emoji="12893")
+            await message_reaction(event=event, emoji="424")
         else:
             await message_reaction(event=event, emoji=emoji)
     except Exception:
