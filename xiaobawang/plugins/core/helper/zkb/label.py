@@ -1,4 +1,3 @@
-from typing import Any
 
 
 class ZkbLabelHelper:
@@ -61,7 +60,7 @@ class ZkbLabelHelper:
             "cat:22": {
                 "name": "MTU杀手",
                 "percent": 0.01,
-                "sum": 300,
+                "sum": 500,
                 "color": "bg-gray-800 text-white"
             },
             "awox": {
@@ -88,7 +87,6 @@ class ZkbLabelHelper:
     def top_handle(self, key: str, obj: dict):
         scope = obj.get("shipsDestroyed", 0) + obj.get("shipsLost", 0)
         if scope >= self.result[key[:3]].get("scope", 0):
-            print("y")
             self.result[key[:3]]["name"] = self.label.get(key, {}).get("name", key)
             self.result[key[:3]]["color"] = self.label.get(key, {}).get("color", "")
             self.result[key[:3]]["scope"] = scope
@@ -125,7 +123,6 @@ class ZkbLabelHelper:
 
     def make(self) -> dict:
         for key, obj in self.zkb_labels.items():
-            print(f"{key}|{obj}")
             if key in self.top:
                 self.top_handle(key, obj)
             elif key in self.condition_label:

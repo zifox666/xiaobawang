@@ -45,8 +45,8 @@ async def _trans(
 
         if name_id:
             name = await esi_client.get_trans_name(
-                type_ids=[name_id],
-                lang=lang,
+                _id=name_id,
+                lang="zh" if not lang else "en",
                 type_=type_,
             )
             await trans.finish(f"{args} <-> {name}")

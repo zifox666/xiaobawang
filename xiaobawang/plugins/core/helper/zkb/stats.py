@@ -4,12 +4,12 @@ import traceback
 
 from nonebot import logger
 
-from .label import ZkbLabelHelper
 from ...api.esi.universe import esi_client
 from ...api.killmail import get_zkb_killmail
 from ...api.zkillboard import zkb_api
 from ...utils.common import format_value
 from ...utils.render import render_template, templates_path
+from .label import ZkbLabelHelper
 
 
 class ZkbStats:

@@ -1,3 +1,4 @@
+
 from nonebot import logger
 from sqlalchemy import and_, or_, select
 
@@ -256,7 +257,8 @@ class SDESearch:
             target_map = {trans.keyID: trans.text for trans in target_translations}
 
             types_query = select(InvTypes).where(
-                and_(InvTypes.typeID.in_(matched_type_ids), InvTypes.published is True)
+                # and_(InvTypes.typeID.in_(matched_type_ids), InvTypes.published.is True)
+                and_(InvTypes.typeID.in_(matched_type_ids), InvTypes.published.is_(True))
             )
             types_results = await session.execute(types_query)
             types = types_results.scalars().all()
@@ -282,7 +284,7 @@ class SDESearch:
 
             results.sort(key=lambda x: x["score"], reverse=True)
             total = len(results)
-            return results[:limit], total
+        return results[:limit], total
 
 
 sde_search = SDESearch()

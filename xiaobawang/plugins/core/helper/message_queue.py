@@ -135,7 +135,7 @@ class MessageQueueSender:
                 current_len = len(self.message_queue[queue_key])
                 if 0 < self.immediate_flush_count == current_len:
                     logger.info(f"队列 {queue_key} 达到立即推送阈值({self.immediate_flush_count})，立即触发发送")
-                    asyncio.create_task(self._process_selected_queues([queue_key]))
+                    asyncio.create_task(self._process_selected_queues([queue_key]))  # noqa: RUF006
             except Exception:
                 logger.debug("触发立即刷新时出错", exc_info=True)
 
