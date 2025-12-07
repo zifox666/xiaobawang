@@ -1,9 +1,10 @@
-import json
-import urllib.parse
 from datetime import datetime
-from fastapi import APIRouter, Response, Request
-from starlette.responses import FileResponse
+import json
 from pathlib import Path
+import urllib.parse
+
+from fastapi import APIRouter, Request, Response
+from starlette.responses import FileResponse
 
 from .almanac import DailyLuck
 
@@ -41,10 +42,10 @@ async def get_luck_api(request: Request, response: Response) -> dict:
     uuid = request.cookies.get("user_uuid")
 
     luck_data = generate_luck_data(user_id=uuid)
-    
+
     response_data = json.dumps(luck_data, ensure_ascii=False)
     encoded_data = urllib.parse.quote(response_data)
-    
+
     response.set_cookie(
         key="daily_luck_data",
         value=encoded_data,
@@ -52,7 +53,7 @@ async def get_luck_api(request: Request, response: Response) -> dict:
         httponly=False,  # 允许JS访问
         samesite="lax"
     )
-    
+
     # 设置日期cookie用于判断是否是新的一天
     response.set_cookie(
         key="daily_luck_date",
@@ -61,5 +62,5 @@ async def get_luck_api(request: Request, response: Response) -> dict:
         httponly=False,
         samesite="lax"
     )
-    
+
     return luck_data

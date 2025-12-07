@@ -24,7 +24,8 @@ query_price = on_alconna(
         "ojita",
         Args["args", MultiVar(str)],
         meta=CommandMeta(
-            "查询欧服吉他价格", usage="可以模糊查询名称或者名称*数量", example="/jita 毒蜥级*10", fuzzy_match=True
+            usage="/ojita <关键词>[* 数量]",
+            description="查询EVE市场价格信息",
         ),
     ),
     aliases=("查价", "Ojita", "OJITA", "jita"),

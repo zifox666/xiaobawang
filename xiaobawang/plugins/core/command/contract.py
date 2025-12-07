@@ -1,4 +1,4 @@
-from arclet.alconna import Alconna, Args, MultiVar
+from arclet.alconna import Alconna, Args, CommandMeta, MultiVar
 from nonebot import on_regex
 from nonebot.internal.adapter import Event
 from nonebot.params import RegexStr
@@ -13,9 +13,17 @@ from ..utils.render import capture_element
 __all__ = ["janice", "janice_preview"]
 
 janice = on_alconna(
-    Alconna("janice", Args["text", MultiVar(str)]), use_cmd_start=True, aliases=("合同估价", "合同", "contract")
+    Alconna(
+        "janice",
+        Args["text", MultiVar(str)],
+        meta=CommandMeta(
+            description="物品批量估价工具",
+            usage="/janice <物品列表>",
+        ),
+    ),
+    use_cmd_start=True,
+    aliases=("合同估价", "合同", "contract")
 )
-
 janice_preview = on_regex(r"janice\.e-351\.com/a/([a-zA-Z0-9]{6})")
 
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from nonebot import require
 import nonebot
+from nonebot import require
 
 from .almanac import DailyLuck
 from .router import router as daily_luck_router
@@ -10,11 +10,11 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_uninfo")
 
-from nonebot_plugin_htmlrender import template_to_pic
+from fastapi import FastAPI
 from nonebot_plugin_alconna import on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
+from nonebot_plugin_htmlrender import template_to_pic
 from nonebot_plugin_uninfo import Uninfo
-from fastapi import FastAPI
 
 app: FastAPI = nonebot.get_app()
 app.include_router(daily_luck_router, prefix="")

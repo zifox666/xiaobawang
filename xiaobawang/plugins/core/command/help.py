@@ -1,13 +1,17 @@
 from arclet.alconna import Alconna
 from nonebot.adapters.onebot.v11 import Event as ob11_Event
 from nonebot.internal.adapter import Event
-from nonebot_plugin_alconna import UniMessage, on_alconna
+from nonebot_plugin_alconna import CommandMeta, UniMessage, on_alconna
 
 from xiaobawang.plugins.core.utils.render import render_template, templates_path
 
 help = on_alconna(
     Alconna(
         "help",
+        CommandMeta(
+            description="显示帮助菜单",
+            usage="/help",
+        ),
     ),
     use_cmd_start=True,
     aliases=("帮助", "菜单", "start", "about"),

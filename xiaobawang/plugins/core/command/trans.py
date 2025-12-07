@@ -1,5 +1,5 @@
 from arclet.alconna import Alconna, Args, Arparma, MultiVar, Option
-from nonebot_plugin_alconna import on_alconna
+from nonebot_plugin_alconna import CommandMeta, on_alconna
 
 from xiaobawang.plugins.sde.oper import sde_search
 
@@ -13,6 +13,10 @@ trans = on_alconna(
         "trans",
         Args["args", MultiVar(str)],
         Option("-l|--limit", Args["value", int], default=10),
+        CommandMeta(
+            description="翻译EVE专有名词",
+            usage="/trans <args>",
+        ),
     ),
     use_cmd_start=True,
     aliases=("fy", "翻译", "fanyi"),

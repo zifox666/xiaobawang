@@ -21,7 +21,14 @@ km_handler = on_alconna(
 
 km_handler.shortcut(r"https://zkillboard\.com/kill/(\d+)/", command="/km {0}", fuzzy=True)
 
-km_sub_push_test = on_alconna(Alconna("km_push", Args["kill_id", str]), use_cmd_start=True)
+km_sub_push_test = on_alconna(
+    Alconna(
+        "km_push",
+        Args["kill_id", str],
+        meta=CommandMeta(description="测试击毁邮件推送", hide=True),
+    ),
+    use_cmd_start=True,
+)
 
 
 @km_handler.handle()

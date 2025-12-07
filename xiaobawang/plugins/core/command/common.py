@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from arclet.alconna import Alconna, Args
+from arclet.alconna import Alconna, Args, CommandMeta
 from nonebot_plugin_alconna import on_alconna
 
 from xiaobawang.plugins.core.api.common import get_exchangerate
@@ -11,12 +11,26 @@ hl = on_alconna(
     Alconna(
         "hl",
         Args["value", float]["currency", str],
+        meta=CommandMeta(
+            usage="/hl <数值> <货币代码>",
+            description="将指定货币转换为人民币",
+        )
     ),
     use_cmd_start=True,
     aliases=("汇率", "exchangerate"),
 )
 
-evetime = on_alconna(Alconna("evetime"), use_cmd_start=True, aliases=("EVE时间", "eve时间"))
+evetime = on_alconna(
+    Alconna(
+        "evetime",
+        meta=CommandMeta(
+            usage="/evetime",
+            description="获取当前EVE时间",
+        )
+    ),
+    use_cmd_start=True,
+    aliases=("EVE时间", "eve时间")
+)
 
 
 hl_aliases = {

@@ -1,13 +1,14 @@
+import asyncio
+import json
+from pathlib import Path
+import traceback
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
-from pathlib import Path
-from nonebot import get_bot, logger, get_driver
-from nonebot.adapters.onebot.v11 import Bot, Adapter, Event, Message, MessageSegment
+from nonebot import get_driver, logger
+from nonebot.adapters.onebot.v11 import Adapter, Bot, Event, Message, MessageSegment
 from nonebot.adapters.onebot.v11.event import PrivateMessageEvent, Sender
 from nonebot.adapters.onebot.v11.exception import ActionFailed
-import json
-import asyncio
-import traceback
 
 router = APIRouter()
 
@@ -34,7 +35,7 @@ async def serve_static(file_name: str):
 async def get_commands():
     """获取所有可用命令"""
     from arclet.alconna import command_manager
-    
+
     commands = []
     for cmd in command_manager.get_commands():
         commands.append({
@@ -42,7 +43,7 @@ async def get_commands():
             "usage": cmd.meta.usage or "",
             "description": cmd.meta.description or ""
         })
-    
+
     return commands
 
 
@@ -55,7 +56,7 @@ api_futures = {}
 
 class VirtualBot(Bot):
     """虚拟 Bot,用于聊天室,不连接真实 OneBot 服务"""
-    
+
     def __init__(self, self_id: str, websocket: WebSocket):
         # 获取 OneBot v11 适配器
         driver = get_driver()
@@ -64,17 +65,17 @@ class VirtualBot(Bot):
             if isinstance(adp, Adapter):
                 adapter = adp
                 break
-        
+
         if not adapter:
             raise RuntimeError("未找到 OneBot v11 适配器")
-        
+
         super().__init__(adapter, self_id)
         self.websocket = websocket
-    
+
     async def send(self, event: Event, message, **kwargs):
         """发送消息到前端"""
         logger.info(f"虚拟 Bot {self.self_id} 发送消息: {message}")
-        
+
         # 转换消息为消息段数组
         message_segments = []
         if isinstance(message, str):
@@ -95,36 +96,36 @@ class VirtualBot(Bot):
                 "type": "text",
                 "data": {"text": str(message)}
             })
-        
+
         # 生成唯一的 echo
         import uuid
         echo = str(uuid.uuid4())
-        
+
         # 创建 Future 等待响应
         future = asyncio.Future()
         api_futures[echo] = {
             "future": future,
             "ws": self.websocket
         }
-        
+
         # 发送到前端
         try:
             await self.websocket.send_text(json.dumps({
                 "action": "send_msg",
                 "params": {
-                    "user_id": event.user_id if hasattr(event, 'user_id') else 0,
+                    "user_id": event.user_id if hasattr(event, "user_id") else 0,
                     "message": message_segments
                 },
                 "echo": echo
             }))
-            
+
             logger.info(f"发送 send_msg 到前端,echo: {echo}")
-            
+
             # 等待响应,超时 5 秒
             try:
                 response = await asyncio.wait_for(future, timeout=5.0)
                 logger.info(f"收到前端响应: {response}")
-                
+
                 # 返回消息 ID
                 if response.get("status") == "ok":
                     message_id = response.get("data", {}).get("message_id", 0)
@@ -140,26 +141,26 @@ class VirtualBot(Bot):
         finally:
             # 清理 Future
             api_futures.pop(echo, None)
-    
+
     async def call_api(self, api: str, **data):
         """处理 API 调用"""
         logger.info(f"虚拟 Bot {self.self_id} 调用 API: {api}, 参数: {data}")
-        
+
         if api == "get_msg":
             # 通过 WebSocket 向前端请求消息
             message_id = data.get("message_id")
-            
+
             # 生成唯一的 echo
             import uuid
             echo = str(uuid.uuid4())
-            
+
             # 创建 Future 等待响应
             future = asyncio.Future()
             api_futures[echo] = {
                 "future": future,
                 "ws": self.websocket
             }
-            
+
             try:
                 # 向前端发送 get_msg 请求
                 await self.websocket.send_text(json.dumps({
@@ -169,14 +170,14 @@ class VirtualBot(Bot):
                     },
                     "echo": echo
                 }))
-                
+
                 logger.info(f"向前端发送 get_msg 请求: {message_id}, echo: {echo}")
-                
+
                 # 等待响应,超时 5 秒
                 try:
                     response = await asyncio.wait_for(future, timeout=5.0)
                     logger.info(f"收到前端响应: {response}")
-                    
+
                     # 检查响应状态
                     if response.get("status") == "ok":
                         return response.get("data")
@@ -198,7 +199,7 @@ class VirtualBot(Bot):
             finally:
                 # 清理 Future
                 api_futures.pop(echo, None)
-        
+
         # 其他 API 返回默认值
         return {}
 
@@ -209,15 +210,15 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     user_id = None
     virtual_bot = None
-    
+
     try:
         while True:
             # 接收来自前端的消息
             data = await websocket.receive_text()
             message_data = json.loads(data)
-            
+
             logger.info(f"收到网页消息: {message_data}")
-            
+
             # 如果是 API 响应
             if "echo" in message_data and message_data.get("echo") in api_futures:
                 echo = message_data["echo"]
@@ -225,11 +226,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 if future_data and not future_data["future"].done():
                     future_data["future"].set_result(message_data)
                 continue
-            
+
             # 如果是消息事件
             if message_data.get("post_type") == "message":
                 user_id = message_data.get("user_id")
-                
+
                 try:
                     # 创建或获取虚拟 Bot
                     if user_id not in websocket_connections:
@@ -240,28 +241,28 @@ async def websocket_endpoint(websocket: WebSocket):
                         }
                     else:
                         virtual_bot = websocket_connections[user_id]["bot"]
-                    
+
                     # 将消息段字典转换为 MessageSegment 对象
                     message_list = []
                     for seg in message_data.get("message", []):
                         seg_type = seg.get("type")
                         seg_data = seg.get("data", {})
-                        
+
                         if seg_type == "text":
                             message_list.append(MessageSegment.text(seg_data.get("text", "")))
                         elif seg_type == "image":
                             message_list.append(MessageSegment.image(seg_data.get("file", "")))
                         elif seg_type == "reply":
                             message_list.append(MessageSegment.reply(seg_data.get("id", "")))
-                    
+
                     # 构造 Message 对象
                     message = Message(message_list)
-                    
+
                     # 构造 PrivateMessageEvent
                     message_id = message_data.get("message_id")
                     event = PrivateMessageEvent(
                         time=message_data.get("time"),
-                        self_id=int(virtual_bot.self_id.split('_')[1]),
+                        self_id=int(virtual_bot.self_id.split("_")[1]),
                         post_type="message",
                         sub_type=message_data.get("sub_type", "friend"),
                         user_id=user_id,
@@ -272,26 +273,26 @@ async def websocket_endpoint(websocket: WebSocket):
                         font=message_data.get("font", 0),
                         sender=Sender(**message_data.get("sender", {}))
                     )
-                    
+
                     logger.info(f"构造的事件对象 message: {event.message}, raw_message: {event.raw_message}")
-                    
+
                     # 处理事件
-                    asyncio.create_task(virtual_bot.handle_event(event))
-                    
+                    asyncio.create_task(virtual_bot.handle_event(event)) #noqa: RUF006
+
                 except Exception as e:
                     logger.error(f"处理消息失败: {e}", exc_info=True)
                     await websocket.send_text(json.dumps({
                         "action": "send_msg",
                         "params": {
-                            "message": f"处理失败: {str(e)}"
+                            "message": f"处理失败: {e!s}"
                         }
                     }))
-            
+
     except WebSocketDisconnect:
         logger.info(f"WebSocket 连接断开: {user_id}")
         if user_id and user_id in websocket_connections:
             del websocket_connections[user_id]
-    except Exception as e:
+    except Exception:
         logger.error(f"WebSocket 错误: {traceback.format_exc()}", exc_info=True)
         if user_id and user_id in websocket_connections:
             del websocket_connections[user_id]

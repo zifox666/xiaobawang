@@ -1,5 +1,5 @@
 from arclet.alconna import Alconna, Args
-from nonebot_plugin_alconna import UniMessage, on_alconna
+from nonebot_plugin_alconna import CommandMeta, UniMessage, on_alconna
 
 from ..helper.wormhole import WormholeHelper
 
@@ -7,7 +7,18 @@ __all__ = ["wormhole"]
 
 from ..utils.render import render_template, templates_path
 
-wormhole = on_alconna(Alconna("wormhole", Args["args", str]), use_cmd_start=True, aliases=("wh", "cd", "虫洞"))
+wormhole = on_alconna(
+    Alconna(
+        "wormhole",
+        Args["args", str],
+        CommandMeta(
+            description="查询虫洞信息,支持j/k",
+            usage="/wormhole <args>",
+        )
+    ),
+    use_cmd_start=True,
+    aliases=("wh", "cd", "虫洞")
+)
 
 
 @wormhole.handle()

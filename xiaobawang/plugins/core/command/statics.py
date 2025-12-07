@@ -1,5 +1,5 @@
 from arclet.alconna import Alconna, Args, Option
-from nonebot_plugin_alconna import UniMessage, on_alconna
+from nonebot_plugin_alconna import CommandMeta, UniMessage, on_alconna
 
 from ..helper.statics import data_analysis
 from ..utils.render import render_template, templates_path
@@ -7,7 +7,10 @@ from ..utils.render import render_template, templates_path
 __all__ = ["statics"]
 
 statics = on_alconna(
-    Alconna("statics", Option("--days|-d", Args["days", int], default=30)),
+    Alconna(
+        "statics",
+          Option("--days|-d", Args["days", int], default=30),
+            CommandMeta(description="数据统计展示", usage="/statics [--days 天数]")),
     use_cmd_start=True,
     aliases={"statics", "统计"},
 )

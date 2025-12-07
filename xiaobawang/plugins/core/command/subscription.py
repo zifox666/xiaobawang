@@ -16,7 +16,7 @@ from ..helper.zkb.listener import zkb_listener
 __all__ = ["start_km_listen", "start_km_listen_", "stop_km_listen_", "sub", "sub_high"]
 
 
-start_km_alc = Alconna("wss", Subcommand("start"), Subcommand("stop"))
+start_km_alc = Alconna("wss", Subcommand("start"), Subcommand("stop"), CommandMeta(hide=True))
 
 
 start_km_listen = on_alconna(start_km_alc, use_cmd_start=True, permission=SUPERUSER)
@@ -62,7 +62,11 @@ sub = on_alconna(
             Args["type", str]["name", MultiVar(str)],
         ),
         Subcommand("list"),
-        meta=CommandMeta(fuzzy_match=True),
+        meta=CommandMeta(
+            description="管理击毁邮件订阅",
+                usage="/sub <add/remove/list> <type> <name> [-a value] [-v value]",
+            fuzzy_match=True
+            ),
     ),
     use_cmd_start=True,
 )
@@ -73,7 +77,11 @@ sub_high = on_alconna(
         "sub_high",
         Args["value", int, 18_000_000_000],
         Option("-r|--remove", help_text="移除高价值订阅"),
-        meta=CommandMeta(fuzzy_match=True),
+        meta=CommandMeta(
+            fuzzy_match=True,
+            description="管理高价值击毁邮件订阅",
+            usage="/sub_high [value] [-r]",
+        ),
     ),
     use_cmd_start=True,
 )

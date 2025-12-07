@@ -18,8 +18,8 @@ class DailyLuck:
 
         self.today_str = self.get_today_string()
         self.direction = self.directions[self.random_custom(self.iday, 2) % len(self.directions)]
-        self.chosen_ships = ', '.join(self.pick_random(self.ships, 3))
-        self.chosen_spaces = ', '.join(self.pick_random(self.spaces, 2))
+        self.chosen_ships = ", ".join(self.pick_random(self.ships, 3))
+        self.chosen_spaces = ", ".join(self.pick_random(self.spaces, 2))
         self.goddess_value = self.random_custom(self.iday, 6) % 50 / 10.0
         self.good_events, self.bad_events = self.pick_todays_luck()
 
@@ -86,13 +86,13 @@ class DailyLuck:
 
     @staticmethod
     def load_spaces():
-        return ['血脉', '德克廉', '斐德', '对舞之域', '黑渊', '特纳', '特布特', '静寂谷',
-                '维纳尔', '地窖', '卡彻', '柯尔斯', '底特里德', '埃索特亚', '非塔波利斯', '大荒野',
-                '伊梅瑟亚', '绝径', '因斯姆尔', '欧米斯特', '摄魂之域', '普罗维登斯', '灼热之径', '混浊',
-                '特里菲斯',
-                '邪恶湾流', '云环', '绝地之域', '源泉之域', '外环', '贝斯', '逑瑞斯', '辛迪加',
-                '域外走廊',
-                '琉蓝之穹', '卡勒瓦拉阔地', '欧莎', '钴蓝边域', '糟粕之域', '佩利根弗', '螺旋之域']
+        return ["血脉", "德克廉", "斐德", "对舞之域", "黑渊", "特纳", "特布特", "静寂谷",
+                "维纳尔", "地窖", "卡彻", "柯尔斯", "底特里德", "埃索特亚", "非塔波利斯", "大荒野",
+                "伊梅瑟亚", "绝径", "因斯姆尔", "欧米斯特", "摄魂之域", "普罗维登斯", "灼热之径", "混浊",
+                "特里菲斯",
+                "邪恶湾流", "云环", "绝地之域", "源泉之域", "外环", "贝斯", "逑瑞斯", "辛迪加",
+                "域外走廊",
+                "琉蓝之穹", "卡勒瓦拉阔地", "欧莎", "钴蓝边域", "糟粕之域", "佩利根弗", "螺旋之域"]
 
     @staticmethod
     def load_ships():
@@ -129,7 +129,8 @@ class DailyLuck:
                 "维德马克级", "德雷卡瓦级", "勒沙克级"]
 
     def get_today_string(self):
-        return f"今天是 {self.today.year}年{self.today.month}月{self.today.day}日 星期{self.weeks[self.today.weekday()]}"
+        return f"今天是 {self.today.year}年{self.today.month}月{self.today.day}日 " \
+               f"星期{self.weeks[self.today.weekday()]}"
 
     def pick_todays_luck(self):
         num_good = self.random_custom(self.iday, 98) % 3 + 2
@@ -154,14 +155,14 @@ class DailyLuck:
 
     def parse(self, event):
         result = event.copy()
-        if '%v' in result['name']:
-            result['name'] = result['name'].replace('%v', self.varNames[
+        if "%v" in result["name"]:
+            result["name"] = result["name"].replace("%v", self.varNames[
                 self.random_custom(self.iday, 12) % len(self.varNames)])
-        if '%t' in result['name']:
-            result['name'] = result['name'].replace('%t',
+        if "%t" in result["name"]:
+            result["name"] = result["name"].replace("%t",
                                                     self.tools[self.random_custom(self.iday, 11) % len(self.tools)])
-        if '%l' in result['name']:
-            result['name'] = result['name'].replace('%l', str(self.random_custom(self.iday, 12) % 247 + 30))
+        if "%l" in result["name"]:
+            result["name"] = result["name"].replace("%l", str(self.random_custom(self.iday, 12) % 247 + 30))
         return result
 
     def get_luck_level(self):

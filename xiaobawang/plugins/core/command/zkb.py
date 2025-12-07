@@ -4,7 +4,7 @@ from arclet.alconna import Alconna, Args, Arparma, MultiVar, Option
 from nonebot.internal.adapter import Event
 from nonebot.params import RegexStr
 from nonebot.plugin.on import on_regex
-from nonebot_plugin_alconna import UniMessage, on_alconna
+from nonebot_plugin_alconna import CommandMeta, UniMessage, on_alconna
 
 from ..api.esi.universe import esi_client
 from ..api.zkillboard import zkb_api
@@ -19,6 +19,10 @@ zkb = on_alconna(
         "zkb",
         Args["args", MultiVar(str)],
         Option("-t|--type", Args["type", str], default="character"),
+        CommandMeta(
+            description="查询ZKB统计数据(character/corporation)",
+            usage="/zkb <name> -t [character|corporation]",
+        ),
     ),
     use_cmd_start=True,
 )
