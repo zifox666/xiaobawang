@@ -224,6 +224,9 @@ class PriceHelper:
             price_data = prices.get(str(type_id)) or prices.get(type_id, {})
             history_line = histories_line.get(type_id, None)
 
+            if not price_data:
+                continue
+
             highest_buy = price_data.get("highest_buy", {})
             lowest_sell = price_data.get("lowest_sell", {})
 
