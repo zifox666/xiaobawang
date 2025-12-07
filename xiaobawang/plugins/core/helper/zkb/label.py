@@ -58,9 +58,9 @@ class ZkbLabelHelper:
                 "color": "bg-red-400 text-white"
             },
             "cat:22": {
-                "name": "MTU杀手",
-                "percent": 0.01,
-                "sum": 500,
+                "name": "拆迁狂",
+                "percent": 0.05,
+                "sum": 200,
                 "color": "bg-gray-800 text-white"
             },
             "awox": {
@@ -72,13 +72,13 @@ class ZkbLabelHelper:
             "atShip": {
                 "name": "AT SHIP",
                 "percent": 0.001,
-                "sum": 50,
+                "sum": 100,
                 "color": "bg-yellow-500 text-white"
             },
             "capital": {
                 "name": "旗舰杀手",
-                "percent": 0.005,
-                "sum": 50,
+                "percent": 0.01,
+                "sum": 100,
                 "color": "bg-purple-600 text-white"
             }
         }
