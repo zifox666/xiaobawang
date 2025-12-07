@@ -8,7 +8,8 @@
 
 <div align=center>
 
-"Cross-platform EVE Information Query and Subscription Bot"
+"Cross-platform EVE Information Query and Subscription Bot"<br>
+[Online Experience](https://xbw.newdoublex.space/chat)
 
 This project is based on [Alconna](https://github.com/nonebot/plugin-alconna) supporting multiple platforms, and can interact with the following bot frameworks/platforms
 

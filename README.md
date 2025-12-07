@@ -8,7 +8,8 @@
 
 <div align=center>
 
-“可跨平台 EVE 信息查询与订阅机器人”
+“可跨平台 EVE 信息查询与订阅机器人”<br>
+[在线体验](https://xbw.newdoublex.space/chat)
 
 本项目基于 [Alconna](https://github.com/nonebot/plugin-alconna) 支持多个平台，可基于以下项目与机器人框架/平台进行交互
 

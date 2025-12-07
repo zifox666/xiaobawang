@@ -1,0 +1,123 @@
+[v-cloak] {
+    display: none;
+}
+
+.chat-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.el-main {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    overflow: hidden;
+}
+
+.el-main > div {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* 美化滚动条 */
+.message-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.message-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.message-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.message-list::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Firefox 滚动条 */
+.message-list {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+}
+
+.message-bubble {
+    max-width: 500px;
+    min-width: 100px;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.message-bubble-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.reply-reference {
+    font-size: 0.875rem;
+    padding: 0.25rem 0;
+}
+
+.reply-btn {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.message-bubble-wrapper:hover .reply-btn {
+    opacity: 1;
+}
+
+.message-image {
+    max-width: 300px;
+    max-height: 300px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.forward-message {
+    background: #f0f0f0;
+    border-left: 3px solid #409eff;
+    padding: 8px;
+    margin: 4px 0;
+}
+
+.connection-status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-connected {
+    background: #67c23a;
+    box-shadow: 0 0 8px #67c23a;
+}
+
+.status-disconnected {
+    background: #f56c6c;
+}
+
+.status-connecting {
+    background: #e6a23c;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}

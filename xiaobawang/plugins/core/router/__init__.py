@@ -13,4 +13,4 @@ app.include_router(statics_router, prefix="/statics")
 
 @app.get("/", summary="首页")
 async def home():
-    return RedirectResponse(url="https://zifox666.github.io/xiaobawang/")
+    return RedirectResponse(url="/chat")

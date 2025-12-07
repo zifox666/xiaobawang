@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线体验 - 小霸王机器人</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Element Plus CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <script src="https://unpkg.com/element-plus"></script>
+    
+    <!-- Element Plus Icons -->
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+    
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="/chat/static/style.css">
+</head>
+<body class="bg-gray-100">
+    <div id="app" v-cloak>
+        <el-container class="chat-container">
+            <!-- 头部 -->
+            <el-header class="bg-white shadow-md flex items-center justify-between px-6">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-gray-800">小霸王机器人 - 在线体验</h1>
+                    <div class="ml-4 flex items-center text-sm">
+                        <span :class="['connection-status', connectionStatusClass]"></span>
+                        <span class="text-gray-600">{{ connectionStatusText }}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="https://zifox666.github.io/xiaobawang/" target="_blank" class="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </a>
+                    <a href="https://github.com/zifox666/xiaobawang" target="_blank" class="text-gray-700 hover:text-gray-900 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                    </a>
+                    <el-button type="danger" size="small" @click="disconnect" v-if="wsConnected">
+                        断开连接
+                    </el-button>
+                </div>
+            </el-header>
+            
+            <!-- 主体 -->
+            <el-main class="bg-gray-50">
+                <div class="w-full max-w-7xl mx-auto bg-white rounded-lg shadow-lg flex flex-col" style="height: 100%;">
+                    <!-- 用户信息设置 -->
+                    <div v-if="!wsConnected" class="p-6">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-700">设置您的信息</h3>
+                        <div class="flex flex-col md:flex-row gap-4 md:items-end">
+                            <el-form-item label="QQ号" class="mb-0 w-full md:w-auto">
+                                <el-input 
+                                    v-model="userConfig.qq" 
+                                    placeholder="输入QQ号或留空随机"
+                                    class="w-full md:w-[200px]"
+                                    @keyup.enter="connect"
+                                />
+                            </el-form-item>
+                            <el-form-item label="昵称" class="mb-0 w-full md:w-auto">
+                                <el-input 
+                                    v-model="userConfig.nickname" 
+                                    placeholder="输入昵称"
+                                    class="w-full md:w-[200px]"
+                                    @keyup.enter="connect"
+                                />
+                            </el-form-item>
+                            <el-button type="primary" @click="connect" :loading="wsConnecting" class="w-full md:w-auto">
+                                {{ wsConnecting ? '连接中...' : '连接聊天室' }}
+                            </el-button>
+                        </div>
+                    </div>
+                    
+                    <!-- 聊天内容区域 -->
+                    <div v-if="wsConnected" class="flex flex-col flex-1 min-h-0">
+                        <!-- 消息列表 -->
+                        <div class="message-list flex-1 overflow-y-auto p-6" ref="messageContainer">
+                            <div v-if="messages.length === 0" class="text-center text-gray-400 py-8">
+                                暂无消息
+                            </div>
+                            
+                            <div v-for="msg in messages" :key="msg.id" class="mb-4">
+                            <!-- 普通消息 -->
+                            <div :class="['flex gap-3', msg.isBot ? 'flex-row' : 'flex-row-reverse']">
+                                <img :src="msg.avatar" class="avatar" />
+                                <div :class="['flex flex-col', msg.isBot ? 'items-start' : 'items-end']">
+                                    <div class="text-xs text-gray-500 mb-1">
+                                        {{ msg.nickname }} {{ msg.time }}
+                                    </div>
+                                    <div :class="['message-bubble-wrapper', msg.isBot ? 'items-start' : 'items-end']">
+                                        <div :class="['message-bubble px-4 py-2 rounded-lg', msg.isBot ? 'bg-white border border-gray-200' : 'bg-blue-500 text-white']">
+                                            <!-- 回复消息 -->
+                                            <div v-if="msg.replyTo" class="reply-reference mb-2 pb-2 border-b" :class="msg.isBot ? 'border-gray-300' : 'border-blue-300'">
+                                                <div class="text-xs opacity-75">回复 {{ msg.replyTo.nickname }}</div>
+                                                <div class="text-sm opacity-90">{{ msg.replyTo.content }}</div>
+                                            </div>
+                                            <!-- 文本消息 -->
+                                            <template v-for="segment in msg.segments" :key="segment.id">
+                                                <span v-if="segment.type === 'text'">{{ segment.data.text }}</span>
+                                            
+                                            <!-- 图片消息 -->
+                                            <div v-else-if="segment.type === 'image'" class="my-1">
+                                                <el-image 
+                                                    :src="getImageUrl(segment.data.file)" 
+                                                    class="message-image"
+                                                    :preview-src-list="[getImageUrl(segment.data.file)]"
+                                                    fit="contain"
+                                                />
+                                            </div>
+                                            
+                                            <!-- 合并转发 -->
+                                            <div v-else-if="segment.type === 'node'" class="forward-message">
+                                                <div class="text-xs font-semibold mb-1">
+                                                    {{ segment.data.nickname }}
+                                                </div>
+                                                <div v-for="content in segment.data.content" :key="content.id">
+                                                    <span v-if="content.type === 'text'">{{ content.data.text }}</span>
+                                                    <el-image 
+                                                        v-else-if="content.type === 'image'"
+                                                        :src="getImageUrl(content.data.file)" 
+                                                        class="message-image my-1"
+                                                        :preview-src-list="[getImageUrl(content.data.file)]"
+                                                        fit="contain"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </template>
+                                        </div>
+                                        <!-- 回复按钮 (仅显示在机器人消息上) -->
+                                        <el-button v-if="msg.isBot" size="small" text @click="replyToMessage(msg)" class="reply-btn mt-1">
+                                            回复
+                                        </el-button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                        
+                        <!-- 输入区域容器 -->
+                        <div class="flex-shrink-0 border-t border-gray-200 bg-white p-4">
+                            <!-- 回复提示 -->
+                            <div v-if="replyingTo" class="mb-2 p-2 bg-gray-100 rounded flex items-center justify-between">
+                                <div class="text-sm">
+                                    <span class="text-gray-600">回复</span>
+                                    <span class="font-semibold mx-1">{{ replyingTo.nickname }}</span>
+                                    <span class="text-gray-500">{{ replyingTo.segments.find(s => s.type === 'text')?.data.text || '[消息]' }}</span>
+                                </div>
+                                <el-button size="small" text @click="replyingTo = null">
+                                    Close
+                                </el-button>
+                            </div>
+                            
+                            <!-- 输入区域 -->
+                            <div class="relative">
+                        <!-- 命令提示框 -->
+                        <div v-if="showCommandSuggestions && filteredCommands.length > 0" 
+                             class="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto z-10">
+                            <div class="p-2">
+                                <div class="text-xs text-gray-500 px-2 py-1">可用命令:</div>
+                                <div 
+                                    v-for="cmd in filteredCommands" 
+                                    :key="cmd.cmd"
+                                    @click="selectCommand(cmd)"
+                                    class="px-3 py-2 hover:bg-blue-50 cursor-pointer rounded transition-colors"
+                                >  
+                                    <div class="flex justify-between">
+                                        <div class="font-semibold text-blue-600">{{ cmd.cmd }}</div>
+                                        <div class="text-xs text-gray-600">{{ cmd.description }}</div>
+                                    </div>
+                                    <div class="text-xs text-gray-600">{{ cmd.usage }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <el-input
+                                v-model="inputMessage"
+                                placeholder="输入消息... (支持 / 开头的命令)"
+                                @keyup.enter="sendMessage"
+                                @focus="handleInputFocus"
+                                @blur="handleInputBlur"
+                                :disabled="!wsConnected"
+                            >
+                            </el-input>
+                            <el-button type="primary" @click="sendMessage" :disabled="!wsConnected">
+                                发送
+                            </el-button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </el-main>
+        </el-container>
+    </div>
+
+    <!-- 引入应用脚本 -->
+    <script src="/chat/static/app.js"></script>
+</body>
+</html>
