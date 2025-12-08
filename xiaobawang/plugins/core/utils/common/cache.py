@@ -26,7 +26,8 @@ class RedisCache:
     _redis: redis.Redis = None
     _initialized = False
 
-    TIME_MIN = 60
+    TIME_SECOND = 60
+    TIME_MIN = 60 * TIME_SECOND
     TIME_HOUR = 60 * TIME_MIN
     TIME_DAY = 24 * TIME_MIN
 

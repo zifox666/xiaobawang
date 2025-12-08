@@ -1,15 +1,15 @@
+from nonebot import get_bot
 from nonebot.internal.adapter import Event
-from nonebot.permission import SUPERUSER
 from nonebot_plugin_uninfo import Uninfo
 
 
 async def super_admin(event: Event) -> bool:
     user_id = event.get_user_id()
-    if user_id == SUPERUSER:
-        return True
-    if user_id not in SUPERUSER:
-        return False
-    return True
+    bot = get_bot()
+    return (
+        f"{bot.adapter.get_name().split(maxsplit=1)[0].lower()}:{user_id}" in bot.config.superusers
+        or user_id in bot.config.superusers  # 兼容旧配置
+    )
 
 
 async def is_admin(event: Event, user_info: Uninfo) -> bool:

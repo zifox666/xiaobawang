@@ -16,27 +16,10 @@ from .utils import (
 
 require("nonebot_plugin_htmlrender")
 
-from nonebot_plugin_htmlrender import (
-    get_new_page,
-    md_to_pic,
-    template_to_pic,
-)
+from nonebot_plugin_htmlrender import template_to_pic, get_new_page
 
 # 定义模板路径
 templates_path = SRC_PATH / "templates"
-
-
-async def md2pic(content: str) -> bytes:
-    """将 Markdown 内容转换为图片"""
-    return await md_to_pic(md=content)
-
-
-async def html2pic(html_content: str, width: int = 700, height: int = 400) -> bytes:
-    """将 HTML 内容转换为图片"""
-    async with get_new_page(viewport={"width": width, "height": height}, device_scale_factor=2) as page:
-        await page.set_content(html_content)
-        pic = await page.screenshot(full_page=True, path="./html2pic.png")
-    return pic
 
 
 async def capture_element(
@@ -44,7 +27,6 @@ async def capture_element(
     html_content: str | None = None,
     element: str = "body",
     hide_elements: list[str] | None = None,
-    output_file: str = "./html2pic.png",
     viewport_width: int = 1920,
     viewport_height: int = 1080,
     full_page: bool = False,
@@ -57,7 +39,6 @@ async def capture_element(
         html_content: HTML内容字符串
         element: 要截图的元素选择器
         hide_elements: 需要隐藏的元素列表
-        output_file: 输出文件路径
         viewport_width: 视口宽度
         viewport_height: 视口高度
         full_page: 是否需要完整页面滚动截图

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KM订阅管理 - 小霸王</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <link rel="stylesheet" href="css/subscription.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 登录页面 -->
+        <div v-if="!isLoggedIn" class="login-container">
+            <div class="login-box">
+                <div class="login-title">EVE小霸王KM订阅管理</div>
+                
+                <el-form :model="form">
+                    <el-form-item label="TOKEN">
+                        <el-input v-model="form.token" placeholder=""></el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="login" :loading="loginLoading" style="width: 100%">登录</el-button>
+                    </el-form-item>
+                </el-form>
+                
+                <!-- 帮助提示 -->
+                <div class="mt-8 pt-5 border-t border-gray-200 text-center">
+                    <div class="mb-3 text-gray-500 text-sm font-medium">不知道怎么获取 TOKEN?</div>
+                    <el-tooltip 
+                        :content="`私聊机器人发送下面的命令,如果想订阅私聊,不需要填写 QQ 群号`" 
+                        placement="top">
+                        <div class="inline-block bg-gray-50 px-3 py-2 rounded text-gray-700 font-mono text-sm mb-2 cursor-help">
+                            /get_sub_token [qq群号]
+                        </div>
+                    </el-tooltip>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主界面 -->
+        <div v-else class="w-full min-h-screen bg-gray-100">
+            <!-- 主容器 -->
+            <div class="container-main">
+                <div class="header-section">
+                    <div>
+                        <h1 style="font-size: 28px; margin-bottom: 10px;">KM 订阅管理 - 小霸王</h1>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 12px; color: #ddd; margin-bottom: 8px;">当前用户[{{user.platform}}]{{user.userId}}</div>
+                        <div style="font-size: 18px; font-weight: bold;">[{{user.sessionType}}]{{user.sessionId}}</div>
+                        <el-button type="danger">登出</el-button>
+                    </div>
+                </div>
+                
+                <!-- 统计卡片 -->
+                <div style="padding: 24px; border-bottom: 1px solid #eee;">
+                    <div class="grid grid-cols-5 gap-4">
+                        <div class="stat-card">
+                            <div class="stat-value">{{ stats.total }}</div>
+                            <div class="stat-label">总订阅数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #67c23a;">{{ stats.enabled }}</div>
+                            <div class="stat-label">已启用</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #f56c6c;">{{ stats.disabled }}</div>
+                            <div class="stat-label">已禁用</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #e6a23c;">{{ stats.total }}</div>
+                            <div class="stat-label">总数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">Free</div>
+                            <div class="stat-label">当前余额</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 操作栏 -->
+                <div style="padding: 20px 24px; border-bottom: 1px solid #eee; background: #f5f7fa;">
+                    <div style="display: flex; justify-content: space-between; gap: 12px;">
+                        <div style="display: flex; gap: 12px;">
+                            <el-button type="primary" @click="showCreate = true; editingId = null; resetSubForm()">+ 新建订阅</el-button>
+                            <el-button @click="refreshList" :loading="loading">刷新</el-button>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <el-select v-model="filterEnabled" placeholder="筛选状态" style="width: 120px" clearable @change="refreshList">
+                                <el-option label="已启用" :value="true" ></el-option>
+                                <el-option label="已禁用" :value="false"></el-option>
+                            </el-select>
+                            <el-input v-model="searchText" placeholder="搜索..." style="width: 200px" clearable></el-input>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 订阅列表 -->
+                <div style="padding: 24px;">
+                    <el-table :data="filteredSubs" stripe v-loading="loading" style="width: 100%;">
+                        <el-table-column fixed prop="name" label="名称" ></el-table-column> 
+                        <el-table-column label="逻辑" width="80" align="center">
+                            <template #default="{ row }">
+                                <el-tag type="info">{{ row.condition_groups?.logic || 'AND' }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="条件详情" min-width="280">
+                            <template #default="{ row }">
+                                <div v-if="row.condition_groups?.conditions?.length">
+                                    <div v-for="(c, i) in row.condition_groups.conditions" :key="i" style="font-size: 12px; color: #606266; margin-bottom: 4px;">
+                                        {{ summarizeConditionWrapper(c) }}
+                                    </div>
+                                </div>
+                                <span v-else style="color:#909399;">无</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="积分倍率" width="110" align="center">
+                            <template #default="{ row }">
+                                <div style="font-weight: 600; color: #409eff;">x{{ calcRuleMultiplierWrapper(row.condition_groups).toFixed(2) }}</div>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="推送最低阈值" width="120" align="center">
+                            <template #default="{ row }">
+                                {{ (row.min_value / 1e9).toFixed(2) }}亿 ISK
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="条件数" width="80" align="center">
+                            <template #default="{ row }">
+                                <el-tag>{{ getConditionCount(row.condition_groups) }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="状态" width="80" align="center">
+                            <template #default="{ row }">
+                                <el-tag :type="row.is_enabled ? 'success' : 'info'">
+                                    {{ row.is_enabled ? '启用' : '禁用' }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150" align="center" fixed="right">
+                            <template #default="{ row }">
+                                <el-button link type="primary" @click="editSub(row)">编辑</el-button>
+                                <el-button link type="danger" @click="delSub(row)">删除</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 创建/编辑对话框 -->
+        <el-dialog v-model="showCreate" :title="editingId ? '编辑订阅' : '新建订阅'" width="900px" @close="resetSubForm">
+            <el-scrollbar style="height: 600px">
+                <div style="padding-right: 20px;">
+                    <!-- 基础信息 -->
+                    <el-divider>基础信息</el-divider>
+                    <el-form :model="subForm" label-width="120px">
+                        <el-form-item label="名称">
+                            <el-input v-model="subForm.name" placeholder="给这个订阅起个名字"></el-input>
+                        </el-form-item>
+                        <el-form-item label="描述" v-show="false">
+                            <el-input v-model="subForm.description" type="textarea" rows="2"></el-input>
+                        </el-form-item>
+                        <el-form-item label="推送最低阈值">
+                            <el-input 
+                                v-model="minValueInput.formatted" 
+                                placeholder="请输入金额" 
+                                @input="minValueHandler.handleInput" 
+                                @blur="minValueHandler.handleBlur"
+                                style="width: 100%">
+                            </el-input>
+                        </el-form-item>
+                        <el-form-item label="启用">
+                            <el-switch v-model="subForm.is_enabled"></el-switch>
+                        </el-form-item>
+                        
+                        <!-- 使用模板 -->
+                        <el-form-item label="快速模板">
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <el-button
+                                    v-for="tpl in templates"
+                                    :key="tpl.key || tpl.name"
+                                    :title="tpl.description"
+                                    @click="applyTemplate(tpl)">
+                                    📋 {{ tpl.name }}
+                                </el-button>
+                                <span v-if="!templates.length" style="color: #909399; font-size: 12px;">暂无可用模板</span>
+                            </div>
+                        </el-form-item>
+                    </el-form>
+                    
+                    <!-- 条件组 -->
+                    <el-divider>筛选条件</el-divider>
+                    <el-form label-width="120px">
+                        <el-form-item label="逻辑">
+                            <el-select v-model="subForm.condition_groups.logic" style="width: 150px">
+                                <el-option label="全部匹配 (AND)" value="AND" key="AND"></el-option>
+                                <el-option label="任意匹配 (OR)" value="OR" key="OR"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-form>
+                    
+                    <!-- 条件列表 -->
+                    <div v-if="subForm.condition_groups.conditions.length === 0" style="text-align: center; color: #909399; padding: 20px;">
+                        暂无条件 (点击下方按钮添加)
+                    </div>
+                    
+                    <div v-for="(cond, idx) in subForm.condition_groups.conditions" :key="idx" class="condition-item">
+                        <div class="condition-type-badge">{{ getCondTypeLabel(cond.type) }}</div>
+                        <div style="flex: 1;">
+                            <!-- Entity条件 -->
+                            <div v-if="cond.type === 'entity'" style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px;">
+                                <el-select v-model="cond.entity_type" placeholder="实体类型">
+                                    <el-option v-for="t in ENTITY_TYPES" :key="t.value" :label="`${t.label} (x${scoreRules.entity_scores[t.value] || 1})`" :value="t.value" ></el-option>
+                                </el-select>
+                                <el-autocomplete 
+                                    v-model="cond.entity_name" 
+                                    :fetch-suggestions="queryEntityWrapper"
+                                    placeholder="输入实体名称(大于2个字符)"
+                                    @select="handleEntitySelect($event, cond)"
+                                    style="width: 100%">
+                                    <template #default="{ item }">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <img :src="item.image" style="width: 24px; height: 24px;" />
+                                            <div>
+                                                <div>{{ item.name }}</div>
+                                                <div style="font-size: 12px; color: #909399;">#{{ item.id }} ({{ item.type }})</div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </el-autocomplete>
+                                <el-select 
+                                    v-if="['character', 'corporation', 'alliance'].includes(cond.entity_type)" 
+                                    v-model="cond.role" 
+                                    placeholder="角色">
+                                    <el-option v-for="r in ENTITY_ROLES" :key="r.value" :label="r.label" :value="r.value" ></el-option> 
+                                </el-select>
+                                <el-select 
+                                    v-else-if="cond.entity_type === 'ship'" 
+                                    v-model="cond.ship_role" 
+                                    placeholder="舰船角色">
+                                    <el-option v-for="r in SHIP_ROLES" :key="r.value" :label="r.label" :value="r.value" ></el-option>
+                                </el-select>
+                                <div v-else></div>
+                            </div>
+                            
+                            <!-- Value条件 -->
+                            <div v-else-if="cond.type === 'value'" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div>
+                                    <label style="font-size: 12px; color: #606266;">最小价值 (ISK)</label>
+                                    <el-input 
+                                        :model-value="formatNumberWithComma(cond.min || 0)"
+                                        @input="value => { cond.min = parseNumberWithComma(value); }"
+                                        placeholder="请输入最小价值"
+                                        style="width: 100%">
+                                    </el-input>
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: #606266;">最大价值 (ISK)</label>
+                                    <el-input 
+                                        :model-value="formatNumberWithComma(cond.max || 0)"
+                                        @input="value => { cond.max = parseNumberWithComma(value); }"
+                                        placeholder="请输入最大价值"
+                                        style="width: 100%">
+                                    </el-input>
+                                </div>
+                            </div>
+                            
+                            <!-- Label条件 -->
+                            <div v-else-if="cond.type === 'label'" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div>
+                                    <label style="font-size: 12px; color: #606266;">包含标签 (至少一个)</label>
+                                    <el-select v-model="cond.required_labels" multiple style="width: 100%" filterable placeholder="选择标签">
+                                        <el-option v-for="l in scoreRules.labels" :key="l" :label="`${l} (x${scoreRules.label_scores[l] || 1})`" :value="l"></el-option>
+                                    </el-select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; color: #606266;">排除标签</label>
+                                    <el-select v-model="cond.excluded_labels" multiple style="width: 100%" filterable placeholder="选择标签">
+                                        <el-option v-for="l in scoreRules.labels" :key="l" :label="`${l} (x${scoreRules.label_scores[l] || 1})`" :value="l"></el-option>
+                                    </el-select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <el-button type="danger" text @click="delCondition(idx)">删除</el-button>
+                    </div>
+                    
+                    <!-- 添加条件按钮 -->
+                    <div style="margin-top: 15px;">
+                        <el-button @click="showConditionSelector = true">+ 添加条件</el-button>
+                    </div>
+                </div>
+            </el-scrollbar>
+            
+            <template #footer>
+                <el-button @click="showCreate = false">取消</el-button>
+                <el-button type="primary" @click="saveSub" :loading="saving">保存</el-button>
+            </template>
+        </el-dialog>
+        
+        <!-- 条件选择对话框 -->
+        <el-dialog v-model="showConditionSelector" title="选择条件类型" width="500px">
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                <div v-for="ctype in CONDITION_TYPES" :key="ctype.value" 
+                     @click="addCondition(ctype.value); showConditionSelector = false"
+                     style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 15px; cursor: pointer; transition: all 0.3s;"
+                     @mouseenter="$event.target.style.background = '#f5f7fa'"
+                     @mouseleave="$event.target.style.background = 'white'">
+                    <div style="font-weight: bold; color: #333;">{{ ctype.label }}</div>
+                    <div style="font-size: 12px; color: #909399; margin-top: 5px;">{{ ctype.desc }}</div>
+                </div>
+            </div>
+        </el-dialog>
+    </div>
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    
+    <!-- 外部脚本文件 -->
+    <script src="js/constants.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
