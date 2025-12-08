@@ -44,7 +44,7 @@ class ConditionMatcher:
         
         try:
             # 检查全局过滤
-            if not self._check_global_filters(subscription):
+            if not await self._check_global_filters(subscription):
                 # logger.debug(f"[KM:{self.killmail_id}] 订阅 {sub_id} 在全局过滤被丢弃")
                 return False, []
 
@@ -68,7 +68,7 @@ class ConditionMatcher:
             logger.error(f"订阅 {subscription.get('id')} 匹配出错: {e}")
             return False, []
 
-    def _check_global_filters(self, subscription: dict) -> bool:
+    async def _check_global_filters(self, subscription: dict) -> bool:
         """检查全局过滤条件"""
         sub_id = subscription.get('id', 'unknown')
         
@@ -82,7 +82,7 @@ class ConditionMatcher:
 
         max_age_days = subscription.get("max_age_days", 10)
         # logger.debug(f"[KM:{self.killmail_id}] 订阅 {sub_id} 时效检查: max_age_days={max_age_days}")
-        if not self._check_killmail_age(max_age_days):
+        if not await self._check_killmail_age(max_age_days):
             logger.debug(f"[KM:{self.killmail_id}] 订阅 {sub_id} 时效超期被丢弃")
             return False
 
@@ -97,12 +97,20 @@ class ConditionMatcher:
 
         try:
             killmail_time = datetime.fromisoformat(killmail_time_str.replace("Z", "+00:00"))
+            # 确保 max_age_days 为有效整数，默认回退到 10
+            if max_age_days is None:
+                max_age_days = 10
+            else:
+                try:
+                    max_age_days = int(max_age_days)
+                except (TypeError, ValueError):
+                    logger.warning(f"无效的 max_age_days 值: {max_age_days}，使用默认 10")
+                    max_age_days = 10
+
             current_time = datetime.now(timezone.utc)
             time_diff = current_time - killmail_time
 
             if time_diff.days > max_age_days:
-                # logger.debug(f"击杀时间超过{max_age_days}天，
-                # 忽略 killmail: {self.data.get('killmail_id')}, 时间: {killmail_time_str}")
                 return False
             return True
         except Exception as e:
@@ -247,11 +255,13 @@ class ConditionMatcher:
 
         # 群组类型实体
         elif entity_type == "group":
-            group_id = await sde_search.get_type_group(entity_id, _id=True)
+            group_id = await sde_search.get_type_group(self.victim.get("ship_type_id"), _id=True)
             if not group_id:
                 return False, ""
-            elif group_id == entity_id:
+            elif str(group_id) == str(entity_id):
                 return True, f"群组: {entity_name}"
+            else:
+                return False, ""
 
         # 处理实体角色 (character/corporation/alliance)
         else:

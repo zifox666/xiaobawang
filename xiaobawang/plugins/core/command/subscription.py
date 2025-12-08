@@ -10,7 +10,7 @@ from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_uninfo import SceneType, QryItrface
 
 from ..api.esi.universe import esi_client
-from ..helper.rule import super_admin
+from ..helper.rule import super_admin, is_admin
 from ..helper.subscription import KillmailSubscriptionManager
 from ..helper.token_manager import TokenManager
 from ..helper.zkb.listener import zkb_listener
