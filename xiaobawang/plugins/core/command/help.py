@@ -71,16 +71,8 @@ help_data = {
                     "title": "订阅指定条件KM",
                     "new": False,
                     "hot": False,
-                    "commands": ["/sub <add/remove> <type> <name>", "[-a value] [-v value]"],
-                    "desc": "订阅高价值KM,可以使用[value]设置最低推送阈值 -a:最后一击,-v:损失，默认30m。"
-                    "目前支持[char,corp,alliance,ship,system]",
-                },
-                {
-                    "title": "订阅高价值KM",
-                    "new": False,
-                    "hot": False,
-                    "commands": ["/sub_high", "/sub_high 20_000_000_000", "/sub_high -r"],
-                    "desc": "订阅高价值KM,可以使用[-r]取消订阅，默认推送18b以上的KM",
+                    "commands": ["/get_sub_token"],
+                    "desc": "访问 https://xbw.newdoublex.space/subcribtion",
                 },
             ],
         },

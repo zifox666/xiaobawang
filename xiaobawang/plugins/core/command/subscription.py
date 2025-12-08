@@ -154,6 +154,7 @@ async def _add_sub(
     user_info: Uninfo,
     session: AsyncSession,
 ):
+    await sub.finish("该功能已移至网页端管理，访问：https://xbw.newdoublex.space/subscription")
     if await is_admin(event, user_info):
         await sub.finish("你还不是群管理员，无法使用此功能")
 
@@ -301,6 +302,7 @@ async def _handle_sub_high(
     user_info: Uninfo,
     session: AsyncSession,
 ):
+    await sub.finish("该功能已移至网页端管理，访问：https://xbw.newdoublex.space/subscription")
     if await is_admin(event, user_info):
         await sub.finish("你还不是群管理员，无法使用此功能")
 

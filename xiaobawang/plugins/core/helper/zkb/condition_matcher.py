@@ -247,7 +247,7 @@ class ConditionMatcher:
 
         # 群组类型实体
         elif entity_type == "group":
-            group_id = await sde_search.get_type_group(entity_id, is_group=True)
+            group_id = await sde_search.get_type_group(entity_id, _id=True)
             if not group_id:
                 return False, ""
             elif group_id == entity_id:
