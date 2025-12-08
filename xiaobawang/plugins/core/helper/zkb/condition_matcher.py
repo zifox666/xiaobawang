@@ -4,7 +4,7 @@ from typing import Any, Tuple
 
 from nonebot import logger
 
-from xiaobawang.plugins.sde import sde_search
+from xiaobawang.plugins.sde.oper import sde_search
 from ...api.esi.universe import esi_client
 
 
