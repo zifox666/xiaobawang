@@ -31,7 +31,7 @@ async def serve_static(file_name: str):
     return {"error": "File not found"}
 
 
-@router.get("/get_cmds")
+@router.get("/get/cmds")
 async def get_commands():
     """获取所有可用命令"""
     from arclet.alconna import command_manager

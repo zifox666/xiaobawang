@@ -156,7 +156,7 @@ createApp({
         // 获取可用命令列表
         const fetchCommands = async () => {
             try {
-                const response = await fetch('/chat/get_cmds');
+                const response = await fetch('/chat/get/cmds');
                 if (response.ok) {
                     availableCommands.value = await response.json();
                     console.log('获取命令列表:', availableCommands.value);
