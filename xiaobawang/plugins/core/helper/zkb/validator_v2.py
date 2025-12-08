@@ -52,26 +52,41 @@ class KillmailValidatorV2:
             # 创建匹配器
             matcher = ConditionMatcher(data)
 
-            # 匹配订阅
+            # 匹配订阅 - 批量并发处理
             matched_sessions = {}
-            for sub in all_subscriptions:
-                if not sub["is_enabled"]:
-                    continue
-
-                matched, reasons = await matcher.match_subscription(sub)
-                if matched:
-                    total_value = float(data.get("zkb", {}).get("totalValue", 0))
-                    session_key = (
-                        sub["platform"],
-                        sub["bot_id"],
-                        sub["session_id"],
-                        sub["session_type"],
-                        total_value
-                    )
-                    # 添加订阅名称到原因列表
-                    full_reasons = [f"[{sub['name']}]"] + reasons
-                    matched_sessions.setdefault(session_key, []).extend(full_reasons)
-                    logger.debug(f"订阅 {sub['id']} ({sub['name']}) 匹配成功")
+            # 过滤启用的订阅
+            enabled_subs = [sub for sub in all_subscriptions if sub["is_enabled"]]
+            
+            # 分批处理,每批100个
+            batch_size = 100
+            total_value = float(data.get("zkb", {}).get("totalValue", 0))
+            
+            for i in range(0, len(enabled_subs), batch_size):
+                batch = enabled_subs[i:i + batch_size]
+                # 并发匹配当前批次
+                import asyncio
+                tasks = [matcher.match_subscription(sub) for sub in batch]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                
+                # 处理匹配结果
+                for sub, result in zip(batch, results):
+                    if isinstance(result, Exception):
+                        logger.error(f"订阅 {sub['id']} ({sub['name']}) 匹配出错: {result}")
+                        continue
+                    
+                    matched, reasons = result
+                    if matched:
+                        session_key = (
+                            sub["platform"],
+                            sub["bot_id"],
+                            sub["session_id"],
+                            sub["session_type"],
+                            total_value
+                        )
+                        # 添加订阅名称到原因列表
+                        full_reasons = [f"[{sub['name']}]"] + reasons
+                        matched_sessions.setdefault(session_key, []).extend(full_reasons)
+                        logger.debug(f"订阅 {sub['id']} ({sub['name']}) 匹配成功")
 
             return matched_sessions if matched_sessions else None
 

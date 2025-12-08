@@ -27,7 +27,7 @@ class KillmailSubscriptionManagerV2:
         """
         self.session = session
 
-    @cache_result(expire_time=5 * cache.TIME_MIN, prefix="sub_get_all_subscriptions")
+    @cache_result(expire_time=30 * cache.TIME_SECOND, prefix="sub_get_all_subscriptions")
     async def get_all_subscriptions(self) -> list[dict[str, Any]]:
         """获取所有启用的订阅"""
         if not self.session:
@@ -71,7 +71,7 @@ class KillmailSubscriptionManagerV2:
             logger.error(f"获取订阅列表失败: {e}")
             return []
 
-    @cache_result(expire_time=5 * cache.TIME_MIN, prefix="sub_get_subscription_by_id")
+    @cache_result(expire_time=30 * cache.TIME_SECOND, prefix="sub_get_subscription_by_id")
     async def get_subscription_by_id(self, subscription_id: int) -> dict[str, Any] | None:
         """根据ID获取订阅"""
         if not self.session:
