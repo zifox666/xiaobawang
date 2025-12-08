@@ -4,6 +4,7 @@ from typing import Any, Tuple
 
 from nonebot import logger
 
+from xiaobawang.plugins.sde import sde_search
 from ...api.esi.universe import esi_client
 
 
@@ -243,6 +244,14 @@ class ConditionMatcher:
                 if self.final_blow.get("ship_type_id") == entity_id:
                     return True, f"最后一击舰船: {entity_name}"
             return False, ""
+
+        # 群组类型实体
+        elif entity_type == "group":
+            group_id = await sde_search.get_type_group(entity_id, is_group=True)
+            if not group_id:
+                return False, ""
+            elif group_id == entity_id:
+                return True, f"群组: {entity_name}"
 
         # 处理实体角色 (character/corporation/alliance)
         else:

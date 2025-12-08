@@ -170,14 +170,15 @@ class SDESearch:
         return result
 
     @cache_result(prefix="type_group_", exclude_args=[0])
-    async def get_type_group(self, type_id: int | str, language: str = "zh") -> str | None:
+    async def get_type_group(self, type_id: int | str, language: str = "zh", _id: bool = False) -> str | int | None:
         """
         从物品ID获取GROUP名称
         Args:
             type_id: 物品ID
             language: 语言 默认 zh
+            _id: 返回group_id
         Returns:
-            GROUP名称 str 或 None
+            GROUP名称 str 或 None 或 int
         """
         async with await get_session() as session:
             # 获取物品对应的组ID
@@ -187,6 +188,9 @@ class SDESearch:
 
             if group_id is None:
                 return None
+
+            if _id:
+                return group_id
 
             # 获取组名称的翻译
             tns_query = select(TrnTranslations.text).where(
