@@ -170,7 +170,8 @@ class GitHubAutoUpdater:
 updater = GitHubAutoUpdater(repo_owner="zifox666", repo_name="xiaobawang")
 
 
-@scheduler.scheduled_job("cron", hour=20, minute=0)
-async def _():
-    logger.info("开始检查更新...")
-    await updater.check()
+if not os.getenv("DOCKER", "").lower() == "true":
+    @scheduler.scheduled_job("cron", hour=20, minute=0)
+    async def _():
+        logger.info("开始检查更新...")
+        await updater.check()

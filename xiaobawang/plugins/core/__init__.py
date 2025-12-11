@@ -1,3 +1,4 @@
+import os
 import asyncio
 
 from nonebot import get_driver, logger, require
@@ -52,7 +53,8 @@ async def init():
 
     await start_km_listen_()
 
-    await updater.check()
+    if not os.getenv("DOCKER", "").lower() == "true":
+        await updater.check()
 
 
 @driver.on_shutdown

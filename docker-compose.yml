@@ -1,0 +1,47 @@
+version: "3.8"
+
+x-config-host: &config-host ${HOST:-0.0.0.0}
+x-config-port: &config-port ${PORT:-8080}
+
+services:
+  nonebot:
+    build:
+      context: .
+      args:
+        HTTP_PROXY: "http://host.docker.internal:7890"
+        HTTPS_PROXY: "http://host.docker.internal:7890"
+    ports:
+      - 29003:8080
+    env_file:
+      - .env.local
+    environment:
+      ENVIRONMENT: local
+      HOST: *config-host
+      PORT: *config-port
+      DOCKER: "true"
+    volumes:
+      - ./data:/app/data
+      - ./.env.local:/app/.env.local:ro
+    restart: always
+    depends_on:
+      redis:
+        condition: service_started
+    networks:
+      - xiaobawang
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - xiaobawang
+
+networks:
+  xiaobawang:
+    driver: bridge
