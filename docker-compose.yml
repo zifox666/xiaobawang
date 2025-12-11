@@ -5,13 +5,9 @@ x-config-port: &config-port ${PORT:-8080}
 
 services:
   nonebot:
-    build:
-      context: .
-      args:
-        HTTP_PROXY: "http://host.docker.internal:7890"
-        HTTPS_PROXY: "http://host.docker.internal:7890"
+    build: .
     ports:
-      - 29003:8080
+      - "29003:8080"
     env_file:
       - .env.local
     environment:
