@@ -60,6 +60,5 @@ async def init():
 @driver.on_shutdown
 async def shutdown():
     await stop_km_listen_()
-    await asyncio.sleep(6)
     await close_client()
     await c.close()

@@ -1,15 +1,15 @@
 中文 ｜ [English](README_EN.md)
 
-<div align=center>
+<div style="text-align:center">
 
 ## 小霸王 Bot
 
 </div>
 
-<div align=center>
+<div style="text-align:center">
 
 “可跨平台 EVE 信息查询与订阅机器人”<br>
-[在线体验](https://xbw.newdoublex.space/chat)
+[在线体验](https://xbw.newdoublex.space/chat) | [文档](https://zifox666.github.io/xiaobawang/)
 
 本项目基于 [Alconna](https://github.com/nonebot/plugin-alconna) 支持多个平台，可基于以下项目与机器人框架/平台进行交互
 
@@ -25,21 +25,33 @@
 
 ## 🛠️ 简单部署
 
+### DOCKER 部署
+
+- 本地打包
+    
+    ```bash
+    docker compose up -d
+    ```
+- 一键拉取
+
+    ```bash
+    docker run newdoublex/xiaobawang:latest -d
+    ```
+
+### 命令行
+
 ```bash
-# 获取代码
 git clone https://github.com/zifox666/xiaobawang.git
 
-# 进入目录
 cd xiaobawang
 
-# 安装依赖
 pip install uv      
-uv sync
+uv sync --frozen
 
-# 安装脚手架
 uv tool install nb-cli
 
-# 开始运行
+uv run nb orm upgrade
+
 uv run nb run
 ```
 
@@ -49,8 +61,6 @@ uv run nb run
 
 > [!NOTE]
 > zkillboard的wss killmail stream订阅已迁移到 [RedisQ](https://github.com/zKillboard/RedisQ)<br>
-> 不配置`TQ_STATUS_URL`将会从ccp esi获取tq状态 在dt那段时间esi会出错 建议自行研究tq获取方式<br>
-> zkillboard的wss 对Python websockets进行阻断 所以不推荐使用wss
 
 ## 📋 功能列表
 

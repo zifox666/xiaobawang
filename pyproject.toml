@@ -37,22 +37,11 @@ readme = "README.md"
 
 [tool.nonebot]
 plugin_dirs = ["xiaobawang/plugins"]
+adapters = [{name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11"}, {name = "Telegram", module_name = "nonebot.adapters.telegram"}]
+plugins = ["nonebot_plugin_apscheduler", "nonebot_plugin_alconna", "nonebot_plugin_session", "nonebot_plugin_uninfo", "nonebot_plugin_orm", "nonebot_plugin_htmlrender"]
 builtin_plugins = []
 
 
-[tool.nonebot.plugins]
-"@local" = []
-nonebot-plugin-apscheduler = ["nonebot_plugin_apscheduler"]
-nonebot-plugin-alconna = ["nonebot_plugin_alconna"]
-nonebot_plugin_session = ["nonebot_plugin_session"]
-nonebot-plugin-uninfo = ["nonebot_plugin_uninfo"]
-nonebot-plugin-orm = ["nonebot_plugin_orm"]
-nonebot-plugin-htmlrender = ["nonebot_plugin_htmlrender"]
-
-[tool.nonebot.adapters]
-"@local" = []
-nonebot-adapter-onebot = [{name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11"}]
-nonebot-adapter-telegram = [{name = "Telegram", module_name = "nonebot.adapters.telegram"}]
 [dependency-groups]
 dev = [
   "ruff>=0.12.7,<1.0.0",
