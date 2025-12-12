@@ -56,7 +56,7 @@ async def _handle_bind_frt(
         await frt_bind.finish("请在私聊中使用此命令进行绑定")
     await frt_bind.finish(
         "请前往以下链接进行授权绑定：\n"
-        f"{plugin_config.pap_track_url}/oauth/pap?qq={user_info.user.id}\n"
+        f"{plugin_config.pap_track_url}/oauth/login?qq={user_info.user.id}\n"
         "授权后即可使用/pap命令查询PAP数据。"
     )
 
@@ -84,7 +84,7 @@ async def _handle_pap(
         url = f"{plugin_config.pap_track_url}/api/pap?qq={user_info.user.id}&month={month}&year={year}"
         r = await client.get(url)
         if r.status_code == 404:
-            await pap_query.finish(f"你没有授权机器人访问你的联盟seat，请私聊机器人发送/bind_frt进行操作")
+            await pap_query.finish(f"你没有授权机器人访问你的联盟seat，请私聊机器人发送\n/bind_frt\n进行操作")
         r.raise_for_status()
         data = r.json()
         pap = data.get("total_pap", 0)
