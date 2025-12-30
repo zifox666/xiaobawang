@@ -10,8 +10,9 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_htmlrender")
 
-from nonebot_plugin_alconna import on_alconna
+from nonebot_plugin_alconna import on_alconna, UniMessage, Image
 from nonebot_plugin_uninfo import Uninfo
+from nonebot_plugin_htmlrender import template_to_pic
 
 
 __plugin_meta__ = PluginMetadata(
@@ -61,6 +62,24 @@ async def _handle_bind_frt(
     )
 
 
+async def get_corp_name(corp_id: int) -> str:
+    """通过ESI API获取军团名称"""
+    if not corp_id:
+        return "Unknown Corporation"
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.post(
+                "https://esi.evetech.net/latest/universe/names/",
+                json=[corp_id],
+                headers={"Content-Type": "application/json"}
+            )
+            r.raise_for_status()
+            data = r.json()
+            return data[0].get("name", "Unknown Corporation") if data else "Unknown Corporation"
+    except Exception:
+        return "Unknown Corporation"
+
+
 @pap_query.handle()
 async def _handle_pap(
     arp: Arparma,
@@ -84,7 +103,7 @@ async def _handle_pap(
         url = f"{plugin_config.pap_track_url}/api/pap?qq={user_info.user.id}&month={month}&year={year}"
         r = await client.get(url)
         if r.status_code == 404:
-            await pap_query.finish(f"你没有授权机器人访问你的联盟seat，请私聊机器人发送\n/bind_frt\n进行操作")
+            await pap_query.finish(f"你没有授权机器人访问你的联盟seat，请私聊机器人发送\n\n/bind_frt\n\n进行操作")
         r.raise_for_status()
         data = r.json()
         pap = data.get("total_pap", 0)
@@ -119,22 +138,39 @@ async def _handle_pap(
             key=lambda kv: kv[1]["num"],
             reverse=True,
         )
-        for idx, (_, info) in enumerate(sorted_items):
+        for idx, (type_id, info) in enumerate(sorted_items):
             result["ship"][str(idx)] = {
                 "name": info["name"],
                 "type": info["type"],
                 "num": info["num"],
+                "type_id": type_id,
             }
 
-        lines = [
-            f"{result['characterName']} (ID: {result['charterID']})",
-            f"总 PAP: {result['pap']}",
-            "舰船参与统计：",
-        ]
-        for idx, item in result["ship"].items():
-            lines.append(f"{idx}. {item['name']} [{item['type']}] x {item['num']}")
+        template_data = {
+            "name": data.get("main_character"),
+            "charterID": data.get("main_character_id"),
+            "characterName": data.get("main_character"),
+            "pap": pap,
+            "month": month,
+            "year": year,
+            "ship": result["ship"],
+            "fleets": fleets,
+            "ranking": data.get("ranking"),
+            "corporation_id": data.get("ranking", {}).get("corporation_id", ""),
+            "corporation_name": await get_corp_name(data.get("ranking", {}).get("corporation_id", 0)),
+        }
 
-        await pap_query.finish("\n".join(lines))
+        pic = await template_to_pic(
+            template_path=str(__file__).replace("__init__.py", ""),
+            template_name="template.html.jinja2",
+            templates=template_data,
+            pages={
+                "viewport": {"width": 1200, "height": 100},
+                "base_url": f"file://{__file__.replace('__init__.py', '')}",
+            },
+        )
+
+        await pap_query.finish(UniMessage.image(raw=pic))
 
 
 

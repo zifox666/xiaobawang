@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRT PAP 查询 - {{ name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        .ship-card {
+            transition: all 0.3s ease;
+        }
+        .ship-card:hover {
+            transform: translateY(-4px);
+        }
+    </style>
+</head>
+<body class="min-h-screen transition-colors duration-300" id="app-body">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 头部卡片 -->
+        <div class="rounded-2xl shadow-2xl p-8 mb-8 transition-colors duration-300" id="header-card">
+            <div class="flex items-center justify-between flex-wrap gap-6">
+                <!-- 角色信息 -->
+                <div class="flex items-center gap-6">
+                    <img 
+                        src="https://images.evetech.net/characters/{{ charterID }}/portrait?size=128" 
+                        alt="{{ characterName }}"
+                        class="w-24 h-24 rounded-full border-4 shadow-lg"
+                        id="character-avatar"
+                    />
+                    <div>
+                        <h1 class="text-3xl font-bold mb-2" id="character-name">{{ characterName }}</h1>
+                        <div class="flex items-center gap-4 mt-2">
+                            <img 
+                                src="https://images.evetech.net/corporations/{{ corporation_id }}/logo?size=64" 
+                                alt="Corporation"
+                                class="w-8 h-8 rounded"
+                                id="corporation-logo"
+                            />
+                            <span class="text-2xl opacity-70" id="corporation-name">{{ corporation_name }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- PAP统计 -->
+                <div class="text-center">
+                    <div class="text-6xl font-bold {% if pap|float >= 3 %}text-emerald-400{% else %}text-orange-400{% endif %}">
+                        {{ pap }}
+                    </div>
+                    <div class="text-sm opacity-70 mt-2">总 PAP</div>
+                    <div class="text-xs opacity-50 mt-1">{{ year }}年{{ month }}月</div>
+                </div>
+            </div>
+
+            <!-- 排名信息 -->
+            {% if ranking %}
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t" id="ranking-border">
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-blue-400">{{ ranking.monthly_rank }}</div>
+                    <div class="text-sm opacity-70 mt-1">军团月度排名</div>
+                    <div class="text-sm opacity-50">/ {{ ranking.total_in_corp }}</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-purple-400">{{ ranking.yearly_rank }}</div>
+                    <div class="text-sm opacity-70 mt-1">军团年度排名</div>
+                    <div class="text-sm opacity-50">/ {{ ranking.total_in_corp }}</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-emerald-400">{{ ranking.global_monthly_rank }}</div>
+                    <div class="text-sm opacity-70 mt-1">联盟月度排名</div>
+                    <div class="text-sm opacity-50">/ {{ ranking.total_global }}</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-orange-400">{{ ranking.global_yearly_rank }}</div>
+                    <div class="text-sm opacity-70 mt-1">联盟年度排名</div>
+                    <div class="text-sm opacity-50">/ {{ ranking.total_global }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 舰船统计 Top 5 -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span class="w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded"></span>
+                舰船参与统计 TOP 5
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for idx, item in ship.items() %}
+                {% if idx|int < 5 %}
+                <div class="ship-card rounded-xl shadow-lg p-6 transition-colors duration-300" id="ship-card-{{ idx }}">
+                    <div class="flex items-center gap-4">
+                        <div class="relative">
+                            <img 
+                                src="https://images.evetech.net/types/{{ item.type_id }}/icon?size=64" 
+                                alt="{{ item.name }}"
+                                class="w-16 h-16 rounded-lg"
+                            />
+                            <div class="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+                                {{ idx|int + 1 }}
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg mb-1">{{ item.name }}</h3>
+                            <p class="text-sm opacity-70 mb-2">{{ item.type }}</p>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                    <div class="{% if pap|float >= 3 %}bg-emerald-400{% else %}bg-orange-400{% endif %} h-2 rounded-full" 
+                                         style="width: {{ (item.num / fleets|length * 100)|round }}%"></div>
+                                </div>
+                                <span class="font-bold {% if pap|float >= 3 %}text-emerald-400{% else %}text-orange-400{% endif %}">{{ item.num }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 舰队参与记录 -->
+        <div>
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span class="w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded"></span>
+                最近参与记录 (显示 3 条 / 共 {{ fleets|length }} 条)
+            </h2>
+            <div class="space-y-4">
+                {% for fleet in fleets[:3] %}
+                <div class="rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-2xl" id="fleet-card-{{ loop.index }}">
+                    <div class="flex items-center justify-between flex-wrap gap-4">
+                        <div class="flex items-center gap-4 flex-1">
+                            <img 
+                                src="https://images.evetech.net/types/{{ fleet.ship.typeID }}/icon?size=64" 
+                                alt="{{ fleet.ship.typeName }}"
+                                class="w-12 h-12 rounded-lg"
+                            />
+                            <div>
+                                <h3 class="font-bold text-lg">{{ fleet.title }}</h3>
+                                <p class="text-sm opacity-70">{{ fleet.ship.typeName }} - {{ fleet.ship.groupName }}</p>
+                                <p class="text-xs opacity-50 mt-1">
+                                    {{ fleet.start_at }} ~ {{ fleet.end_at }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold {% if pap|float >= 3 %}text-emerald-400{% else %}text-orange-400{% endif %}">
+                                {{ fleet.pap }}
+                            </div>
+                            <div class="text-xs opacity-70">PAP</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <div class="text-center mt-12 opacity-50 text-sm">
+            <p>FRT PAP 查询 · Powered by 小霸王机器人 · 更新时间: {{ ranking.calculated_at }}</p>
+        </div>
+    </div>
+
+    <script>
+        // 根据北京时间(UTC+8)自动切换暗夜模式
+        function updateTheme() {
+            const now = new Date();
+            // 获取UTC+8时间的小时
+            const utc8Hour = (now.getUTCHours() + 8) % 24;
+            
+            // 18:00 - 6:00 使用暗色模式
+            const isDark = utc8Hour >= 18 || utc8Hour < 6;
+            
+            const body = document.getElementById('app-body');
+            const headerCard = document.getElementById('header-card');
+            const characterAvatar = document.getElementById('character-avatar');
+            const corporationLogo = document.getElementById('corporation-logo');
+            const rankingBorder = document.getElementById('ranking-border');
+            
+            if (isDark) {
+                // 暗色模式
+                body.className = 'min-h-screen transition-colors duration-300 bg-gray-900 text-white';
+                headerCard.className = 'rounded-2xl shadow-2xl p-8 mb-8 transition-colors duration-300 bg-gray-800';
+                characterAvatar.className = 'w-24 h-24 rounded-full border-4 shadow-lg border-gray-700';
+                corporationLogo.className = 'w-8 h-8 rounded bg-gray-700';
+                if (rankingBorder) {
+                    rankingBorder.className = 'grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-gray-700';
+                }
+                
+                // 舰船卡片
+                {% for idx, item in ship.items() %}
+                {% if idx|int < 5 %}
+                const shipCard{{ idx }} = document.getElementById('ship-card-{{ idx }}');
+                if (shipCard{{ idx }}) {
+                    shipCard{{ idx }}.className = 'ship-card rounded-xl shadow-lg p-6 transition-colors duration-300 bg-gray-800';
+                }
+                {% endif %}
+                {% endfor %}
+                
+                // 舰队卡片
+                const fleetCard1 = document.getElementById('fleet-card-1');
+                if (fleetCard1) {
+                    fleetCard1.className = 'rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-2xl bg-gray-800';
+                }
+                const fleetCard2 = document.getElementById('fleet-card-2');
+                if (fleetCard2) {
+                    fleetCard2.className = 'rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-2xl bg-gray-800';
+                }
+                const fleetCard3 = document.getElementById('fleet-card-3');
+                if (fleetCard3) {
+                    fleetCard3.className = 'rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-2xl bg-gray-800';
+                }
+            } else {
+                // 亮色模式
+                body.className = 'min-h-screen transition-colors duration-300 bg-gradient-to-br from-blue-50 to-purple-50 text-gray-900';
+                headerCard.className = 'rounded-2xl shadow-2xl p-8 mb-8 transition-colors duration-300 bg-white';
+                characterAvatar.className = 'w-24 h-24 rounded-full border-4 shadow-lg border-blue-200';
+                corporationLogo.className = 'w-8 h-8 rounded bg-gray-100';
+                if (rankingBorder) {
+                    rankingBorder.className = 'grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-gray-200';
+                }
+                
+                // 舰船卡片
+                {% for idx, item in ship.items() %}
+                {% if idx|int < 5 %}
+                const shipCard{{ idx }} = document.getElementById('ship-card-{{ idx }}');
+                if (shipCard{{ idx }}) {
+                    shipCard{{ idx }}.className = 'ship-card rounded-xl shadow-lg p-6 transition-colors duration-300 bg-white';
+                }
+                {% endif %}
+                {% endfor %}
+                
+                // 舰队卡片
+                const fleetCard1 = document.getElementById('fleet-card-1');
+                if (fleetCard1) {
+                    fleetCard1.className = 'rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-2xl bg-white';
+                }
+                const fleetCard2 = document.getElementById('fleet-card-2');
+                if (fleetCard2) {
+                    fleetCard2.className = 'rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-2xl bg-white';
+                }
+                const fleetCard3 = document.getElementById('fleet-card-3');
+                if (fleetCard3) {
+                    fleetCard3.className = 'rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-2xl bg-white';
+                }
+            }
+        }
+        
+        // 初始化主题
+        updateTheme();
+        
+    </script>
+</body>
+</html>
