@@ -59,12 +59,12 @@
             {% if ranking %}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t" id="ranking-border">
                 <div class="text-center">
-                    <div class="text-4xl font-bold text-blue-400">{{ ranking.monthly_rank }}</div>
+                    <div class="text-4xl font-bold text-blue-400">{{ ranking.corp_monthly_rank }}</div>
                     <div class="text-sm opacity-70 mt-1">军团月度排名</div>
                     <div class="text-sm opacity-50">/ {{ ranking.total_in_corp }}</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-4xl font-bold text-purple-400">{{ ranking.yearly_rank }}</div>
+                    <div class="text-4xl font-bold text-purple-400">{{ ranking.corp_yearly_rank }}</div>
                     <div class="text-sm opacity-70 mt-1">军团年度排名</div>
                     <div class="text-sm opacity-50">/ {{ ranking.total_in_corp }}</div>
                 </div>
