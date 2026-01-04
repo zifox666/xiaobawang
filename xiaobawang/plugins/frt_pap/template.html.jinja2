@@ -50,7 +50,10 @@
                     <div class="text-6xl font-bold {% if pap|float >= 3 %}text-emerald-400{% else %}text-orange-400{% endif %}">
                         {{ pap }}
                     </div>
-                    <div class="text-sm opacity-70 mt-2">总 PAP</div>
+                    <div class="text-sm font-semibold mt-2 {% if yearly_total_pap|float >= 3 %}text-emerald-400{% else %}text-orange-400{% endif %}">
+                        年度累计 {{ yearly_total_pap }}
+                    </div>
+                    <div class="text-sm opacity-70 mt-1">总 PAP</div>
                     <div class="text-xs opacity-50 mt-1">{{ year }}年{{ month }}月</div>
                 </div>
             </div>
@@ -99,9 +102,6 @@
                                 alt="{{ item.name }}"
                                 class="w-16 h-16 rounded-lg"
                             />
-                            <div class="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
-                                {{ idx|int + 1 }}
-                            </div>
                         </div>
                         <div class="flex-1">
                             <h3 class="font-bold text-lg mb-1">{{ item.name }}</h3>

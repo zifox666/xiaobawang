@@ -151,6 +151,7 @@ async def _handle_pap(
             "charterID": data.get("main_character_id"),
             "characterName": data.get("main_character"),
             "pap": pap,
+            "yearly_total_pap": data.get("yearly_total_pap", 0),
             "month": month,
             "year": year,
             "ship": result["ship"],
