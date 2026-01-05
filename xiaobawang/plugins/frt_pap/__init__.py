@@ -1,6 +1,6 @@
 import httpx
 from nonebot.plugin import PluginMetadata
-from nonebot import require
+from nonebot import require, logger
 from datetime import datetime, UTC
 from arclet.alconna import Alconna, Option, Args, CommandMeta, Arparma
 
@@ -104,12 +104,13 @@ async def _handle_pap_rank(
     if month != 0:
         url += f"&month={month}"
 
-    async with httpx.AsyncClient(
-        headers={"x-api-key": f"{plugin_config.api_key}"}
-    ) as client:
-        r = await client.get(url)
-        r.raise_for_status()
-        data = r.json()
+    try:
+        async with httpx.AsyncClient(
+            headers={"x-api-key": f"{plugin_config.api_key}"}
+        ) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            data = r.json()
 
         # 获取军团名称（包括军团排名和个人排名中的军团）
         corp_ids = set([corp["corporation_id"] for corp in data.get("corporation_rankings", [])])
@@ -118,9 +119,13 @@ async def _handle_pap_rank(
             corp_ids.add(player["corporation_id"])
         
         corp_names = {}
-        for corp_id in corp_ids:
-            corp_name = await get_corp_name(int(corp_id))
-            corp_names[str(corp_id)] = corp_name
+        for corp_id in list(corp_ids):
+            try:
+                corp_name = await get_corp_name(int(corp_id))
+                corp_names[str(corp_id)] = corp_name
+            except Exception as e:
+                logger.warning(f"Failed to get corp name for {corp_id}: {e}")
+                corp_names[str(corp_id)] = f"Corp #{corp_id}"
 
         template_data = {
             "year": data.get("year"),
@@ -142,6 +147,9 @@ async def _handle_pap_rank(
         )
 
         await pap_query.finish(UniMessage.image(raw=pic))
+    except Exception as e:
+        logger.error(f"Error in rank query: {e}")
+        await pap_query.finish(f"排名查询失败: {str(e)}")
 
 
 @pap_query.handle()
