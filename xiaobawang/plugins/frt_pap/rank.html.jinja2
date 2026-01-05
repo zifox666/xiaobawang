@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRT PAP 排行榜 - {{ year }}年{% if month %}{{ month }}月{% endif %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        .rank-card {
+            transition: all 0.3s ease;
+        }
+        .rank-card:hover {
+            transform: translateX(4px);
+        }
+        .medal-1 { background: linear-gradient(135deg, #FFD700, #FFA500); }
+        .medal-2 { background: linear-gradient(135deg, #C0C0C0, #A8A8A8); }
+        .medal-3 { background: linear-gradient(135deg, #CD7F32, #A0522D); }
+    </style>
+</head>
+<body class="min-h-screen transition-colors duration-300" id="app-body">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- 标题 -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-2">FRT PAP 排行榜</h1>
+            <p class="text-xl opacity-70">{{ year }}年{% if month %}{{ month }}月{% else %}年度榜单{% endif %}</p>
+        </div>
+
+        <!-- 军团 & 个人并排 -->
+        <div class="grid grid-cols-2 xl:grid-cols-2 gap-8 mb-10">
+            <!-- 军团排名 -->
+            <div>
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                    <span class="w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded"></span>
+                    军团排名 TOP 10
+                </h2>
+                <div class="space-y-3">
+                    {% for corp in corporation_rankings %}
+                    <div class="rank-card rounded-2xl shadow-lg p-5 transition-colors duration-300 min-h-[132px]" id="corp-card-{{ loop.index }}">
+                        <div class="flex items-center gap-5">
+                            <!-- 排名徽章 -->
+                            <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-2xl {% if corp.rank == 1 %}medal-1{% elif corp.rank == 2 %}medal-2{% elif corp.rank == 3 %}medal-3{% else %}bg-gray-400{% endif %}">
+                                {{ corp.rank }}
+                            </div>
+                            
+                            <!-- 军团信息 -->
+                            <div class="flex items-center gap-4 flex-1">
+                                <img 
+                                    src="https://images.evetech.net/corporations/{{ corp.corporation_id }}/logo?size=128" 
+                                    alt="Corporation"
+                                    class="w-16 h-16 rounded-lg ring-2 ring-emerald-200"
+                                />
+                                <div class="flex-1">
+                                    <h3 class="font-bold text-2xl truncate leading-tight">{{ corp_names.get(corp.corporation_id, 'Corp #' + corp.corporation_id) }}</h3>
+                                    <p class="text-sm opacity-80 mt-1 truncate leading-tight">成员数: {{ corp.group_count }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- PAP总分 -->
+                            <div class="text-right w-24">
+                                <div class="text-2xl font-bold text-emerald-400">{{ corp.pap }}</div>
+                                <div class="text-xs opacity-70">总 PAP</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 个人排名 -->
+            <div>
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                    <span class="w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded"></span>
+                    个人排名 TOP 10
+                </h2>
+                <div class="space-y-3">
+                    {% for player in group_rankings %}
+                    <div class="rank-card rounded-2xl shadow-lg p-5 transition-colors duration-300 min-h-[132px]" id="player-card-{{ loop.index }}">
+                        <div class="flex items-center gap-5">
+                            <!-- 排名 -->
+                            <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-2xl {% if player.rank <= 3 %}{% if player.rank == 1 %}medal-1{% elif player.rank == 2 %}medal-2{% else %}medal-3{% endif %}{% else %}bg-gray-300 text-gray-700{% endif %}">
+                                {{ player.rank }}
+                            </div>
+                            
+                            <!-- 角色头像 -->
+                            <img 
+                                src="https://images.evetech.net/characters/{{ player.main_character_id }}/portrait?size=128" 
+                                alt="{{ player.group_name }}"
+                                class="w-16 h-16 rounded-full ring-2 ring-emerald-200"
+                            />
+                            
+                            <!-- 玩家信息 -->
+                            <div class="flex-1">
+                                <h3 class="font-bold text-2xl truncate">{{ player.group_name }}</h3>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <img 
+                                        src="https://images.evetech.net/corporations/{{ player.corporation_id }}/logo?size=32" 
+                                        alt="Corporation"
+                                        class="w-6 h-6 rounded"
+                                    />
+                                    <p class="text-sm opacity-80">{{ corp_names.get(player.corporation_id, 'Corp #' + player.corporation_id) }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- PAP -->
+                            <div class="text-right w-24">
+                                <div class="text-2xl font-bold text-emerald-400">{{ player.pap }}</div>
+                                <div class="text-xs opacity-70">PAP</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 舰船排名 -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span class="w-1 h-8 bg-gradient-to-b from-orange-500 to-red-600 rounded"></span>
+                舰船排名 TOP 3
+            </h2>
+            <div class="space-y-3">
+                {% for ship in ship_rankings %}
+                <div class="rank-card rounded-xl shadow-lg p-4 transition-colors duration-300" id="ship-card-{{ loop.index }}">
+                    <div class="flex items-center gap-3">
+                        <!-- 排名 -->
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold {% if ship.rank <= 3 %}text-white {% if ship.rank == 1 %}medal-1{% elif ship.rank == 2 %}medal-2{% else %}medal-3{% endif %}{% else %}bg-gray-300 text-gray-700{% endif %}">
+                            {{ ship.rank }}
+                        </div>
+                        
+                        <!-- 舰船信息 -->
+                        <img 
+                            src="https://images.evetech.net/types/{{ ship.ship_type_id }}/icon?size=64" 
+                            alt="{{ ship.ship_type_name }}"
+                            class="w-10 h-10 rounded"
+                        />
+                        <div class="flex-1">
+                            <h3 class="font-bold">{{ ship.ship_type_name }}</h3>
+                            <p class="text-xs opacity-70">{{ ship.ship_group_name }} | 出战 {{ ship.count }} 次</p>
+                        </div>
+                        
+                        <!-- PAP -->
+                        <div class="text-right">
+                            <div class="text-xl font-bold text-orange-400">{{ ship.total_pap }}</div>
+                            <div class="text-xs opacity-70">总 PAP</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <div class="text-center mt-12 opacity-50 text-sm">
+            <p>FRT PAP 排行榜 · Powered by 小霸王机器人</p>
+        </div>
+    </div>
+
+    <script>
+        // 根据北京时间(UTC+8)自动切换暗夜模式
+        function updateTheme() {
+            const now = new Date();
+            const utc8Hour = (now.getUTCHours() + 8) % 24;
+            const isDark = utc8Hour >= 18 || utc8Hour < 6;
+            
+            const body = document.getElementById('app-body');
+            
+            if (isDark) {
+                body.className = 'min-h-screen transition-colors duration-300 bg-gray-900 text-white';
+                
+                // 军团卡片
+                {% for corp in corporation_rankings %}
+                const corpCard{{ loop.index }} = document.getElementById('corp-card-{{ loop.index }}');
+                if (corpCard{{ loop.index }}) {
+                    corpCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-5 transition-colors duration-300 bg-gray-800';
+                }
+                {% endfor %}
+                
+                // 个人卡片
+                {% for player in group_rankings %}
+                const playerCard{{ loop.index }} = document.getElementById('player-card-{{ loop.index }}');
+                if (playerCard{{ loop.index }}) {
+                    playerCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-4 transition-colors duration-300 bg-gray-800';
+                }
+                {% endfor %}
+                
+                // 舰船卡片
+                {% for ship in ship_rankings %}
+                const shipCard{{ loop.index }} = document.getElementById('ship-card-{{ loop.index }}');
+                if (shipCard{{ loop.index }}) {
+                    shipCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-4 transition-colors duration-300 bg-gray-800';
+                }
+                {% endfor %}
+            } else {
+                body.className = 'min-h-screen transition-colors duration-300 bg-gradient-to-br from-blue-50 to-purple-50 text-gray-900';
+                
+                // 军团卡片
+                {% for corp in corporation_rankings %}
+                const corpCard{{ loop.index }} = document.getElementById('corp-card-{{ loop.index }}');
+                if (corpCard{{ loop.index }}) {
+                    corpCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-5 transition-colors duration-300 bg-white';
+                }
+                {% endfor %}
+                
+                // 个人卡片
+                {% for player in group_rankings %}
+                const playerCard{{ loop.index }} = document.getElementById('player-card-{{ loop.index }}');
+                if (playerCard{{ loop.index }}) {
+                    playerCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-4 transition-colors duration-300 bg-white';
+                }
+                {% endfor %}
+                
+                // 舰船卡片
+                {% for ship in ship_rankings %}
+                const shipCard{{ loop.index }} = document.getElementById('ship-card-{{ loop.index }}');
+                if (shipCard{{ loop.index }}) {
+                    shipCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-4 transition-colors duration-300 bg-white';
+                }
+                {% endfor %}
+            }
+        }
+        
+        updateTheme();
+    </script>
+</body>
+</html>

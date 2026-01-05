@@ -10,7 +10,7 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_htmlrender")
 
-from nonebot_plugin_alconna import on_alconna, UniMessage, Image
+from nonebot_plugin_alconna import on_alconna, UniMessage, Subcommand
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_htmlrender import template_to_pic
 
@@ -30,6 +30,11 @@ pap_query = on_alconna(
         "pap",
         Option("-m|--month", Args["month", str], default="0"),
         Option("-y|--year", Args["year", str], default="0"),
+        Subcommand(
+            "rank",
+            Option("-m|--month", Args["month", str], default="0"),
+            Option("-y|--year", Args["year", str], default="0"),
+        ),
         CommandMeta(
             description="查询FRT联盟成员PAP",
             usage="/pap -m <month> -y <year>",
@@ -78,6 +83,65 @@ async def get_corp_name(corp_id: int) -> str:
             return data[0].get("name", "Unknown Corporation") if data else "Unknown Corporation"
     except Exception:
         return "Unknown Corporation"
+
+
+@pap_query.assign("rank")
+async def _handle_pap_rank(
+    arp: Arparma,
+    user_info: Uninfo,
+):
+    month = arp.other_args.get("month", "0")
+    year = arp.other_args.get("year", "0")
+    if not month.isdigit() or not year.isdigit():
+        await pap_query.finish("月份和年份必须为数字")
+    month = int(month)
+    year = int(year)
+
+    if year == 0:
+        year = datetime.now(UTC).year
+
+    url = f"{plugin_config.pap_track_url}/api/rank?year={year}"
+    if month != 0:
+        url += f"&month={month}"
+
+    async with httpx.AsyncClient(
+        headers={"x-api-key": f"{plugin_config.api_key}"}
+    ) as client:
+        r = await client.get(url)
+        r.raise_for_status()
+        data = r.json()
+
+        # 获取军团名称（包括军团排名和个人排名中的军团）
+        corp_ids = set([corp["corporation_id"] for corp in data.get("corporation_rankings", [])])
+        # 添加个人排名中的军团ID
+        for player in data.get("group_rankings", [])[:10]:
+            corp_ids.add(player["corporation_id"])
+        
+        corp_names = {}
+        for corp_id in corp_ids:
+            corp_name = await get_corp_name(int(corp_id))
+            corp_names[str(corp_id)] = corp_name
+
+        template_data = {
+            "year": data.get("year"),
+            "month": month if month != 0 else None,
+            "corporation_rankings": data.get("corporation_rankings", [])[:10],
+            "group_rankings": data.get("group_rankings", [])[:10],
+            "ship_rankings": data.get("ship_rankings", [])[:3],
+            "corp_names": corp_names,
+        }
+
+        pic = await template_to_pic(
+            template_path=str(__file__).replace("__init__.py", ""),
+            template_name="rank.html.jinja2",
+            templates=template_data,
+            pages={
+                "viewport": {"width": 1200, "height": 100},
+                "base_url": f"file://{__file__.replace('__init__.py', '')}",
+            },
+        )
+
+        await pap_query.finish(UniMessage.image(raw=pic))
 
 
 @pap_query.handle()
