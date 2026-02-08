@@ -17,7 +17,7 @@
             transform: translateX(4px);
         }
         .medal-1 { background: linear-gradient(135deg, #FFD700, #FFA500); }
-        .medal-2 { background: linear-gradient(135deg, #C0C0C0, #A8A8A8); }
+        .medal-2 { background: linear-gradient(135deg, #6EC6FF, #2E7CF6); }
         .medal-3 { background: linear-gradient(135deg, #CD7F32, #A0522D); }
     </style>
 </head>
@@ -47,20 +47,20 @@
                             </div>
                             
                             <!-- 军团信息 -->
-                            <div class="flex items-center gap-4 flex-1">
+                            <div class="flex items-center gap-4 flex-1 min-w-0">
                                 <img 
                                     src="https://images.evetech.net/corporations/{{ corp.corporation_id }}/logo?size=128" 
                                     alt="Corporation"
                                     class="w-16 h-16 rounded-lg ring-2 ring-emerald-200"
                                 />
-                                <div class="flex-1">
+                                <div class="flex-1 min-w-0">
                                     <h3 class="font-bold text-2xl truncate leading-tight">{{ corp_names.get(corp.corporation_id, 'Corp #' + corp.corporation_id) }}</h3>
                                     <p class="text-sm opacity-80 mt-1 truncate leading-tight">成员数: {{ corp.group_count }}</p>
                                 </div>
                             </div>
                             
                             <!-- PAP总分 -->
-                            <div class="text-right w-24">
+                            <div class="text-right w-24 flex-shrink-0">
                                 <div class="text-2xl font-bold text-emerald-400">{{ corp.pap }}</div>
                                 <div class="text-xs opacity-70">总 PAP</div>
                             </div>
@@ -93,7 +93,7 @@
                             />
                             
                             <!-- 玩家信息 -->
-                            <div class="flex-1">
+                            <div class="flex-1 min-w-0">
                                 <h3 class="font-bold text-2xl truncate">{{ player.group_name }}</h3>
                                 <div class="flex items-center gap-2 mt-2">
                                     <img 
@@ -106,7 +106,7 @@
                             </div>
                             
                             <!-- PAP -->
-                            <div class="text-right w-24">
+                            <div class="text-right w-24 flex-shrink-0">
                                 <div class="text-2xl font-bold text-emerald-400">{{ player.pap }}</div>
                                 <div class="text-xs opacity-70">PAP</div>
                             </div>
@@ -125,8 +125,8 @@
             </h2>
             <div class="space-y-3">
                 {% for ship in ship_rankings %}
-                <div class="rank-card rounded-xl shadow-lg p-4 transition-colors duration-300" id="ship-card-{{ loop.index }}">
-                    <div class="flex items-center gap-3">
+                    <div class="rank-card rounded-xl shadow-lg p-4 transition-colors duration-300" id="ship-card-{{ loop.index }}">
+                    	<div class="flex items-center gap-3">
                         <!-- 排名 -->
                         <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold {% if ship.rank <= 3 %}text-white {% if ship.rank == 1 %}medal-1{% elif ship.rank == 2 %}medal-2{% else %}medal-3{% endif %}{% else %}bg-gray-300 text-gray-700{% endif %}">
                             {{ ship.rank }}
@@ -138,13 +138,13 @@
                             alt="{{ ship.ship_type_name }}"
                             class="w-10 h-10 rounded"
                         />
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-0">
                             <h3 class="font-bold">{{ ship.ship_type_name }}</h3>
                             <p class="text-xs opacity-70">{{ ship.ship_group_name }} | 出战 {{ ship.count }} 次</p>
                         </div>
                         
                         <!-- PAP -->
-                        <div class="text-right">
+                        <div class="text-right flex-shrink-0">
                             <div class="text-xl font-bold text-orange-400">{{ ship.total_pap }}</div>
                             <div class="text-xs opacity-70">总 PAP</div>
                         </div>
@@ -184,7 +184,7 @@
                 {% for player in group_rankings %}
                 const playerCard{{ loop.index }} = document.getElementById('player-card-{{ loop.index }}');
                 if (playerCard{{ loop.index }}) {
-                    playerCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-4 transition-colors duration-300 bg-gray-800';
+                    playerCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-5 transition-colors duration-300 bg-gray-800';
                 }
                 {% endfor %}
                 
@@ -210,7 +210,7 @@
                 {% for player in group_rankings %}
                 const playerCard{{ loop.index }} = document.getElementById('player-card-{{ loop.index }}');
                 if (playerCard{{ loop.index }}) {
-                    playerCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-4 transition-colors duration-300 bg-white';
+                    playerCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-5 transition-colors duration-300 bg-white';
                 }
                 {% endfor %}
                 

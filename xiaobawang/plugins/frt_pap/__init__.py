@@ -1,19 +1,20 @@
-import httpx
-from nonebot.plugin import PluginMetadata
-from nonebot import require, logger
-from datetime import datetime, UTC
-from arclet.alconna import Alconna, Option, Args, CommandMeta, Arparma
+from datetime import UTC, datetime
 
-from .config import plugin_config, Config
+from arclet.alconna import Alconna, Args, Arparma, CommandMeta, Option
+import httpx
+from nonebot import logger, require
+from nonebot.exception import FinishedException
+from nonebot.plugin import PluginMetadata
+
+from .config import Config, plugin_config
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_htmlrender")
 
-from nonebot_plugin_alconna import on_alconna, UniMessage, Subcommand
-from nonebot_plugin_uninfo import Uninfo
+from nonebot_plugin_alconna import Subcommand, UniMessage, on_alconna
 from nonebot_plugin_htmlrender import template_to_pic
-
+from nonebot_plugin_uninfo import Uninfo
 
 __plugin_meta__ = PluginMetadata(
     name="FRT PAP 查询插件",
@@ -117,7 +118,7 @@ async def _handle_pap_rank(
         # 添加个人排名中的军团ID
         for player in data.get("group_rankings", [])[:10]:
             corp_ids.add(player["corporation_id"])
-        
+
         corp_names = {}
         for corp_id in list(corp_ids):
             try:
@@ -147,9 +148,11 @@ async def _handle_pap_rank(
         )
 
         await pap_query.finish(UniMessage.image(raw=pic))
+    except FinishedException:
+        pass
     except Exception as e:
         logger.error(f"Error in rank query: {e}")
-        await pap_query.finish(f"排名查询失败: {str(e)}")
+        await pap_query.finish(f"排名查询失败: {e!s}")
 
 
 @pap_query.handle()
@@ -175,7 +178,7 @@ async def _handle_pap(
         url = f"{plugin_config.pap_track_url}/api/pap?qq={user_info.user.id}&month={month}&year={year}"
         r = await client.get(url)
         if r.status_code == 404:
-            await pap_query.finish(f"你没有授权机器人访问你的联盟seat，请私聊机器人发送\n\n/bind_frt\n\n进行操作")
+            await pap_query.finish("你没有授权机器人访问你的联盟seat，请私聊机器人发送\n\n/bind_frt\n\n进行操作")
         r.raise_for_status()
         data = r.json()
         pap = data.get("total_pap", 0)

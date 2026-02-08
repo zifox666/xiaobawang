@@ -51,7 +51,7 @@
                         {{ pap }}
                     </div>
                     <div class="text-sm font-semibold mt-2 {% if yearly_total_pap|float >= 3 %}text-emerald-400{% else %}text-orange-400{% endif %}">
-                        年度累计 {{ yearly_total_pap }}
+                        年度 {{ yearly_total_pap }}
                     </div>
                     <div class="text-sm opacity-70 mt-1">总 PAP</div>
                     <div class="text-xs opacity-50 mt-1">{{ year }}年{{ month }}月</div>
@@ -125,21 +125,36 @@
         <div>
             <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                 <span class="w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded"></span>
-                最近参与记录 (显示 3 条 / 共 {{ fleets|length }} 条)
+                最近参与记录 (共 {{ fleets|length }} 条)
             </h2>
             <div class="space-y-4">
                 {% for fleet in fleets[:3] %}
                 <div class="rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-2xl" id="fleet-card-{{ loop.index }}">
                     <div class="flex items-center justify-between flex-wrap gap-4">
-                        <div class="flex items-center gap-4 flex-1">
-                            <img 
-                                src="https://images.evetech.net/types/{{ fleet.ship.typeID }}/icon?size=64" 
-                                alt="{{ fleet.ship.typeName }}"
-                                class="w-12 h-12 rounded-lg"
-                            />
+                        <div class="flex items-center gap-2 flex-1">
+                            <div class="gap-2">
+                                <img
+                                    src="https://images.evetech.net/types/{{ fleet.ship.type_id }}/icon?size=64"
+                                    alt="{{ fleet.ship.type_name }}"
+                                    class="w-14 h-14 rounded-lg"
+                                />
+                                <img
+                                    src="https://images.evetech.net/characters/{{ fleet.character.character_id }}/portrait?size=64"
+                                    alt="{{ fleet.character.character_name }}"
+                                    class="h-14 w-14 rounded-lg"
+                                />
+                            </div>
                             <div>
-                                <h3 class="font-bold text-lg">{{ fleet.title }}</h3>
-                                <p class="text-sm opacity-70">{{ fleet.ship.typeName }} - {{ fleet.ship.groupName }}</p>
+                                <p class="text-lg font-bold">
+                                    <span
+                                        class="mr-2 rounded-md {% if fleet.level == "Strat Op" %}bg-green-600{% else %}bg-amber-500{% endif %} p-1 text-xs"
+                                    >
+                                        {{ fleet.level }}
+                                    </span>
+                                    {{ fleet.title }}
+                                </p>
+                                <p class="opacity-70 mt-1">{{ fleet.character.character_name }}</p>
+                                <p class="opacity-70">{{ fleet.ship.type_name }} - {{ fleet.ship.group_name }}</p>
                                 <p class="text-xs opacity-50 mt-1">
                                     {{ fleet.start_at }} ~ {{ fleet.end_at }}
                                 </p>
