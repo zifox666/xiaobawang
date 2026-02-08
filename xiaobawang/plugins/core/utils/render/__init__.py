@@ -208,8 +208,14 @@ async def html2pic_br(
             except Exception as e:
                 logger.error(f"点击元素 '{click_selector}' 失败: {e!s}")
 
+        clip_width = element_width
+        clip_x = bounding_box["x"]
+        if trim_width and trim_width * 2 < element_width:
+            clip_width = element_width - trim_width * 2
+            clip_x = bounding_box["x"] + trim_width
+
         screenshot = await page.screenshot(
-            clip={"x": bounding_box["x"], "y": bounding_box["y"], "width": element_width, "height": element_height}
+            clip={"x": clip_x, "y": bounding_box["y"], "width": clip_width, "height": element_height}
         )
 
         return screenshot
