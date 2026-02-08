@@ -5,8 +5,8 @@ KM订阅数据迁移脚本
 迁移到新的 KillmailSubscription 统一模型
 """
 
-import json
 from datetime import datetime
+import json
 from typing import Any
 
 from loguru import logger
@@ -14,9 +14,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from xiaobawang.plugins.core.db.models.killmail import (
-    KillmailSubscription,
-    KillmailHighValueSubscription,
     KillmailConditionSubscription,
+    KillmailHighValueSubscription,
+    KillmailSubscription,
 )
 
 

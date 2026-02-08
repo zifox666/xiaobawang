@@ -2,15 +2,15 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from loguru import logger
 from nonebot_plugin_orm import AsyncSession, get_session
 from pydantic import BaseModel, Field, field_validator
-from loguru import logger
+from sqlalchemy import func, select
 
 from ..db.models.killmail import KillmailSubscription
-from ..helper.subscription_v2 import KillmailSubscriptionManagerV2
 from ..helper.auth import get_current_user
+from ..helper.subscription_v2 import KillmailSubscriptionManagerV2
 from ..helper.zkb.score_rules import ScoreRules
-from sqlalchemy import select, func
 
 router = APIRouter()
 
@@ -38,8 +38,8 @@ class SubscriptionCreate(BaseModel):
     min_value: float = Field(default=100_000_000, description="最低价值")
     max_age_days: int | None = Field(default=None, description="最大天数")
     condition_groups: dict[str, Any] | str = Field(description="条件组配置")
-    
-    @field_validator('condition_groups', mode='before')
+
+    @field_validator("condition_groups", mode="before")
     @classmethod
     def parse_condition_groups(cls, v):
         """自动解析 JSON 字符串为字典"""
@@ -56,8 +56,8 @@ class SubscriptionUpdate(BaseModel):
     max_age_days: int | None = Field(default=None, description="最大天数")
     is_enabled: bool | None = Field(default=None, description="是否启用")
     condition_groups: dict[str, Any] | str | None = Field(default=None, description="条件组配置")
-    
-    @field_validator('condition_groups', mode='before')
+
+    @field_validator("condition_groups", mode="before")
     @classmethod
     def parse_condition_groups(cls, v):
         """自动解析 JSON 字符串为字典"""
@@ -157,7 +157,7 @@ async def list_templates() -> dict[str, SubscriptionTemplate]:
 
     except Exception as e:
         logger.error(f"获取模板列表失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取模板列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取模板列表失败: {e!s}")
 
 
 @router.get("", summary="获取订阅列表")
@@ -254,7 +254,7 @@ async def list_subscriptions(
 
     except Exception as e:
         logger.error(f"获取订阅列表失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取订阅列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取订阅列表失败: {e!s}")
 
 
 @router.get("/score-rules", summary="获取积分规则配置")
@@ -273,7 +273,7 @@ async def get_score_rules() -> dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"获取积分规则失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取积分规则失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取积分规则失败: {e!s}")
 
 
 @router.get("/{sub_id}", summary="获取订阅详情")
@@ -320,7 +320,7 @@ async def get_subscription(
         raise
     except Exception as e:
         logger.error(f"获取订阅失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取订阅失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取订阅失败: {e!s}")
 
 
 @router.post("", summary="创建订阅")
@@ -359,7 +359,7 @@ async def create_subscription(
         raise
     except Exception as e:
         logger.error(f"创建订阅失败: {e}")
-        raise HTTPException(status_code=500, detail=f"创建订阅失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"创建订阅失败: {e!s}")
 
 
 @router.put("/{sub_id}", summary="更新订阅")
@@ -422,7 +422,7 @@ async def update_subscription(
         raise
     except Exception as e:
         logger.error(f"更新订阅失败: {e}")
-        raise HTTPException(status_code=500, detail=f"更新订阅失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"更新订阅失败: {e!s}")
 
 
 @router.delete("/{sub_id}", summary="删除订阅")
@@ -462,7 +462,7 @@ async def delete_subscription(
         raise
     except Exception as e:
         logger.error(f"删除订阅失败: {e}")
-        raise HTTPException(status_code=500, detail=f"删除订阅失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"删除订阅失败: {e!s}")
 
 
 @router.get("/templates/{template_name}", summary="获取订阅模板")
@@ -489,7 +489,7 @@ async def get_template(template_name: str) -> SubscriptionTemplate:
         raise
     except Exception as e:
         logger.error(f"获取模板失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取模板失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取模板失败: {e!s}")
 
 
 @router.get("/stats/summary", summary="获取订阅统计")
@@ -537,4 +537,4 @@ async def get_subscription_stats(
 
     except Exception as e:
         logger.error(f"获取订阅统计失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取订阅统计失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取订阅统计失败: {e!s}")

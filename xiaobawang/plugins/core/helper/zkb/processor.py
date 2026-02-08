@@ -2,8 +2,8 @@
 Killmail 数据处理和渲染模块
 负责处理 killmail 原始数据、格式化、渲染和发送
 """
-import math
 from datetime import datetime, timezone
+import math
 from typing import Any
 
 from nonebot import logger

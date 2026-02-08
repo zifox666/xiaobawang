@@ -16,7 +16,7 @@ from .utils import (
 
 require("nonebot_plugin_htmlrender")
 
-from nonebot_plugin_htmlrender import template_to_pic, get_new_page
+from nonebot_plugin_htmlrender import get_new_page, template_to_pic
 
 # 定义模板路径
 templates_path = SRC_PATH / "templates"

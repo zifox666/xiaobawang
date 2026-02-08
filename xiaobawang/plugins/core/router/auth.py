@@ -6,9 +6,9 @@
 - POST /auth/logout - 撤销 Token
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from xiaobawang.plugins.core.helper.auth import TokenManager, get_current_user
 
@@ -62,18 +62,18 @@ async def login(req: LoginRequest) -> LoginResponse:
             }
         }
     """
-    
+
     if not req.token:
         raise HTTPException(status_code=400, detail="缺少必填字段")
-    
+
     try:
         tk = TokenManager()
         user_info = await tk.verify_token(req.token)
         if not user_info:
             raise HTTPException(status_code=401, detail="无效的订阅会话 TOKEN")
-        
+
         logger.info(f"用户登录成功: {user_info}")
-        
+
         return LoginResponse(
             success=True,
             message="登录成功",
@@ -83,9 +83,9 @@ async def login(req: LoginRequest) -> LoginResponse:
                 "user": user_info
             }
         )
-    
+
     except Exception as e:
-        logger.error(f"登录失败: {str(e)}")
+        logger.error(f"登录失败: {e!s}")
         raise HTTPException(status_code=500, detail="登录失败")
 
 
@@ -106,18 +106,18 @@ async def logout(
             "token": "<token>"
         }
     """
-    
+
     try:
         logger.info(f"用户登出: qq={current_user['qq']}")
-        
+
         return LoginResponse(
             success=True,
             message="登出成功",
             data={}
         )
-    
+
     except Exception as e:
-        logger.error(f"登出失败: {str(e)}")
+        logger.error(f"登出失败: {e!s}")
         raise HTTPException(status_code=500, detail="登出失败")
 
 

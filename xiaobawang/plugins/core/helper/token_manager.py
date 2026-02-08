@@ -1,7 +1,6 @@
 import random
 
-
-from ..utils.common.cache import cache, RedisCache
+from ..utils.common.cache import RedisCache, cache
 
 
 class TokenManager:
@@ -12,7 +11,7 @@ class TokenManager:
         self._cache: RedisCache = cache
         self.cache_prefix = "subscription_token:"
         self.TOKEN_EXPIRY = cache.TIME_DAY
-    
+
     async def generate_token(
         self,
         user_info: dict,
@@ -21,7 +20,7 @@ class TokenManager:
         """
         生成临时访问令牌
         """
-        token = ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=8))
+        token = "".join(random.choices("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=8))
         await self._cache.set(
             f"{self.cache_prefix}{token}",
             user_info,
@@ -38,4 +37,3 @@ class TokenManager:
             return None
         return user_info
 
-        

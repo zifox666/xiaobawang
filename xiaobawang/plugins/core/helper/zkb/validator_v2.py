@@ -3,8 +3,8 @@ from typing import Any
 
 from nonebot import logger
 
-from .condition_matcher import ConditionMatcher
 from ..subscription_v2 import KillmailSubscriptionManagerV2
+from .condition_matcher import ConditionMatcher
 
 
 class KillmailValidatorV2:
@@ -56,24 +56,24 @@ class KillmailValidatorV2:
             matched_sessions = {}
             # 过滤启用的订阅
             enabled_subs = [sub for sub in all_subscriptions if sub["is_enabled"]]
-            
+
             # 分批处理,每批100个
             batch_size = 100
             total_value = float(data.get("zkb", {}).get("totalValue", 0))
-            
+
             for i in range(0, len(enabled_subs), batch_size):
                 batch = enabled_subs[i:i + batch_size]
                 # 并发匹配当前批次
                 import asyncio
                 tasks = [matcher.match_subscription(sub) for sub in batch]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
                 # 处理匹配结果
                 for sub, result in zip(batch, results):
                     if isinstance(result, Exception):
                         logger.error(f"订阅 {sub['id']} ({sub['name']}) 匹配出错: {result}")
                         continue
-                    
+
                     matched, reasons = result
                     if matched:
                         session_key = (

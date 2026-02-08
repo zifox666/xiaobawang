@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 import json
-from typing import Any, Tuple
 
 from nonebot import logger
 
 from xiaobawang.plugins.sde.oper import sde_search
+
 from ...api.esi.universe import esi_client
 
 
@@ -29,7 +29,7 @@ class ConditionMatcher:
         self.solar_system_id = killmail_data.get("solar_system_id")
         self.killmail_id = killmail_data.get("killmail_id")
 
-    async def match_subscription(self, subscription: dict) -> Tuple[bool, list[str]]:
+    async def match_subscription(self, subscription: dict) -> tuple[bool, list[str]]:
         """
         匹配订阅条件
 
@@ -39,9 +39,9 @@ class ConditionMatcher:
         Returns:
             (是否匹配, 匹配原因列表)
         """
-        sub_id = subscription.get('id', 'unknown')
+        sub_id = subscription.get("id", "unknown")
         # logger.debug(f"[KM:{self.killmail_id}] 开始匹配订阅 {sub_id}")
-        
+
         try:
             # 检查全局过滤
             if not await self._check_global_filters(subscription):
@@ -54,15 +54,15 @@ class ConditionMatcher:
                 condition_config = json.loads(condition_groups)
             else:
                 condition_config = condition_groups or {}
-            
+
             # logger.debug(f"[KM:{self.killmail_id}] 订阅 {sub_id} 条件配置: {condition_config}")
 
             # 递归匹配条件组
             matched, reasons = await self._match_condition_group(condition_config)
-            
+
             if matched:
                 logger.debug(f"[KM:{self.killmail_id}] 订阅 {sub_id} 匹配成功,原因: {reasons}")
-            
+
             return matched, reasons
         except Exception as e:
             logger.error(f"订阅 {subscription.get('id')} 匹配出错: {e}")
@@ -70,8 +70,8 @@ class ConditionMatcher:
 
     async def _check_global_filters(self, subscription: dict) -> bool:
         """检查全局过滤条件"""
-        sub_id = subscription.get('id', 'unknown')
-        
+        sub_id = subscription.get("id", "unknown")
+
         # 价值检查
         total_value = float(self.zkb.get("totalValue", 0))
         min_value = subscription.get("min_value", 1_000_000)
@@ -117,7 +117,7 @@ class ConditionMatcher:
             logger.warning(f"解析击杀时间失败: {e}, 时间字符串: {killmail_time_str}")
             return False
 
-    async def _match_condition_group(self, group: dict) -> Tuple[bool, list[str]]:
+    async def _match_condition_group(self, group: dict) -> tuple[bool, list[str]]:
         """
         匹配条件组 - 支持递归AND/OR逻辑
 
@@ -130,7 +130,7 @@ class ConditionMatcher:
         logic = group.get("logic", "AND").upper()
         conditions = group.get("conditions", [])
         sub_groups = group.get("groups", [])
-        
+
         # logger.debug(f"[KM:{self.killmail_id}]
         # 匹配条件组: logic={logic}, conditions={len(conditions)}, sub_groups={len(sub_groups)}")
 
@@ -165,13 +165,13 @@ class ConditionMatcher:
         else:
             logger.warning(f"Unknown logic operator: {logic}")
             final_match = False
-        
+
         # logger.debug(f"[KM:{self.killmail_id}]
         # 条件组结果: {logic} -> {'✓ 通过' if final_match else '✗ 失败'} (results={results})")
 
         return final_match, reasons if final_match else []
 
-    async def _match_single_condition(self, condition: dict) -> Tuple[bool, str]:
+    async def _match_single_condition(self, condition: dict) -> tuple[bool, str]:
         """
         匹配单个条件
 
@@ -198,7 +198,7 @@ class ConditionMatcher:
             logger.error(f"条件匹配出错 (type={cond_type}): {e}")
             return False, ""
 
-    async def _match_entity_condition(self, condition: dict) -> Tuple[bool, str]:
+    async def _match_entity_condition(self, condition: dict) -> tuple[bool, str]:
         """
         匹配实体条件 (character/corporation/alliance/ship/system/region/constellation)
 
@@ -312,7 +312,7 @@ class ConditionMatcher:
 
         return False
 
-    def _match_label_condition(self, condition: dict) -> Tuple[bool, str]:
+    def _match_label_condition(self, condition: dict) -> tuple[bool, str]:
         """
         匹配标签条件 (基于killmail的zkb.labels数组)
 
@@ -347,7 +347,7 @@ class ConditionMatcher:
         reason = "标签: " + ", ".join(matched_labels) if matched_labels else "标签匹配"
         return True, reason
 
-    def _match_value_condition(self, condition: dict) -> Tuple[bool, str]:
+    def _match_value_condition(self, condition: dict) -> tuple[bool, str]:
         """
         匹配价值条件
 

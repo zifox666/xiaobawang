@@ -1,18 +1,13 @@
-import json
-import time
-from typing import Optional, Dict
 from functools import wraps
-from datetime import datetime, timedelta
+import json
 
-from fastapi import HTTPException, Request, Depends
-from fastapi.responses import JSONResponse
+from fastapi import HTTPException, Request
 from loguru import logger
-import base64
 
 from ..helper.token_manager import TokenManager
 
 
-async def get_current_user(request: Request) -> Dict:
+async def get_current_user(request: Request) -> dict:
     """
     FastAPI 依赖: 获取当前用户信息
     
@@ -24,15 +19,15 @@ async def get_current_user(request: Request) -> Dict:
             ...
     """
     auth_header = request.headers.get("Authorization", "")
-    
+
     if not auth_header:
         raise HTTPException(status_code=401, detail="缺少认证 Token")
-    
+
     token_data = await TokenManager().verify_token(auth_header)
-    
+
     if not token_data:
         raise HTTPException(status_code=401, detail="无效或过期的 Token")
-    
+
     return token_data
 
 
@@ -43,12 +38,12 @@ def token_required(f):
         request = kwargs.get("request")
         if not request:
             raise HTTPException(status_code=400, detail="请求错误")
-        
+
         current_user = await get_current_user(request)
         kwargs["current_user"] = current_user
-        
+
         return await f(*args, **kwargs)
-    
+
     return decorated_function
 
 
@@ -58,11 +53,11 @@ class SubscriptionFilter:
     
     确保用户只能看到自己 session 的订阅
     """
-    
+
     @staticmethod
     async def filter_by_session(
         subscriptions: list,
-        current_user: Dict
+        current_user: dict
     ) -> list:
         """
         按 session_id 过滤订阅
@@ -75,21 +70,21 @@ class SubscriptionFilter:
             过滤后的订阅列表
         """
         session_id = current_user.get("session_id")
-        
+
         filtered = [
             sub for sub in subscriptions
             if sub.session_id == session_id
         ]
-        
+
         logger.debug(
             f"订阅过滤: session_id={session_id}, "
             f"原始数={len(subscriptions)}, 过滤后={len(filtered)}"
         )
-        
+
         return filtered
-    
+
     @staticmethod
-    def add_session_filter_to_query(session_id: str) -> Dict:
+    def add_session_filter_to_query(session_id: str) -> dict:
         """
         生成数据库查询过滤条件
         
@@ -113,7 +108,7 @@ def backup_tokens(filepath: str = "/tmp/tokens_backup.json"):
 def restore_tokens(filepath: str = "/tmp/tokens_backup.json"):
     """恢复 Tokens (用于开发/测试)"""
     try:
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             global TOKENS_STORE
             TOKENS_STORE = json.load(f)
         logger.info(f"Tokens 已从以下位置恢复: {filepath}")

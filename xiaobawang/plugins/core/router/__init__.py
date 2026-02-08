@@ -1,12 +1,13 @@
-from fastapi import FastAPI
-from fastapi.responses import RedirectResponse, FileResponse
 from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, RedirectResponse
 import nonebot
 
-from .statics import router as statics_router
-from .sub import router as sub_router
 from .auth import router as auth_router
 from .autocomplete import router as autocomplete_router
+from .statics import router as statics_router
+from .sub import router as sub_router
 
 __all__ = ["app"]
 

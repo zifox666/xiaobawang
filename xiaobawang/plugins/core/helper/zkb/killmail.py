@@ -9,8 +9,8 @@ from ...api.killmail import get_zkb_killmail
 from ...helper.subscription_v2 import KillmailSubscriptionManagerV2
 from ...utils.render import render_template, templates_path
 from ..message_queue import queue_killmail_message
-from .validator_v2 import KillmailValidatorV2
 from .processor import KillmailProcessor
+from .validator_v2 import KillmailValidatorV2
 
 
 class KillmailHelper:
@@ -51,7 +51,7 @@ class KillmailHelper:
 
             # 验证并匹配订阅
             matched_sessions = await self.validator.validate_and_match(data)
-            
+
             if matched_sessions:
                 await self._send_matched_killmail(killmail_id, data, matched_sessions)
 
@@ -61,10 +61,10 @@ class KillmailHelper:
     async def _send_matched_killmail(self, killmail_id, data, matched_sessions):
         """向匹配的会话发送击杀邮件"""
         logger.info(f"[{killmail_id}] 将推送到 {len(matched_sessions)} 个会话")
-        
+
         # 处理 killmail 数据
         html_data = await self.processor.process_killmail_data(data)
-        
+
         # 渲染图片
         pic = await render_template(
             template_path=templates_path / "killmail",

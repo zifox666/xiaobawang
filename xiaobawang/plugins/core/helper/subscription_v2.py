@@ -8,7 +8,7 @@ import json
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.models.killmail import KillmailSubscription
@@ -331,12 +331,12 @@ class KillmailSubscriptionManagerV2:
         has_non_tag_condition = False
         for condition in conditions:
             condition_type = condition.get("type")
-            
+
             # 标签类型的条件
             if condition_type == "tag":
                 # 标签不能单独作为条件，必须配合其他条件
                 continue
-            
+
             # 其他非标签条件
             if condition_type in ["value", "entity", "region", "ship"]:
                 has_non_tag_condition = True
@@ -361,15 +361,15 @@ class KillmailSubscriptionManagerV2:
             调整后的 min_value
         """
         conditions = condition_config.get("conditions", [])
-        
+
         # 检查是否只有一个 value 类型条件
         value_conditions = [c for c in conditions if c.get("type") == "value"]
         non_value_conditions = [c for c in conditions if c.get("type") != "value"]
-        
+
         # 如果只有一个 value 条件，且没有其他非标签的值条件
         if len(value_conditions) == 1 and not any(c.get("type") != "tag" for c in non_value_conditions):
             value_condition = value_conditions[0]
-            
+
             # 如果只有 min 字段，没有 max 字段
             if "min" in value_condition and "max" not in value_condition:
                 # 设置为 15_000_000_000
@@ -379,9 +379,9 @@ class KillmailSubscriptionManagerV2:
                         f"只有 value 的 min 条件，调整 min_value 从 {min_value} 到 {adjusted_value}"
                     )
                     return adjusted_value
-        
+
         return min_value
-    
+
     @classmethod
     def get_subscription_template(cls, template_name: str) -> dict | None:
         """
