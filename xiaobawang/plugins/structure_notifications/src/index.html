@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EVE 建筑通知管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen transition-colors">
+    <script>
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            document.documentElement.classList.toggle('dark', e.matches);
+        });
+    </script>
+
+    <div class="max-w-3xl mx-auto px-4 py-8">
+        <h1 class="text-2xl font-bold mb-6 text-center">🏗️ EVE 建筑通知管理</h1>
+
+        <!-- ── 未登录: 显示授权按钮 ── -->
+        <div id="login-section" class="text-center py-16">
+            <p class="text-gray-500 dark:text-gray-400 mb-6">使用 EVE Online 账号授权以管理建筑通知推送</p>
+            <button id="login-btn"
+                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition inline-flex items-center gap-2 text-base">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/>
+                </svg>
+                使用 EVE Online 授权
+            </button>
+            <p class="mt-3 text-xs text-gray-400">授权后仅对您本人可见</p>
+            <div id="login-error" class="mt-4 text-red-500 text-sm hidden"></div>
+        </div>
+
+        <!-- ── 已登录: 管理面板 ── -->
+        <div id="main-section" class="hidden">
+            <!-- 角色信息 -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <img id="char-portrait" class="w-10 h-10 rounded-full" src="" alt="" />
+                    <div>
+                        <p class="font-medium" id="char-name"></p>
+                        <p class="text-xs text-gray-400" id="char-id"></p>
+                    </div>
+                </div>
+                <button id="logout-btn"
+                        class="text-sm px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition">
+                    切换角色
+                </button>
+            </div>
+
+            <!-- 流程说明 -->
+            <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-sm">
+                <p class="font-semibold mb-2">使用流程:</p>
+                <ol class="list-decimal list-inside space-y-1">
+                    <li>勾选需要接收的通知类别</li>
+                    <li>点击「生成验证码」获取验证码</li>
+                    <li>在目标聊天中发送 <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">/verify 验证码</code> 绑定会话</li>
+                </ol>
+            </div>
+
+            <!-- 选择类别 -->
+            <section class="mb-6">
+                <h2 class="text-lg font-semibold mb-3">选择通知类别</h2>
+                <div id="categories-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+            </section>
+
+            <!-- 生成验证码 -->
+            <section class="mb-6">
+                <button id="gen-code-btn"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition">
+                    生成验证码
+                </button>
+                <div id="verify-code-display" class="mt-3 hidden">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">请在目标聊天中发送以下命令:</p>
+                    <div class="mt-1 flex items-center gap-2">
+                        <code id="verify-code-text"
+                              class="text-lg font-mono bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded select-all"></code>
+                        <button id="copy-btn"
+                                class="text-sm px-2 py-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 rounded transition">
+                            复制
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">验证码 10 分钟内有效</p>
+                </div>
+            </section>
+
+            <hr class="border-gray-200 dark:border-gray-700 my-8" />
+
+            <!-- 已有订阅 -->
+            <section>
+                <h2 class="text-lg font-semibold mb-3">已有订阅</h2>
+                <div id="subscriptions-container">
+                    <p class="text-gray-400 text-sm">加载中…</p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const BASE = window.location.pathname.replace(/\/page\/?$/, '');
+        let authToken = null;
+
+        // ── 从 URL 参数或 localStorage 恢复 token ──
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('token')) {
+            authToken = params.get('token');
+            localStorage.setItem('struct_notify_token', authToken);
+            history.replaceState(null, '', window.location.pathname);
+        } else {
+            authToken = localStorage.getItem('struct_notify_token');
+        }
+        if (params.get('error')) {
+            document.getElementById('login-error').textContent = '授权失败: ' + decodeURIComponent(params.get('error'));
+            document.getElementById('login-error').classList.remove('hidden');
+        }
+
+        /** 构造带 token 的 API URL */
+        function apiUrl(path) {
+            const url = new URL(`${BASE}${path}`, window.location.origin);
+            if (authToken) url.searchParams.set('token', authToken);
+            return url.toString();
+        }
+
+        // ── 检查登录状态 ──
+        async function checkAuth() {
+            if (!authToken) { showLogin(); return; }
+            try {
+                const res = await fetch(apiUrl('/api/auth/me'));
+                if (!res.ok) throw new Error('unauthorized');
+                const json = await res.json();
+                if (json.code !== 200) throw new Error(json.msg);
+                showMain(json.data);
+            } catch {
+                localStorage.removeItem('struct_notify_token');
+                authToken = null;
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('main-section').classList.add('hidden');
+        }
+
+        function showMain(user) {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('main-section').classList.remove('hidden');
+            document.getElementById('char-name').textContent = user.character_name;
+            document.getElementById('char-id').textContent = 'ID: ' + user.character_id;
+            document.getElementById('char-portrait').src =
+                `https://images.evetech.net/characters/${user.character_id}/portrait?size=64`;
+            loadCategories();
+            loadSubscriptions();
+        }
+
+        // ── 登录 ──
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            try {
+                const res = await fetch(`${BASE}/api/auth/url`, { method: 'POST' });
+                const json = await res.json();
+                if (json.code !== 200) throw new Error(json.msg);
+                window.location.href = json.data.auth_url;
+            } catch (e) {
+                alert('获取授权链接失败: ' + e.message);
+            }
+        });
+
+        // ── 登出 / 切换角色 ──
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('struct_notify_token');
+            authToken = null;
+            showLogin();
+        });
+
+        // ── 加载类别 ──
+        let categoriesData = [];
+        async function loadCategories() {
+            const res = await fetch(apiUrl('/api/categories'));
+            const json = await res.json();
+            categoriesData = json.data || [];
+            const container = document.getElementById('categories-container');
+            container.innerHTML = '';
+            categoriesData.forEach(cat => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition';
+                label.innerHTML = `
+                    <input type="checkbox" value="${cat.key}" class="cat-checkbox w-4 h-4 text-blue-600 rounded"
+                           ${cat.key === 'structure' ? 'checked' : ''} />
+                    <span class="text-sm">${cat.label}
+                        <span class="text-xs text-gray-400">(${cat.types.length})</span>
+                    </span>`;
+                container.appendChild(label);
+            });
+        }
+
+        function getSelectedCategories() {
+            return [...document.querySelectorAll('.cat-checkbox:checked')].map(el => el.value);
+        }
+
+        // ── 加载订阅 ──
+        async function loadSubscriptions() {
+            const container = document.getElementById('subscriptions-container');
+            container.innerHTML = '<p class="text-gray-400 text-sm">加载中…</p>';
+            try {
+                const res = await fetch(apiUrl('/api/subscriptions'));
+                const json = await res.json();
+                const subs = json.data || [];
+                if (!subs.length) {
+                    container.innerHTML = '<p class="text-gray-400 text-sm">暂无订阅，请先生成验证码并在聊天中绑定</p>';
+                    return;
+                }
+                container.innerHTML = '';
+                subs.forEach(sub => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center justify-between p-3 mb-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800';
+                    const cats = (sub.categories || []).join(', ');
+                    div.innerHTML = `
+                        <div class="text-sm">
+                            <p>
+                                <span class="font-medium">${sub.session_id}</span>
+                                <span class="text-xs text-gray-400">${sub.platform} / ${sub.session_type}</span>
+                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">类别: ${cats}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="testPush(${sub.id})"
+                                class="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800 transition">
+                                测试推送
+                            </button>
+                            <button onclick="toggleSub(${sub.id}, ${!sub.is_enabled})"
+                                class="text-xs px-2 py-1 rounded ${sub.is_enabled
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                    : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}">
+                                ${sub.is_enabled ? '已启用' : '已禁用'}
+                            </button>
+                            <button onclick="deleteSub(${sub.id})"
+                                class="text-xs px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 transition">
+                                删除
+                            </button>
+                        </div>`;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                container.innerHTML = `<p class="text-red-500 text-sm">加载失败: ${e.message}</p>`;
+            }
+        }
+
+        // ── 生成验证码 ──
+        document.getElementById('gen-code-btn').addEventListener('click', async () => {
+            const cats = getSelectedCategories();
+            if (!cats.length) return alert('请至少选择一种通知类别');
+            try {
+                const res = await fetch(apiUrl('/api/verify_code'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ categories: cats }),
+                });
+                const json = await res.json();
+                if (json.code !== 200) throw new Error(json.msg);
+                document.getElementById('verify-code-text').textContent = `/verify ${json.data.code}`;
+                document.getElementById('verify-code-display').classList.remove('hidden');
+            } catch (e) {
+                alert('生成失败: ' + e.message);
+            }
+        });
+
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            const text = document.getElementById('verify-code-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                document.getElementById('copy-btn').textContent = '已复制 ✓';
+                setTimeout(() => { document.getElementById('copy-btn').textContent = '复制'; }, 1500);
+            });
+        });
+
+        // ── 切换 / 删除订阅 ──
+        async function toggleSub(subId, enabled) {
+            await fetch(apiUrl(`/api/subscriptions/${subId}`), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_enabled: enabled }),
+            });
+            loadSubscriptions();
+        }
+
+        async function deleteSub(subId) {
+            if (!confirm('确认删除该订阅?')) return;
+            await fetch(apiUrl(`/api/subscriptions/${subId}`), { method: 'DELETE' });
+            loadSubscriptions();
+        }
+
+        async function testPush(subId) {
+            try {
+                const res = await fetch(apiUrl(`/api/subscriptions/${subId}/test`), { method: 'POST' });
+                const json = await res.json();
+                if (json.code !== 200) throw new Error(json.msg);
+                alert('测试消息已发送，请到聊天中查看');
+            } catch (e) {
+                alert('测试推送失败: ' + e.message);
+            }
+        }
+
+        // ── 启动 ──
+        checkAuth();
+    </script>
+</body>
+</html>

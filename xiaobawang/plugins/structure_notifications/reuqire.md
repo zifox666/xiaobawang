@@ -1,0 +1,302 @@
+# EVE 建筑告警信息
+
+## 介绍
+
+通过访问esi (https://esi.evetech.net/characters/{character_id}/notifications) 获取用户告警信息，根据用户设置进行推送
+
+## 使用方法
+
+```bash
+curl --request GET \
+  --url https://esi.evetech.net/characters/{character_id}/notifications \
+  --header 'Accept: application/json' \
+  --header 'Accept-Language: ' \
+  --header 'Authorization: Bearer {access_token}' \
+  --header 'If-Modified-Since: ' \
+  --header 'If-None-Match: ' \
+  --header 'X-Compatibility-Date: 2025-12-16' \
+  --header 'X-Tenant: '
+```
+
+```json
+[
+  {
+    "is_read": true,
+    "notification_id": 0,
+    "sender_id": 0,
+    "sender_type": "character",
+    "text": "string",
+    "timestamp": "2019-08-24T14:15:22Z",
+    "type": "AcceptedAlly"
+  }
+]
+```
+
+access_token 通过授权获取，获取方法请参考[EVE Online ESI 授权管理器](../eve_oauth/readme.md)
+
+通知类别有以下几种 本模块只关注建筑相关的通知
+
+```text
+type
+string
+required
+Allowed values:
+AcceptedAlly
+AcceptedSurrender
+AgentRetiredTrigravian
+AllAnchoringMsg
+AllMaintenanceBillMsg
+AllStrucInvulnerableMsg
+AllStructVulnerableMsg
+AllWarCorpJoinedAllianceMsg
+AllWarDeclaredMsg
+AllWarInvalidatedMsg
+AllWarRetractedMsg
+AllWarSurrenderMsg
+AllianceCapitalChanged
+AllianceWarDeclaredV2
+AllyContractCancelled
+AllyJoinedWarAggressorMsg
+AllyJoinedWarAllyMsg
+AllyJoinedWarDefenderMsg
+BattlePunishFriendlyFire
+BillOutOfMoneyMsg
+BillPaidCorpAllMsg
+BountyClaimMsg
+BountyESSShared
+BountyESSTaken
+BountyPlacedAlliance
+BountyPlacedChar
+BountyPlacedCorp
+BountyYourBountyClaimed
+BuddyConnectContactAdd
+CharAppAcceptMsg
+CharAppRejectMsg
+CharAppWithdrawMsg
+CharLeftCorpMsg
+CharMedalMsg
+CharTerminationMsg
+CloneActivationMsg
+CloneActivationMsg2
+CloneMovedMsg
+CloneRevokedMsg1
+CloneRevokedMsg2
+CombatOperationFinished
+ContactAdd
+ContactEdit
+ContainerPasswordMsg
+ContractRegionChangedToPochven
+CorpAllBillMsg
+CorpAppAcceptMsg
+CorpAppInvitedMsg
+CorpAppNewMsg
+CorpAppRejectCustomMsg
+CorpAppRejectMsg
+CorpBecameWarEligible
+CorpDividendMsg
+CorpFriendlyFireDisableTimerCompleted
+CorpFriendlyFireDisableTimerStarted
+CorpFriendlyFireEnableTimerCompleted
+CorpFriendlyFireEnableTimerStarted
+CorpKicked
+CorpLiquidationMsg
+CorpNewCEOMsg
+CorpNewsMsg
+CorpNoLongerWarEligible
+CorpOfficeExpirationMsg
+CorpStructLostMsg
+CorpTaxChangeMsg
+CorpVoteCEORevokedMsg
+CorpVoteMsg
+CorpWarDeclaredMsg
+CorpWarDeclaredV2
+CorpWarFightingLegalMsg
+CorpWarInvalidatedMsg
+CorpWarRetractedMsg
+CorpWarSurrenderMsg
+CorporationGoalClosed
+CorporationGoalCompleted
+CorporationGoalCreated
+CorporationGoalExpired
+CorporationGoalLimitReached
+CorporationGoalNameChange
+CorporationLeft
+CustomsMsg
+DailyItemRewardAutoClaimed
+DeclareWar
+DistrictAttacked
+DustAppAcceptedMsg
+ESSMainBankLink
+EntosisCaptureStarted
+ExpertSystemExpired
+ExpertSystemExpiryImminent
+FWAllianceKickMsg
+FWAllianceWarningMsg
+FWCharKickMsg
+FWCharRankGainMsg
+FWCharRankLossMsg
+FWCharWarningMsg
+FWCorpJoinMsg
+FWCorpKickMsg
+FWCorpLeaveMsg
+FWCorpWarningMsg
+FacWarCorpJoinRequestMsg
+FacWarCorpJoinWithdrawMsg
+FacWarCorpLeaveRequestMsg
+FacWarCorpLeaveWithdrawMsg
+FacWarDirectEnlistmentRevoked
+FacWarLPDisqualifiedEvent
+FacWarLPDisqualifiedKill
+FacWarLPPayoutEvent
+FacWarLPPayoutKill
+FreelanceProjectClosed
+FreelanceProjectCompleted
+FreelanceProjectCreated
+FreelanceProjectExpired
+FreelanceProjectLimitReached
+FreelanceProjectParticipantKicked
+GameTimeAdded
+GameTimeReceived
+GameTimeSent
+GiftReceived
+IHubDestroyedByBillFailure
+IncursionCompletedMsg
+IndustryOperationFinished
+IndustryTeamAuctionLost
+IndustryTeamAuctionWon
+InfrastructureHubBillAboutToExpire
+InsuranceExpirationMsg
+InsuranceFirstShipMsg
+InsuranceInvalidatedMsg
+InsuranceIssuedMsg
+InsurancePayoutMsg
+InvasionCompletedMsg
+InvasionSystemLogin
+InvasionSystemStart
+JumpCloneDeletedMsg1
+JumpCloneDeletedMsg2
+KillReportFinalBlow
+KillReportVictim
+KillRightAvailable
+KillRightAvailableOpen
+KillRightEarned
+KillRightUnavailable
+KillRightUnavailableOpen
+KillRightUsed
+LPAutoRedeemed
+LocateCharMsg
+MadeWarMutual
+MercOfferRetractedMsg
+MercOfferedNegotiationMsg
+MercenaryDenAttacked
+MercenaryDenNewMTO
+MercenaryDenReinforced
+MissionCanceledTriglavian
+MissionOfferExpirationMsg
+MissionTimeoutMsg
+MoonminingAutomaticFracture
+MoonminingExtractionCancelled
+MoonminingExtractionFinished
+MoonminingExtractionStarted
+MoonminingLaserFired
+MutualWarExpired
+MutualWarInviteAccepted
+MutualWarInviteRejected
+MutualWarInviteSent
+NPCStandingsGained
+NPCStandingsLost
+OfferToAllyRetracted
+OfferedSurrender
+OfferedToAlly
+OfficeLeaseCanceledInsufficientStandings
+OldLscMessages
+OperationFinished
+OrbitalAttacked
+OrbitalReinforced
+OwnershipTransferred
+RaffleCreated
+RaffleExpired
+RaffleFinished
+ReimbursementMsg
+ResearchMissionAvailableMsg
+RetractsWar
+SPAutoRedeemed
+SeasonalChallengeCompleted
+SkinSequencingCompleted
+SkyhookDeployed
+SkyhookDestroyed
+SkyhookLostShields
+SkyhookOnline
+SkyhookUnderAttack
+SovAllClaimAquiredMsg
+SovAllClaimLostMsg
+SovCommandNodeEventStarted
+SovCorpBillLateMsg
+SovCorpClaimFailMsg
+SovDisruptorMsg
+SovStationEnteredFreeport
+SovStructureDestroyed
+SovStructureReinforced
+SovStructureSelfDestructCancel
+SovStructureSelfDestructFinished
+SovStructureSelfDestructRequested
+SovereigntyIHDamageMsg
+SovereigntySBUDamageMsg
+SovereigntyTCUDamageMsg
+StationAggressionMsg1
+StationAggressionMsg2
+StationConquerMsg
+StationServiceDisabled
+StationServiceEnabled
+StationStateChangeMsg
+StoryLineMissionAvailableMsg
+StructureAnchoring
+StructureCourierContractChanged
+StructureDestroyed
+StructureFuelAlert
+StructureImpendingAbandonmentAssetsAtRisk
+StructureItemsDelivered
+StructureItemsMovedToSafety
+StructureLostArmor
+StructureLostShields
+StructureLowReagentsAlert
+StructureNoReagentsAlert
+StructureOnline
+StructurePaintPurchased
+StructureServicesOffline
+StructureUnanchoring
+StructureUnderAttack
+StructureWentHighPower
+StructureWentLowPower
+StructuresJobsCancelled
+StructuresJobsPaused
+StructuresReinforcementChanged
+TowerAlertMsg
+TowerResourceAlertMsg
+TransactionReversalMsg
+TutorialMsg
+WarAdopted
+WarAllyInherited
+WarAllyOfferDeclinedMsg
+WarConcordInvalidates
+WarDeclared
+WarEndedHqSecurityDrop
+WarHQRemovedFromSpace
+WarInherited
+WarInvalid
+WarRetracted
+WarRetractedByConcord
+WarSurrenderDeclinedMsg
+WarSurrenderOfferMsg
+```
+
+简单tailwindcss网页（支持暗色模式），用户先授权，然后可以选择几种建筑通知大类发往指定的会话
+如何取得会话呢，在cache生成一个随机字符 abc123, 然后用户在会话发生`/verify abc123`，后端收到消息后查询cache是否存在这个随机字符，如果存在就绑定用户和会话(Uninfo)
+
+## 定时刷新
+
+This route is cached for 10 minutes.
+
+This route is part of the rate limit group char-notification. This group is limited to 15 tokens per 15 minutes.
+
+获取到的通知请存入数据库
