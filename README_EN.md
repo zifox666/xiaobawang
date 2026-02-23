@@ -13,11 +13,13 @@
 
 This project is built on [Alconna](https://github.com/nonebot/plugin-alconna) and supports multiple platforms. It can interact with the following projects, bot frameworks, and platforms:
 
+> [!NOTE]
+> Support for protocols other than Milky will be phased out in upcoming releases.
+
 | Project URL | Platform | Note |
 |:---------------------------------------------------------------:|:----------:|:--------:|
-| [LLOneBot](https://github.com/LLOneBot/LLOneBot) | NTQQ | Available |
-| [Napcat](https://github.com/NapNeko/NapCatQQ) | NTQQ | Available |
-| [Lagrange.Core](https://github.com/LagrangeDev/Lagrange.Core) | NTQQ | Available |
+| [LuckyLilliaBot](https://github.com/LLOneBot/LuckyLilliaBot) | NTQQ | Available |
+| [Napcat](https://github.com/NapNeko/NapCatQQ) | NTQQ | Basically available |
 | [Telegram](https://github.com/nonebot/adapter-telegram) | Telegram | Basically available |
 | [Discord](https://github.com/nonebot/adapter-discord) | Discord | Untested |
 
@@ -61,7 +63,8 @@ uv run nb run
 Fill in your bot configuration items in the `.env.dev` file.
 
 > [!NOTE]
-> The zkillboard WSS killmail stream subscription has been migrated to [RedisQ](https://github.com/zKillboard/RedisQ).
+> The zkillboard WSS killmail stream subscription has been migrated to [RedisQ](https://github.com/zKillboard/RedisQ).<br>
+> zkillboard KM push has migrated again to [R2Z2](https://github.com/zKillboard/zKillboard/wiki/API-(R2Z2)).
 
 
 ## 📋 Feature list

@@ -13,11 +13,13 @@
 
 本项目基于 [Alconna](https://github.com/nonebot/plugin-alconna) 支持多个平台，可基于以下项目与机器人框架/平台进行交互
 
+> [!NOTE]
+> 在接下来的版本中 将会逐步停止对除Milky协议以外的支持
+
 |                             项目地址                              |    平台    |  备注  |
 |:-------------------------------------------------------------:|:--------:|:----:|
-|       [LLOneBot](https://github.com/LLOneBot/LLOneBot)        |   NTQQ   |  可用  |
-|         [Napcat](https://github.com/NapNeko/NapCatQQ)         |   NTQQ   |  可用  |
-| [Lagrange.Core](https://github.com/LagrangeDev/Lagrange.Core) |   NTQQ   |  可用  |
+|       [LuckyLilliaBot](https://github.com/LLOneBot/LuckyLilliaBot)        |   NTQQ   |  可用  |
+|         [Napcat](https://github.com/NapNeko/NapCatQQ)         |   NTQQ   | 基本可用 |
 |    [Telegram](https://github.com/nonebot/adapter-telegram)    | Telegram | 基本可用 |
 |     [Discord](https://github.com/nonebot/adapter-discord)     | Discord  | 未测试  |
 
@@ -61,6 +63,7 @@ uv run nb run
 
 > [!NOTE]
 > zkillboard的wss killmail stream订阅已迁移到 [RedisQ](https://github.com/zKillboard/RedisQ)<br>
+> zkillboard的km推送 又又又迁移到了 [R2Z2](https://github.com/zKillboard/zKillboard/wiki/API-(R2Z2))
 
 ## 📋 功能列表
 

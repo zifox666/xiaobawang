@@ -48,7 +48,7 @@ async def startup():
 @driver.on_shutdown
 async def shutdown():
     """清理SDE数据库连接"""
-    await text_processor.close()
+    text_processor.close()
     await close_engine()
     await message_sender.stop()
 

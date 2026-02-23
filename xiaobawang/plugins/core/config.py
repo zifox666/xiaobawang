@@ -17,8 +17,8 @@ class Config(BaseModel):
 
     user_agent: str = None
 
-    zkb_listener_method: str = "websocket"
-    zkb_listener_url: str = "ws://127.0.0.1:8080"
+    zkb_listener_method: str = "r2z2"
+    zkb_listener_url: str = "https://zkillredisq.stream/listen.php"
 
     tq_status_url: str = None
 
