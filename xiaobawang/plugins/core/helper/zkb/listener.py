@@ -262,10 +262,12 @@ class ZkbListener:
 
                 r.raise_for_status()
                 raw = r.json()
+                logger.debug(raw)
 
                 # R2Z2 格式转换：将 esi 展开到顶层，保留 zkb
                 # R2Z2: { killmail_id, hash, esi: { attackers, killmail_id, ... }, zkb: {...}, ... }
                 # 目标: { attackers, killmail_id, killmail_time, solar_system_id, victim, zkb }
+
                 esi_data = raw.get("esi", {})
                 data = {**esi_data}
                 if "zkb" in raw:
@@ -295,6 +297,7 @@ class ZkbListener:
 
             except Exception as e:
                 logger.error(f"R2Z2: 未知错误: {e}\n{traceback.format_exc()}")
+                sequence = None
                 await asyncio.sleep(self.reconnect_delay)
                 self.reconnect_delay = min(self.reconnect_delay * 2, self.max_reconnect_delay)
 
