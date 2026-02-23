@@ -19,6 +19,10 @@ services:
       - ./data:/app/data
       - ./.env.local:/app/.env.local:ro
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: ${NONEBOT_MEMORY_LIMIT:-3g}
     depends_on:
       redis:
         condition: service_started
