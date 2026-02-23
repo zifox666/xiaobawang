@@ -262,7 +262,7 @@ class ZkbListener:
 
                 r.raise_for_status()
                 raw = r.json()
-                logger.debug(raw)
+                # logger.debug(raw)
 
                 # R2Z2 格式转换：将 esi 展开到顶层，保留 zkb
                 # R2Z2: { killmail_id, hash, esi: { attackers, killmail_id, ... }, zkb: {...}, ... }
