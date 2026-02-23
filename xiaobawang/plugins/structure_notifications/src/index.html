@@ -91,7 +91,19 @@
 
             <!-- 已有订阅 -->
             <section>
-                <h2 class="text-lg font-semibold mb-3">已有订阅</h2>
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-semibold">已有订阅</h2>
+                    <div class="flex items-center gap-3">
+                        <span id="subs-updated" class="text-xs text-gray-400 hidden"></span>
+                        <button id="refresh-subs-btn"
+                                class="text-sm px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition flex items-center gap-1">
+                            <svg id="refresh-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            刷新
+                        </button>
+                    </div>
+                </div>
                 <div id="subscriptions-container">
                     <p class="text-gray-400 text-sm">加载中…</p>
                 </div>
@@ -140,7 +152,19 @@
             }
         }
 
+        let _pollTimer = null;
+
+        function startPolling() {
+            stopPolling();
+            _pollTimer = setInterval(loadSubscriptions, 1000);
+        }
+
+        function stopPolling() {
+            if (_pollTimer !== null) { clearInterval(_pollTimer); _pollTimer = null; }
+        }
+
         function showLogin() {
+            stopPolling();
             document.getElementById('login-section').classList.remove('hidden');
             document.getElementById('main-section').classList.add('hidden');
         }
@@ -154,6 +178,7 @@
                 `https://images.evetech.net/characters/${user.character_id}/portrait?size=64`;
             loadCategories();
             loadSubscriptions();
+            startPolling();
         }
 
         // ── 登录 ──
@@ -203,7 +228,13 @@
         // ── 加载订阅 ──
         async function loadSubscriptions() {
             const container = document.getElementById('subscriptions-container');
-            container.innerHTML = '<p class="text-gray-400 text-sm">加载中…</p>';
+            // 只有首次（容器为空）时才显示「加载中」，轮询时静默刷新
+            if (!container.children.length) {
+                container.innerHTML = '<p class="text-gray-400 text-sm">加载中…</p>';
+            }
+            // 刷新图标旋转动画
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('animate-spin');
             try {
                 const res = await fetch(apiUrl('/api/subscriptions'));
                 const json = await res.json();
@@ -245,8 +276,15 @@
                 });
             } catch (e) {
                 container.innerHTML = `<p class="text-red-500 text-sm">加载失败: ${e.message}</p>`;
+            } finally {
+                icon.classList.remove('animate-spin');
+                const ts = document.getElementById('subs-updated');
+                ts.textContent = '更新于 ' + new Date().toLocaleTimeString();
+                ts.classList.remove('hidden');
             }
         }
+
+        document.getElementById('refresh-subs-btn').addEventListener('click', loadSubscriptions);
 
         // ── 生成验证码 ──
         document.getElementById('gen-code-btn').addEventListener('click', async () => {

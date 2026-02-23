@@ -30,7 +30,7 @@ from starlette.responses import FileResponse
 
 from ..cache import get_cache
 from ..eve_oauth.service import oauth_service
-from ..verify_code import generate_verify_code
+from ..verify_code import generate_verify_code as _generate_verify_code
 from .categories import CATEGORY_LABELS, NOTIFICATION_CATEGORIES
 from .service import (
     delete_subscription,
@@ -174,14 +174,14 @@ async def list_subscriptions(token: str = Query(None)):
 
 
 @router.post("/api/verify_code", response_model=APIResponse)
-async def generate_verify_code(
+async def create_verify_code(
     req: VerifyCodeRequest,
     token: str = Query(None),
 ):
     """生成验证码, 用户在聊天中发送 /verify <code> 绑定会话"""
     user = await require_user(token)
     code = secrets.token_hex(4)  # 8 字符 hex
-    ok = await generate_verify_code(
+    ok = await _generate_verify_code(
         code,
         module="structure_notifications",
         payload={
