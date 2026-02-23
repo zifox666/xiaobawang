@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESI OAuth 授权</title>
+  <script>
+    (function () {
+      const saved = localStorage.getItem('xbw_theme');
+      const preferDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = saved ? saved === 'dark' : preferDark;
+      document.documentElement.classList.toggle('dark', isDark);
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    };
+  </script>
+</head>
+<body class="h-full bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+  <main class="mx-auto max-w-2xl p-6">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-semibold">EVE ESI 授权管理</h1>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">选择授权范围后一键跳转授权，授权状态由服务器维护。</p>
+      </div>
+      <button id="theme_btn" class="rounded-md border border-slate-300 px-3 py-2 text-xs dark:border-slate-700">切换主题</button>
+    </div>
+
+    <section class="mt-6 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+      <div>
+        <p class="mb-2 text-sm font-medium">已授权角色（服务器记录）</p>
+        <div id="authorized_list" class="space-y-2 text-sm text-slate-600 dark:text-slate-300"></div>
+      </div>
+
+      <div class="mt-4">
+        <p class="mb-2 text-sm font-medium">插件所需权限</p>
+        <div id="plugin_scopes" class="space-y-2 text-sm text-slate-600 dark:text-slate-300"></div>
+      </div>
+
+      <div id="scope_list" class="mt-4 space-y-2"></div>
+
+      <button id="create_btn" class="mt-4 rounded-md bg-slate-900 px-4 py-2 text-sm text-white dark:bg-slate-100 dark:text-slate-900">立即前往授权</button>
+
+      <div class="mt-4">
+        <label class="mb-2 block text-sm">最近一次授权链接（调试用）</label>
+        <textarea id="auth_url" rows="4" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" readonly></textarea>
+      </div>
+
+      <div class="mt-4">
+        <label class="mb-2 block text-sm">回调结果</label>
+        <textarea id="callback_result" rows="6" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" readonly></textarea>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let _registeredPlugins = {};
+    let _authorizations = [];
+
+    async function postJson(url, payload) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload || {}),
+      });
+      return response.json();
+    }
+
+    async function loadScopes() {
+      const result = await postJson('/esi/oauth/scopes', {});
+      const list = document.getElementById('scope_list');
+      list.innerHTML = '';
+
+      if (result.code !== 200) {
+        list.innerHTML = '<p class="text-sm text-red-500">加载 scopes 失败</p>';
+        return;
+      }
+
+      for (const item of result.data.scopes || []) {
+        const row = document.createElement('label');
+        row.className = 'flex items-start gap-2 text-sm';
+
+        const checked = item.required;
+        row.innerHTML = `
+          <input type="checkbox" value="${item.scope}" ${checked ? 'checked' : ''} ${item.required ? 'disabled' : ''} class="mt-0.5" />
+          <span>
+            <span class="font-medium">${item.name}</span>
+            <span class="block text-slate-600 dark:text-slate-300">${item.description}</span>
+            <span class="block text-xs text-slate-500">${item.scope}${item.required ? '（必选）' : ''}</span>
+          </span>
+        `;
+        list.appendChild(row);
+      }
+    }
+
+    async function loadRegisteredPlugins() {
+      const result = await postJson('/esi/oauth/registered_plugins', {});
+      const container = document.getElementById('plugin_scopes');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (result.code !== 200) {
+        container.innerHTML = '<p class="text-red-500">加载失败</p>';
+        return;
+      }
+
+      _registeredPlugins = result.data || {};
+      const entries = Object.entries(_registeredPlugins);
+      if (!entries.length) {
+        container.innerHTML = '<p class="text-slate-500">暂无插件注册权限需求</p>';
+        return;
+      }
+
+      for (const [plugin, scopes] of entries) {
+        const item = document.createElement('div');
+        item.className = 'rounded-md border border-slate-200 p-2 dark:border-slate-800';
+        item.innerHTML = `
+          <div class="font-medium">${plugin}</div>
+          <div class="mt-1 text-xs text-slate-500 break-all">${scopes.join(', ')}</div>
+        `;
+        container.appendChild(item);
+      }
+    }
+
+    async function loadAuthorizations() {
+      const result = await postJson('/esi/oauth/list_authorizations', {});
+      const container = document.getElementById('authorized_list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (result.code !== 200) {
+        container.innerHTML = '<p class="text-red-500">授权角色列表加载失败</p>';
+        return;
+      }
+
+      const rows = result.data || [];
+      _authorizations = rows;
+      if (!rows.length) {
+        container.innerHTML = '<p>暂无已授权角色</p>';
+        return;
+      }
+
+      for (const row of rows) {
+        const grantedSet = new Set(row.scopes || []);
+        let coverageHtml = '';
+        for (const [plugin, needed] of Object.entries(_registeredPlugins)) {
+          const missing = needed.filter(s => !grantedSet.has(s));
+          if (missing.length === 0) {
+            coverageHtml += `<span class="inline-block rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-900 dark:text-green-300">${plugin} ✓</span> `;
+          } else {
+            coverageHtml += `<span class="inline-block rounded bg-red-100 px-1.5 py-0.5 text-red-700 dark:bg-red-900 dark:text-red-300" title="缺少: ${missing.join(', ')}">${plugin} ✗</span> `;
+          }
+        }
+
+        const item = document.createElement('div');
+        item.className = 'rounded-md border border-slate-200 p-2 dark:border-slate-800';
+        item.innerHTML = `
+          <div class="font-medium">${row.character_name} (${row.character_id})</div>
+          ${coverageHtml ? `<div class="mt-1 flex flex-wrap gap-1 text-xs">${coverageHtml}</div>` : ''}
+          <div class="mt-1 text-xs text-slate-500 break-all">${(row.scopes || []).join(' ')}</div>
+        `;
+        container.appendChild(item);
+      }
+    }
+
+    async function createAuthUrl() {
+      const checkedScopes = Array.from(document.querySelectorAll('#scope_list input[type="checkbox"]:checked'))
+        .map((el) => el.value);
+
+      const result = await postJson('/esi/oauth/create_auth_url', {
+        requested_scopes: checkedScopes,
+      });
+
+      document.getElementById('auth_url').value = result.code === 200 ? result.data.auth_url : `错误: ${result.msg}`;
+      if (result.code === 200 && result.data?.auth_url) {
+        window.location.href = result.data.auth_url;
+      }
+    }
+
+    async function handleCallbackIfNeeded() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+
+      const output = document.getElementById('callback_result');
+      if (!output) return;
+
+      if (error) {
+        output.value = `授权失败: ${error}\n${errorDescription || ''}`;
+        return;
+      }
+
+      if (!code || !state) {
+        return;
+      }
+
+      output.value = '检测到回调参数，正在交换授权码...';
+      const result = await postJson('/esi/oauth/exchange_code', { code, state });
+
+      if (result.code === 200) {
+        // 检测是否有第三方插件重定向
+        const ext = result.data.ext || {};
+        if (ext.redirect_after) {
+          const sep = ext.redirect_after.includes('?') ? '&' : '?';
+          window.location.href = ext.redirect_after + sep +
+            'character_id=' + encodeURIComponent(result.data.character_id) +
+            '&character_name=' + encodeURIComponent(result.data.character_name);
+          return;
+        }
+        output.value = `授权成功\n角色: ${result.data.character_name}(${result.data.character_id})\nScopes: ${(result.data.scopes || []).join(' ')}`;
+        await loadAuthorizations();
+      } else {
+        output.value = `授权码交换失败: ${result.msg}`;
+      }
+
+      const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      localStorage.setItem('xbw_theme', isDark ? 'dark' : 'light');
+    }
+
+    document.getElementById('theme_btn').addEventListener('click', toggleTheme);
+    document.getElementById('create_btn').addEventListener('click', createAuthUrl);
+    loadScopes();
+    loadRegisteredPlugins().then(() => loadAuthorizations());
+    handleCallbackIfNeeded();
+  </script>
+</body>
+</html>

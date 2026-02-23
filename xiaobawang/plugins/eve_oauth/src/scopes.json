@@ -1,0 +1,20 @@
+[
+  {
+    "scope": "publicData",
+    "name": "公开数据",
+    "description": "允许访问公开数据",
+    "required": true
+  },
+  {
+    "scope": "esi-killmails.read_killmails.v1",
+    "name": "击杀邮件",
+    "description": "允许访问您的击杀邮件数据，适用于SRP服务等",
+    "required": false
+  },
+  {
+    "scope": "esi-characters.read_notifications.v1",
+    "name": "系统通知",
+    "description": "允许访问您的系统通知数据，适用于建筑预警等",
+    "required": false
+  }
+]
