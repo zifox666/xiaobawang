@@ -30,9 +30,9 @@ from starlette.responses import FileResponse
 
 from ..cache import get_cache
 from ..eve_oauth.service import oauth_service
+from ..verify_code import generate_verify_code
 from .categories import CATEGORY_LABELS, NOTIFICATION_CATEGORIES
 from .service import (
-    create_verify_code,
     delete_subscription,
     get_subscriptions_by_character,
     update_subscription,
@@ -181,11 +181,14 @@ async def generate_verify_code(
     """生成验证码, 用户在聊天中发送 /verify <code> 绑定会话"""
     user = await require_user(token)
     code = secrets.token_hex(4)  # 8 字符 hex
-    ok = await create_verify_code(
+    ok = await generate_verify_code(
         code,
-        user["character_id"],
-        categories=req.categories,
-        character_name=user.get("character_name", ""),
+        module="structure_notifications",
+        payload={
+            "character_id": user["character_id"],
+            "character_name": user.get("character_name", ""),
+            "categories": req.categories,
+        },
     )
     if not ok:
         return failure("生成验证码失败")

@@ -3,27 +3,25 @@ EVE 建筑通知预警模块
 
 - 通过 ESI 拉取角色建筑通知
 - 用户在网页选择角色+通知类别后生成验证码
-- 用户在聊天中发送 /verify <code> 绑定会话
+- 用户在聊天中发送 /verify <code> 绑定会话（由 verify_code 插件统一处理）
 - 定时拉取并推送匹配的通知
 """
 
 from nonebot import get_app, logger, require
-from nonebot.exception import FinishedException
 
 from .config import plugin_config
 from .models import StructureNotificationRecord, StructureNotificationSub
 from .router import router
 
 require("nonebot_plugin_apscheduler")
-require("nonebot_plugin_alconna")
 require("nonebot_plugin_uninfo")
 
-from nonebot_plugin_alconna import Alconna, Args, CommandMeta, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_uninfo import Uninfo
 
+from .service import create_subscription
 from .tasks import poll_and_push
-from .service import consume_verify_code, create_subscription
+from ..verify_code import register_handler
 
 # ── 确保 ORM 发现模型 ─────────────────────────────────────
 _ = StructureNotificationSub
@@ -34,68 +32,44 @@ app = get_app()
 app.include_router(router, prefix="/struct_notify")
 
 
-# ── /verify 命令 ──────────────────────────────────────────
+# ── 注册验证码绑定回调 ────────────────────────────────────
 
-verify_cmd = on_alconna(
-    Alconna(
-        "verify",
-        Args["code", str],
-        meta=CommandMeta(
-            description="验证建筑通知推送绑定",
-            usage="/verify <验证码>",
-        ),
-    ),
-    use_cmd_start=True,
-    block=True,
-    priority=15,
-)
-
-
-@verify_cmd.handle()
-async def handle_verify(user_info: Uninfo, code: str):
+async def _on_verify(payload: dict, user_info: Uninfo) -> str:
     """
-    用户在聊天发送 /verify abc123
-    后端查 cache 是否存在该验证码, 存在则绑定当前会话
+    /verify 命令触发时由 verify_code 插件回调。
+    payload 字段由 router.py 生成验证码时写入。
     """
-    payload = await consume_verify_code(code)
-    if payload is None:
-        await verify_cmd.finish("验证码无效或已过期，请重新生成")
-
     character_id = payload.get("character_id")
     if not character_id:
-        await verify_cmd.finish("验证码数据异常，请重新生成")
+        raise ValueError("验证码数据异常，请重新生成")
 
-    # 从 Uninfo 获取会话信息
     platform = user_info.adapter
     bot_id = user_info.self_id
     session_id = user_info.scene.id
     session_type = user_info.scene.type.name
 
     categories = payload.get("categories", ["structure"])
-    character_name = payload.get("character_name", str(character_id))
+    character_name = payload.get("character_name") or str(character_id)
 
-    try:
-        sub = await create_subscription(
-            character_id=character_id,
-            character_name=character_name or str(character_id),
-            platform=platform,
-            bot_id=bot_id,
-            session_id=session_id,
-            session_type=session_type,
-            categories=categories,
-        )
-        await verify_cmd.finish(
-            f"✅ 建筑通知绑定成功!\n"
-            f"角色: {character_name or character_id}\n"
-            f"会话: {session_id}\n"
-            f"类别: {', '.join(categories)}\n"
-            f"订阅 ID: {sub.id}"
-        )
-    except FinishedException:
-        pass
-    except Exception as e:
-        logger.error(f"创建建筑通知订阅失败: {e}")
-        await verify_cmd.finish(f"绑定失败: {e}")
+    sub = await create_subscription(
+        character_id=character_id,
+        character_name=character_name,
+        platform=platform,
+        bot_id=bot_id,
+        session_id=session_id,
+        session_type=session_type,
+        categories=categories,
+    )
+    return (
+        f"✅ 建筑通知绑定成功!\n"
+        f"角色: {character_name}\n"
+        f"会话: {session_id}\n"
+        f"类别: {', '.join(categories)}\n"
+        f"订阅 ID: {sub.id}"
+    )
+
+
+register_handler("structure_notifications", _on_verify)
 
 
 # ── 定时任务: 拉取并推送建筑通知 ──────────────────────────

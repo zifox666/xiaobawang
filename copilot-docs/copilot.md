@@ -51,3 +51,20 @@ scheduler.add_job(run_every_day_from_program_start, "interval", days=1, id="xxx"
 ## 代码要求
 
 只保留重要注释 没有许可不需要生成文档
+
+## verify code
+
+```python
+# 在某模块的 __init__.py
+from ..verify_code import generate_verify_code, register_handler
+
+async def _on_verify(payload: dict, user_info: Uninfo) -> str:
+    # payload 里是你生成验证码时写入的自定义字段
+    ...
+    return "✅ 绑定成功"
+
+register_handler("my_module", _on_verify)
+
+# 在 router 里生成验证码
+await generate_verify_code(code, module="my_module", payload={...})
+```

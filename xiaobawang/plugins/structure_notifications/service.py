@@ -24,35 +24,6 @@ require_scopes("structure_notifications", [
 cache = get_cache("structure_notifications")
 
 ESI_NOTIFICATIONS_URL = "https://esi.evetech.net/latest/characters/{character_id}/notifications/"
-VERIFY_CODE_PREFIX = "verify_code:"
-VERIFY_CODE_EXPIRE = 600  # 10 分钟过期
-
-
-# ── 验证码管理 ─────────────────────────────────────────────
-
-async def create_verify_code(
-    code: str,
-    character_id: int,
-    sub_id: int | None = None,
-    categories: list[str] | None = None,
-    character_name: str = "",
-) -> bool:
-    """将验证码写入缓存, 等待 /verify 命令消费"""
-    payload = {
-        "character_id": character_id,
-        "character_name": character_name,
-        "sub_id": sub_id,
-        "categories": categories or ["structure"],
-    }
-    return await cache.set(f"{VERIFY_CODE_PREFIX}{code}", payload, expire=VERIFY_CODE_EXPIRE)
-
-
-async def consume_verify_code(code: str) -> dict | None:
-    """消费验证码, 返回 payload 并删除"""
-    payload = await cache.get(f"{VERIFY_CODE_PREFIX}{code}")
-    if payload:
-        await cache.delete(f"{VERIFY_CODE_PREFIX}{code}")
-    return payload
 
 
 # ── 订阅 CRUD ──────────────────────────────────────────────
