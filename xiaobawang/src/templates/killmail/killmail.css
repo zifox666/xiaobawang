@@ -41,7 +41,9 @@ body, html {
     font-weight: 960;
     white-space: nowrap;
     letter-spacing: 0.5px;
-    height: auto;
+    min-height: 720px;
+    max-height: 2160px;
+    overflow: hidden;
     width: auto;
     display: inline-block;
     font-size: 12px;
