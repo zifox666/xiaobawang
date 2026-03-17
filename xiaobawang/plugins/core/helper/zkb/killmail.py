@@ -12,6 +12,9 @@ from ..message_queue import queue_killmail_message
 from .processor import KillmailProcessor
 from .validator_v2 import KillmailValidatorV2
 
+# 限制同时渲染的 KM 图片数量，防止并发过多页面撑死服务器
+_render_semaphore = asyncio.Semaphore(3)
+
 
 class KillmailHelper:
     """Killmail 主处理类，协调验证、处理和发送流程"""
@@ -65,14 +68,15 @@ class KillmailHelper:
         # 处理 killmail 数据
         html_data = await self.processor.process_killmail_data(data)
 
-        # 渲染图片
-        pic = await render_template(
-            template_path=templates_path / "killmail",
-            template_name="killmail.html.jinja2",
-            data=html_data,
-            width=665,
-            height=100,
-        )
+        # 渲染图片（限制并发数）
+        async with _render_semaphore:
+            pic = await render_template(
+                template_path=templates_path / "killmail",
+                template_name="killmail.html.jinja2",
+                data=html_data,
+                width=665,
+                height=100,
+            )
 
         tasks = []
         for (platform, bot_id, session_id, session_type, total_value), reasons in matched_sessions.items():
