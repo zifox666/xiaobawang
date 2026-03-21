@@ -36,6 +36,7 @@
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                     <span class="w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded"></span>
                     军团排名 TOP 10
+                    <span class="text-sm font-normal opacity-60">（按人均排序）</span>
                 </h2>
                 <div class="space-y-3">
                     {% for corp in corporation_rankings %}
@@ -55,14 +56,14 @@
                                 />
                                 <div class="flex-1 min-w-0">
                                     <h3 class="font-bold text-2xl truncate leading-tight">{{ corp_names.get(corp.corporation_id, 'Corp #' + corp.corporation_id) }}</h3>
-                                    <p class="text-sm opacity-80 mt-1 truncate leading-tight">成员数: {{ corp.group_count }}</p>
+                                    <p class="text-sm opacity-80 mt-1 truncate leading-tight">成员数: {{ corp.group_count }} · 总 PAP: {{ corp.pap }}</p>
                                 </div>
                             </div>
                             
-                            <!-- PAP总分 -->
-                            <div class="text-right w-24 flex-shrink-0">
-                                <div class="text-2xl font-bold text-emerald-400">{{ corp.pap }}</div>
-                                <div class="text-xs opacity-70">总 PAP</div>
+                            <!-- 人均PAP -->
+                            <div class="text-right w-28 flex-shrink-0">
+                                <div class="text-2xl font-bold text-emerald-400">{{ corp.pap_per_person }}</div>
+                                <div class="text-xs opacity-70">人均 PAP</div>
                             </div>
                         </div>
                     </div>
@@ -116,6 +117,60 @@
                 </div>
             </div>
         </div>
+
+        <!-- 混子排名 -->
+        {% if slacker_rankings %}
+        <div class="mb-10">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-amber-600 rounded"></span>
+                混子排名 TOP 10
+                <span class="text-sm font-normal opacity-60">（出勤但未贡献PAP）</span>
+            </h2>
+            <div class="space-y-3">
+                {% for slacker in slacker_rankings %}
+                <div class="rank-card rounded-2xl shadow-lg p-5 transition-colors duration-300" id="slacker-card-{{ loop.index }}">
+                    <div class="flex items-center gap-5">
+                        <!-- 排名 -->
+                        <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-2xl {% if slacker.rank == 1 %}medal-1{% elif slacker.rank == 2 %}medal-2{% elif slacker.rank == 3 %}medal-3{% else %}bg-gray-400{% endif %}">
+                            {{ slacker.rank }}
+                        </div>
+                        
+                        <!-- 角色头像 -->
+                        <img 
+                            src="https://images.evetech.net/characters/{{ slacker.main_character_id }}/portrait?size=128" 
+                            alt="{{ slacker.group_name }}"
+                            class="w-16 h-16 rounded-full ring-2 ring-amber-200"
+                        />
+                        
+                        <!-- 玩家信息 -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-baseline gap-3">
+                                <h3 class="font-bold text-2xl truncate">{{ slacker.group_name }}</h3>
+                                <span class="text-sm opacity-60 flex-shrink-0">总 PAP: {{ slacker.total_pap }}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                {% for ship in slacker.ships %}
+                                <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                    <img src="https://images.evetech.net/types/{{ ship.ship_type_id }}/icon?size=32" class="w-4 h-4 rounded" alt="">
+                                    {{ ship.ship_type_name }} ×{{ ship.count }}{% if ship.pap %} · {{ ship.pap }} PAP{% endif %}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- 混子统计 -->
+                        <div class="text-right w-36 flex-shrink-0">
+                            <div class="text-2xl font-bold text-amber-500">{{ slacker.slacker_pap_ratio }}%</div>
+                            <div class="text-xs opacity-70">混子 PAP 占比</div>
+                            <div class="text-sm font-semibold text-amber-400 mt-0.5">{{ slacker.slacker_pap }} / {{ slacker.total_pap }}</div>
+                            <div class="text-xs opacity-50">混子/总 PAP · {{ slacker.slacker_count }}次</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
         <!-- 舰船排名 -->
         <div class="mb-8">
@@ -187,6 +242,16 @@
                     playerCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-5 transition-colors duration-300 bg-gray-800';
                 }
                 {% endfor %}
+
+                // 混子卡片
+                {% if slacker_rankings %}
+                {% for slacker in slacker_rankings %}
+                const slackerCard{{ loop.index }} = document.getElementById('slacker-card-{{ loop.index }}');
+                if (slackerCard{{ loop.index }}) {
+                    slackerCard{{ loop.index }}.className = 'rank-card rounded-2xl shadow-lg p-5 transition-colors duration-300 bg-gray-800';
+                }
+                {% endfor %}
+                {% endif %}
                 
                 // 舰船卡片
                 {% for ship in ship_rankings %}
@@ -213,6 +278,16 @@
                     playerCard{{ loop.index }}.className = 'rank-card rounded-xl shadow-lg p-5 transition-colors duration-300 bg-white';
                 }
                 {% endfor %}
+
+                // 混子卡片
+                {% if slacker_rankings %}
+                {% for slacker in slacker_rankings %}
+                const slackerCard{{ loop.index }} = document.getElementById('slacker-card-{{ loop.index }}');
+                if (slackerCard{{ loop.index }}) {
+                    slackerCard{{ loop.index }}.className = 'rank-card rounded-2xl shadow-lg p-5 transition-colors duration-300 bg-white';
+                }
+                {% endfor %}
+                {% endif %}
                 
                 // 舰船卡片
                 {% for ship in ship_rankings %}

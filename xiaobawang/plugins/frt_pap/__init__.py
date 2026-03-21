@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+import traceback
 
 from arclet.alconna import Alconna, Args, Arparma, CommandMeta, Option
 import httpx
@@ -121,6 +122,8 @@ async def _handle_pap_rank(
 
         corp_names = {}
         for corp_id in list(corp_ids):
+            if not corp_id:
+                continue
             try:
                 corp_name = await get_corp_name(int(corp_id))
                 corp_names[str(corp_id)] = corp_name
@@ -134,6 +137,7 @@ async def _handle_pap_rank(
             "corporation_rankings": data.get("corporation_rankings", [])[:10],
             "group_rankings": data.get("group_rankings", [])[:10],
             "ship_rankings": data.get("ship_rankings", [])[:3],
+            "slacker_rankings": data.get("slacker_rankings", [])[:10],
             "corp_names": corp_names,
         }
 
@@ -151,7 +155,7 @@ async def _handle_pap_rank(
     except FinishedException:
         pass
     except Exception as e:
-        logger.error(f"Error in rank query: {e}")
+        logger.error(f"Error in rank query: {e} \n {traceback.format_exc()}")
         await pap_query.finish(f"排名查询失败: {e!s}")
 
 
