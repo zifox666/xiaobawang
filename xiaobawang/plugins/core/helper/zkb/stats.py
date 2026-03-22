@@ -226,6 +226,6 @@ class ZkbStats:
             template_path=templates_path / "zkb",
             template_name="zkb.html.jinja2" if command == "zkb" else "recent_km.html.jinja2",
             data={"stats": self},
-            width=1080,
+            width=1280,
             height=900,
         )

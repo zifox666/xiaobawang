@@ -16,7 +16,7 @@ class ZkillboardApi(BaseClient):
         self._base_url: str = "https://zkillboard.com/api"
         self._allowed_types: list[str] = ["character", "corporation", "alliance"]
 
-    @cache_result(expire_time=cache.TIME_DAY, prefix="zkill:get_stats", exclude_args=[0])
+    @cache_result(expire_time=5 * cache.TIME_MIN, prefix="zkill:get_stats", exclude_args=[0])
     async def get_stats(
         self,
         type_: str,
@@ -39,7 +39,7 @@ class ZkillboardApi(BaseClient):
             logger.error(f"获取Zkillboard数据失败: {e}")
             return None
 
-    @cache_result(expire_time=cache.TIME_HOUR, prefix="zkill:get_killmail_list", exclude_args=[0])
+    @cache_result(expire_time=5 * cache.TIME_MIN, prefix="zkill:get_killmail_list", exclude_args=[0])
     async def get_killmail_list(
         self,
         type_: str,

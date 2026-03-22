@@ -12,8 +12,8 @@
             <span class="chinese">击毁报告</span>
         </div>
         <div style="margin-top: 10px;" class="clear">
-            <img src="https://images.evetech.net/characters/{{ victim.victim_id }}/portrait?size=128" />
-            <img src="https://images.evetech.net/types/{{ victim.ship_type_id }}/render?size=128" />
+            <img src="https://images.evetech.net/characters/{{ victim.victim_id }}/portrait?size=128"/>
+            <img src="https://images.evetech.net/types/{{ victim.ship_type_id }}/render?size=128"/>
         </div>
         <div style="margin-left: 11px; margin-top: 10px;">
            <div class="victim-info">
@@ -34,8 +34,8 @@
            </div>
             <br class="clear" />
             <div style="margin-top: 1px;">
-                <img src="https://images.evetech.net/corporations/{{ victim.victim_corp_id }}/logo?size=32" />
-                <img src="https://images.evetech.net/alliances/{{ victim.victim_alliance_id }}/logo?size=32" />
+                <img src="https://images.evetech.net/corporations/{{ victim.victim_corp_id }}/logo?size=32"/>
+                <img src="https://images.evetech.net/alliances/{{ victim.victim_alliance_id }}/logo?size=32"/>
                 <span>
                     {{ victim.victim_corp }} <br/>
                     {{ victim.victim_alliance_name }}
@@ -49,7 +49,8 @@
                 </div>
             </div>
         </div>
-        <div class="line clear" style="margin: 10px 0;"></div>
+        <div class="line clear" style="margin: 10px 0; flex-shrink: 0;"></div>
+        <div class="scroll-content">
         <div class="clear" style="width: 256px; font-weight: 500;">
             <span class="clear chinese" style="font-size: 16px;">参与者 ({{ attacker_number }})</span>
             <span class="clear chinese" style="color: var(--dmg-color);font-size: 14px; ">共受到伤害: {{ victim.damage_taken }}</span>
@@ -58,8 +59,8 @@
             <div class="clear" style="font-weight: 900;">
                 <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" onerror="this.src='https://images.evetech.net/alliances/1/logo?size=64'"/>
                 <div>
-                    <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
-                    <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
+                    <img src="https://images.newdoublex.space/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'" class="small-image"/>
+                    <img class="clear small-image" src="https://images.newdoublex.space/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
                 </div>
                 <div style="font-size: 11px; margin-left: 5px;">
                     <div>
@@ -79,8 +80,8 @@
                 <img src="https://images.evetech.net/characters/{{ top_damager.attacker_id }}/portrait?size=64" />
                 <div style="display: flex; align-items: flex-end;">
                     <div>
-                        <img src="https://images.evetech.net/types/{{ top_damager.ship_type_id }}/icon?size=32" />
-                        <img class="clear" src="https://images.evetech.net/types/{{ top_damager.weapon_type_id }}/icon?size=32" />
+                        <img src="https://images.newdoublex.space/types/{{ top_damager.ship_type_id }}/icon?size=32" class="small-image"/>
+                        <img class="clear small-image" src="https://images.newdoublex.space/types/{{ top_damager.weapon_type_id }}/icon?size=32"/>
                     </div>
                     <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
                         <div>
@@ -95,8 +96,8 @@
                 <img src="https://images.evetech.net/characters/{{ attackMember[0].attacker_id }}/portrait?size=64" onerror="this.src='https://images.evetech.net/alliances/1/logo?size=64'"/>
                 <div style="display: flex; align-items: flex-end;">
                     <div>
-                        <img src="https://images.evetech.net/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'" />
-                        <img class="clear" src="https://images.evetech.net/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
+                        <img src="https://images.newdoublex.space/types/{{ attackMember[0].ship_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'" class="small-image"/>
+                        <img class="clear small-image" src="https://images.newdoublex.space/types/{{ attackMember[0].weapon_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
                     </div>
                     <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
                         <div>
@@ -120,8 +121,8 @@
                         <img src="https://images.evetech.net/characters/{{ attack.attacker_id }}/portrait?size=64" onerror="this.src='https://images.evetech.net/alliances/1/logo?size=64'"/>
                         <div style="display: flex; align-items: flex-end;">
                             <div>
-                                <img src="https://images.evetech.net/types/{{ attack.ship_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
-                                <img class="clear" src="https://images.evetech.net/types/{{ attack.weapon_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
+                                <img src="https://images.newdoublex.space/types/{{ attack.ship_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'" class="small-image"/>
+                                <img class="clear small-image" src="https://images.newdoublex.space/types/{{ attack.weapon_type_id }}/icon?size=32" onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"/>
                             </div>
                             <div style="font-size: 11px; margin-left: 5px; display: flex; flex-direction: column; justify-content: space-between; height: 64px;">
                                 <div>
@@ -151,9 +152,9 @@
                     {% for slotEquipment in slot.slot_items %}
                         <div class="clear equip-line {{ slotEquipment.drop }}">
                             {% if slotEquipment.blueprint %}
-                            <img alt="{{ slotEquipment.item_id }}" src="https://images.evetech.net/types/{{ slotEquipment.item_id }}/bp?size=32">
+                            <img alt="{{ slotEquipment.item_id }}" src="https://images.newdoublex.space/types/{{ slotEquipment.item_id }}/bpc?size=32">
                             {% else %}
-                            <img alt="{{ slotEquipment.item_id }}" src="https://images.evetech.net/types/{{ slotEquipment.item_id }}/icon?size=32">
+                            <img alt="{{ slotEquipment.item_id }}" src="https://images.newdoublex.space/types/{{ slotEquipment.item_id }}/icon?size=32">
                             {% endif %}
                             <span class="chinese">{{ slotEquipment.item_name }}</span>
                             <span class="pull-right">{{ slotEquipment.item_number }}</span>
@@ -164,9 +165,9 @@
                                 <div class="clear equip-line {{ nested_item.drop }}">
                                     <span style="margin: 0 5px;">&ensp;</span>
                                     {% if nested_item.blueprint %}
-                                    <img alt="{{ nested_item.item_id }}" src="https://images.evetech.net/types/{{ nested_item.item_id }}/bp?size=32">
+                                    <img alt="{{ nested_item.item_id }}" src="https://images.newdoublex.space/types/{{ nested_item.item_id }}/bpc?size=32">
                                     {% else %}
-                                    <img alt="{{ nested_item.item_id }}" src="https://images.evetech.net/types/{{ nested_item.item_id }}/icon?size=32">
+                                    <img alt="{{ nested_item.item_id }}" src="https://images.newdoublex.space/types/{{ nested_item.item_id }}/icon?size=32">
                                     {% endif %}
                                     <span class="chinese">{{ nested_item.item_name }}</span>
                                     <span class="pull-right">{{ nested_item.item_number }}</span>
@@ -179,9 +180,8 @@
             </div>
         </div>
 
-        <div class="line clear" style="margin: 10px 0 5px;"></div>
-        <div class="clear">
-            <div class="value-summary">
+        </div>
+        <div class="value-summary">
                 <div class="value-group">
                     <div class="value-column-left">
                         <div class="value-row">
@@ -204,7 +204,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
 
     </div>

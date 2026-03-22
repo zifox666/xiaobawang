@@ -181,9 +181,10 @@ body, html {
 }
 
 .value-summary {
-    width: 610px;
-    margin-top: 5px;
-    margin-bottom: 5px;
+    position: absolute;
+    bottom: 15px;
+    background-color: rgba(40, 40, 40, 0.6);
+    width: 100%;
 }
 
 .value-row {
@@ -215,4 +216,9 @@ body, html {
     width: 350px;
     display: flex;
     flex-direction: column;
+}
+
+.small-image {
+    width: 32px;
+    height: 32px;
 }

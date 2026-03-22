@@ -19,6 +19,7 @@ zkb = on_alconna(
         "zkb",
         Args["args", MultiVar(str)],
         Option("-t|--type", Args["type", str], default="character"),
+        Option("-l|--limit", Args["limit", int], default=3),
         CommandMeta(
             description="查询ZKB统计数据(character/corporation)",
             usage="/zkb <name> -t [character|corporation]",
@@ -61,19 +62,22 @@ async def _handle_zkb(
 ):
     args = " ".join(arp.main_args.get("args"))
     type_ = arp.other_args.get("type", "character")
+    limit = arp.other_args.get("limit", 3)
+    if limit > 10:
+        limit = 10
 
     data = await esi_client.get_universe_id(type_=f"{type_}s", name=args)
     id_ = data.get("id")
     if id_ is None:
         msg = f"未找到[{type_}]{args}"
         if type_ != "character":
-            msg += "\n/zkb <name> -t [type]"
+            msg += "\n/zkb <name> -t [type] -l [limit]\n其中type可选character/corporation，默认为character，limit为击杀记录数量，默认为3"
         await zkb.finish(msg)
 
     zkb_data = await zkb_api.get_stats(type_, id_)
     if zkb_data.get("error", None):
         await zkb.finish(f"未找到[{type_}]{args}")
-    pic = await ZkbStats(zkb_data).render()
+    pic = await ZkbStats(zkb_data).render(limit=limit)
 
     if pic:
         await save_msg_cache(

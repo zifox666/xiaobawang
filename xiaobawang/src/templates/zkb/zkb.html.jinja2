@@ -19,7 +19,84 @@
         .activity-level-3 { background-color: #30a14e; }
         .activity-level-4 { background-color: #216e39; }
 
+        /* 暗夜模式 */
+        html.dark body { background-color: #111827; color: #e5e7eb; }
+        html.dark .bg-white { background-color: #1f2937 !important; }
+        html.dark .bg-gray-100 { background-color: #111827 !important; }
+        html.dark .bg-gray-200 { background-color: #374151 !important; }
+        html.dark .text-gray-800 { color: #e5e7eb !important; }
+        html.dark .text-gray-600 { color: #9ca3af !important; }
+        html.dark .text-gray-500 { color: #6b7280 !important; }
+        html.dark .divide-gray-200 > * + * { border-color: #374151 !important; }
+        html.dark .shadow-md { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -1px rgba(0,0,0,0.3) !important; }
+        html.dark .activity-level-0 { background-color: #2d333b; }
+        html.dark .hover\:bg-red-50:hover { background-color: rgba(127,29,29,0.3) !important; }
+        html.dark .hover\:bg-green-50:hover { background-color: rgba(20,83,45,0.3) !important; }
+        html.dark .hover\:bg-gray-50:hover { background-color: rgba(55,65,81,0.5) !important; }
+        html.dark .bg-indigo-100 { background-color: #312e81 !important; }
+        html.dark .text-indigo-800 { color: #a5b4fc !important; }
+
+        /* 暗夜模式切换按钮 */
+        #dark-mode-toggle {
+            position: fixed;
+            bottom: 1.25rem;
+            right: 1.25rem;
+            z-index: 50;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 9999px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            background-color: #374151;
+            color: #fbbf24;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: background-color 0.2s, color 0.2s;
+        }
+        html:not(.dark) #dark-mode-toggle {
+            background-color: #e5e7eb;
+            color: #1d4ed8;
+        }
+
     </style>
+    <script>
+        (function () {
+            // 获取 UTC+8 当前小时
+            var now = new Date();
+            var utc8Hour = (now.getUTCHours() + 8) % 24;
+            // 18:00 ~ 次日 06:00 为暗夜模式
+            var isNight = utc8Hour >= 18 || utc8Hour < 6;
+
+            function applyDark(dark) {
+                if (dark) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }
+
+            // 初始化
+            applyDark(isNight);
+
+            // DOM 加载后添加切换按钮
+            document.addEventListener('DOMContentLoaded', function () {
+                var btn = document.createElement('button');
+                btn.id = 'dark-mode-toggle';
+                btn.title = '切换暗夜/日间模式';
+                var isDark = document.documentElement.classList.contains('dark');
+                btn.textContent = isDark ? '☀' : '🌙';
+                btn.addEventListener('click', function () {
+                    isDark = !isDark;
+                    applyDark(isDark);
+                    btn.textContent = isDark ? '☀' : '🌙';
+                });
+                document.body.appendChild(btn);
+            });
+        })();
+    </script>
 </head>
 <body class="bg-gray-100 text-gray-800">
     <div class="container mx-auto px-4 py-8">
@@ -351,7 +428,7 @@
                                         </div>
                                     </td>
                                     <td class="py-3 px-2 w-16">
-                                        <img src="https://images.evetech.net/types/{{ km.ship_type_id }}/render?size=64" class="w-12 h-12 rounded-md" alt="Ship">
+                                        <img src="https://images.newdoublex.space/types/{{ km.ship_type_id }}/icon?size=64" class="w-12 h-12 rounded-md" alt="Ship">
                                     </td>
                                     <td class="py-3 px-2 w-35">
                                         <div class="truncate">

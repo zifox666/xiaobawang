@@ -194,7 +194,7 @@ async def html2pic_br(
         element_width = bounding_box["width"]
         element_height = bounding_box["height"]
 
-        await page.set_viewport_size({"width": int(element_width), "height": int(element_height)})
+        await page.set_viewport_size({"width": int(element_width), "height": min(3000, int(element_height))})
 
         await page.wait_for_load_state("networkidle")
 
@@ -298,10 +298,10 @@ async def html2pic_war_beacon(
             extra_height = 320 if count == 2 else 100
             viewport_size = {
                 "width": int(main_element_box["width"] + 20 * count),
-                "height": max(1080, int(capture_element_box["height"] + extra_height)),
+                "height": min(3240, max(1080, int(capture_element_box["height"] + extra_height))),
             }
         else:
-            viewport_size = {"width": 1920, "height": int(main_element_box["height"] + 100)}
+            viewport_size = {"width": 1920, "height": min(3240, int(main_element_box["height"] + 100))}
 
         await page.set_viewport_size(viewport_size)
         await page.wait_for_timeout(1000)
@@ -315,8 +315,8 @@ async def html2pic_war_beacon(
             if not capture_element_box:
                 raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
 
-            # 额外增加高度
-            viewport_size["height"] = int(capture_element_box["height"] + 300)
+            # 额外增加高度，限制最大高度为 3000
+            viewport_size["height"] = min(3000, int(capture_element_box["height"] + 300))
             await page.set_viewport_size(viewport_size)
             await page.wait_for_timeout(1000)
 
