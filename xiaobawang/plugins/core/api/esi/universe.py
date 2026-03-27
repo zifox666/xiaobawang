@@ -58,7 +58,7 @@ class ESIClient(BaseClient):
             分类的名称列表
         """
         result = {}
-        endpoint = f"/universe/names/?{ESI_VERSION_TAG}"
+        endpoint = "/universe/names/"
 
         if isinstance(ids, int):
             ids = [ids]
