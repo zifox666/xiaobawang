@@ -40,7 +40,9 @@ class EVEServerStatus:
         self.api_status = await esi_client.get_api_status()
         try:
             if not plugin_config.tq_status_url:
-                r = await self._client.get("https://esi.evetech.net/latest/status/?datasource=tranquility")
+                r = await self._client.get(
+                    "https://esi.evetech.net/status/?X-Compatibility-Date=2025-12-16"
+                )
                 if r.status_code == 200:
                     self.status = r.json()
                 elif r.status_code // 100 == 5:

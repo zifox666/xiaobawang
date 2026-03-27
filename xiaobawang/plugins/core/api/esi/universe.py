@@ -10,11 +10,13 @@ ALLOW_CATEGORY = Literal[
     "agents", "corporations", "characters", "alliances", "systems", "constellations", "regions", "stations"
 ]
 
+ESI_VERSION_TAG = "X-Compatibility-Date=2025-12-16"
+
 
 class ESIClient(BaseClient):
     def __init__(self):
         super().__init__()
-        self._base_url = "https://esi.evetech.net/latest"
+        self._base_url = "https://esi.evetech.net"
         self.batch_size = 500
 
     @cache_result(expire_time=cache.TIME_DAY, prefix="esi:get_universe_id", exclude_args=[0])
@@ -33,7 +35,7 @@ class ESIClient(BaseClient):
         Return:
             ID int
         """
-        endpoint = f"/universe/ids/?language={lang}"
+        endpoint = f"/universe/ids/?language={lang}&{ESI_VERSION_TAG}"
         data = [name]
         r = await self._post(endpoint, data)
 
@@ -55,7 +57,7 @@ class ESIClient(BaseClient):
             分类的名称列表
         """
         result = {}
-        endpoint = "/universe/names/?datasource=tranquility"
+        endpoint = f"/universe/names/?{ESI_VERSION_TAG}"
 
         if isinstance(ids, int):
             ids = [ids]
@@ -95,17 +97,23 @@ class ESIClient(BaseClient):
             包含星系信息的字典
         """
         try:
-            system_resp = await self._get(f"/universe/systems/{system_id}/")
+            system_resp = await self._get(
+                f"/universe/systems/{system_id}/?{ESI_VERSION_TAG}"
+            )
             constellation_id = system_resp.get("constellation_id")
 
             const_resp = {}
             if constellation_id:
-                const_resp = await self._get(f"/universe/constellations/{constellation_id}/")
+                const_resp = await self._get(
+                    f"/universe/constellations/{constellation_id}/?{ESI_VERSION_TAG}"
+                )
 
             region_resp = {}
             region_id = const_resp.get("region_id")
             if region_id:
-                region_resp = await self._get(f"/universe/regions/{region_id}/")
+                region_resp = await self._get(
+                    f"/universe/regions/{region_id}/?{ESI_VERSION_TAG}"
+                )
 
             return {
                 "system_id": system_id,
@@ -129,7 +137,7 @@ class ESIClient(BaseClient):
         :return: 卫星信息
         """
         try:
-            endpoint = f"/universe/moons/{moon_id!s}/?datasource=tranquility"
+            endpoint = f"/universe/moons/{moon_id!s}/?{ESI_VERSION_TAG}"
             data = await self._get(endpoint)
             return data
         except Exception as e:
@@ -150,7 +158,9 @@ class ESIClient(BaseClient):
         :return:
         """
         try:
-            endpoint = f"/universe/{type_}/{_id}/?datasource&language={lang}"
+            endpoint = (
+                f"/universe/{type_}/{_id}/?datasource&language={lang}&{ESI_VERSION_TAG}"
+            )
             data = await self._get(endpoint)
             if "name" in data:
                 return data["name"]
@@ -166,7 +176,7 @@ class ESIClient(BaseClient):
         :return: API状态
         """
         try:
-            endpoint = "https://esi.evetech.net/status?X-Compatibility-Date=2025-12-16"
+            endpoint = f"https://esi.evetech.net/status?{ESI_VERSION_TAG}"
             r = await self._client.get(url=endpoint)
             r.raise_for_status()
             data = r.json()
@@ -199,7 +209,7 @@ class ESIClient(BaseClient):
         :return: 服务器状态
         """
         try:
-            endpoint = "/status/?datasource=tranquility"
+            endpoint = f"/status/?{ESI_VERSION_TAG}"
             return await self._get(endpoint)
         except Exception as e:
             logger.error(f"获取服务器状态失败: {e}")
@@ -213,7 +223,7 @@ class ESIClient(BaseClient):
         :return: 角色的公共信息
         """
         try:
-            endpoint = f"/characters/{character_id}/?datasource=tranquility"
+            endpoint = f"/characters/{character_id}/?{ESI_VERSION_TAG}"
             return await self._get(endpoint)
         except Exception as e:
             logger.error(f"获取角色公共信息失败: {e}")

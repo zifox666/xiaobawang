@@ -23,7 +23,10 @@ require_scopes("structure_notifications", [
 
 cache = get_cache("structure_notifications")
 
-ESI_NOTIFICATIONS_URL = "https://esi.evetech.net/latest/characters/{character_id}/notifications/"
+ESI_NOTIFICATIONS_URL = (
+    "https://esi.evetech.net/characters/{character_id}/notifications/"
+    + "?X-Compatibility-Date=2025-12-16"
+)
 
 
 # ── 订阅 CRUD ──────────────────────────────────────────────

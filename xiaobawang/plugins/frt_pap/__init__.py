@@ -76,7 +76,7 @@ async def get_corp_name(corp_id: int) -> str:
     try:
         async with httpx.AsyncClient() as client:
             r = await client.post(
-                "https://esi.evetech.net/latest/universe/names/",
+                "https://esi.evetech.net/universe/names/?X-Compatibility-Date=2025-12-16",
                 json=[corp_id],
                 headers={"Content-Type": "application/json"}
             )
@@ -251,6 +251,3 @@ async def _handle_pap(
         )
 
         await pap_query.finish(UniMessage.image(raw=pic))
-
-
-

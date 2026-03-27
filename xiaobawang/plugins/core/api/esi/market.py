@@ -16,7 +16,7 @@ from nonebot_plugin_apscheduler import scheduler
 
 class MarketHandle:
     def __init__(self):
-        self.esi_base_url: str = "https://esi.evetech.net/latest/"
+        self.esi_base_url: str = "https://esi.evetech.net/"
         self.client = get_client()
 
         if plugin_config.EVE_MARKET_API == "esi_cache":
@@ -35,7 +35,7 @@ class MarketHandle:
         :return: 市场数据列表
         """
         url = f"{self.esi_base_url}markets/{region_id}/orders/"
-        params = {}
+        params = {"X-Compatibility-Date": "2025-12-16"}
         if type_id:
             params["type_id"] = type_id
 
@@ -204,7 +204,7 @@ class MarketHandle:
             return cached_data
 
         url = f"{self.esi_base_url}markets/{region_id}/history/"
-        params = {"type_id": type_id}
+        params = {"type_id": type_id, "X-Compatibility-Date": "2025-12-16"}
 
         try:
             response = await self.client.get(url, params=params)
