@@ -176,7 +176,7 @@ class ESIClient(BaseClient):
         :return: API状态
         """
         try:
-            endpoint = f"https://esi.evetech.net/status?{ESI_VERSION_TAG}"
+            endpoint = f"https://esi.evetech.net/meta/status?{ESI_VERSION_TAG}"
             r = await self._client.get(url=endpoint)
             r.raise_for_status()
             data = r.json()
