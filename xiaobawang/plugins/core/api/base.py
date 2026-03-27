@@ -4,6 +4,7 @@ import httpx
 from nonebot import logger
 
 from ..utils.common.http_client import get_client
+from ..config import plugin_config
 
 
 class BaseClient:
@@ -14,6 +15,8 @@ class BaseClient:
     def __init__(self):
         self._client: httpx.AsyncClient | None = get_client()
         self._base_url: str = ""
+        self.headers: dict[str, str] = {}
+        self.headers["user-agent"] = plugin_config.user_agent
 
     async def _get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict:
         """
@@ -25,7 +28,7 @@ class BaseClient:
         url = f"{self._base_url}{endpoint}"
 
         try:
-            response = await self._client.get(url, params=params)
+            response = await self._client.get(url, params=params, headers=self.headers)
             logger.debug(f"[{endpoint}]{response.status_code} {response.url}")
             response.raise_for_status()
             return response.json()
@@ -45,7 +48,7 @@ class BaseClient:
         """
         url = f"{self._base_url}{endpoint}"
         try:
-            response = await self._client.post(url, json=data)
+            response = await self._client.post(url, json=data, headers=self.headers)
             logger.debug(f"[{endpoint}]{response.status_code} {response.url}\ndata: {data}")
             logger.debug(f"响应内容: {response.json()}")
             response.raise_for_status()

@@ -16,8 +16,11 @@ from nonebot_plugin_apscheduler import scheduler
 
 class MarketHandle:
     def __init__(self):
-        self.esi_base_url: str = "https://esi.evetech.net/latest/"
+        self.esi_base_url: str = "https://esi.evetech.net"
         self.client = get_client()
+        self.headers = {
+            "X-Compatibility-Date": "2025-12-16",
+        }
 
         if plugin_config.EVE_MARKET_API == "esi_cache":
             logger.info("启用定时市场缓存")
@@ -40,7 +43,7 @@ class MarketHandle:
             params["type_id"] = type_id
 
         try:
-            response = await self.client.get(url, params=params)
+            response = await self.client.get(url, params=params, headers=self.headers)
             response.raise_for_status()
 
             total_pages = int(response.headers.get("x-pages", 1))
@@ -77,7 +80,7 @@ class MarketHandle:
         :return: 页面数据
         """
         try:
-            response = await self.client.get(url, params=params)
+            response = await self.client.get(url, params=params, headers=self.headers)
             response.raise_for_status()
             return response.json()
         except Exception as e:
