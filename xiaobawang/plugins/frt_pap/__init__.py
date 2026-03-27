@@ -8,7 +8,6 @@ from nonebot.exception import FinishedException
 from nonebot.plugin import PluginMetadata
 
 from .config import Config, plugin_config
-from ..core.utils.common.http_client import create_client
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_uninfo")

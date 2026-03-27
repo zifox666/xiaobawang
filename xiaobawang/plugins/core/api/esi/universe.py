@@ -14,8 +14,9 @@ ALLOW_CATEGORY = Literal[
 class ESIClient(BaseClient):
     def __init__(self):
         super().__init__()
-        self._base_url = "https://esi.evetech.net/"
+        self._base_url = "https://esi.evetech.net"
         self.batch_size = 500
+        self.headers["X-Compatibility-Date"] = "2025-12-16"
 
     @cache_result(expire_time=cache.TIME_DAY, prefix="esi:get_universe_id", exclude_args=[0])
     async def get_universe_id(
@@ -183,7 +184,7 @@ class ESIClient(BaseClient):
                 "green": green,
                 "yellow": yellow,
                 "red": red,
-                "total": len(data),
+                "total": len(routes),
             }
         except Exception as e:
             logger.error(f"获取API状态失败: {e}")

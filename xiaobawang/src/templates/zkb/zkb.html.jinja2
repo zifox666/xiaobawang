@@ -80,21 +80,6 @@
 
             // 初始化
             applyDark(isNight);
-
-            // DOM 加载后添加切换按钮
-            document.addEventListener('DOMContentLoaded', function () {
-                var btn = document.createElement('button');
-                btn.id = 'dark-mode-toggle';
-                btn.title = '切换暗夜/日间模式';
-                var isDark = document.documentElement.classList.contains('dark');
-                btn.textContent = isDark ? '☀' : '🌙';
-                btn.addEventListener('click', function () {
-                    isDark = !isDark;
-                    applyDark(isDark);
-                    btn.textContent = isDark ? '☀' : '🌙';
-                });
-                document.body.appendChild(btn);
-            });
         })();
     </script>
 </head>

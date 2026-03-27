@@ -16,7 +16,7 @@ from nonebot_plugin_apscheduler import scheduler
 
 class MarketHandle:
     def __init__(self):
-        self.esi_base_url: str = "https://esi.evetech.net"
+        self.esi_base_url: str = "https://esi.evetech.net/"
         self.client = get_client()
         self.headers = {
             "X-Compatibility-Date": "2025-12-16",
@@ -237,7 +237,7 @@ class MarketHandle:
             return result
 
         except Exception as e:
-            logger.error(f"获取市场历史数据失败 type_id: {type_id}, region_id: {region_id}\n {e.__traceback__}")
+            logger.error(f"获取市场历史数据失败 type_id: {type_id}, region_id: {region_id}\n {traceback.format_exc()}")
             return None
 
 
