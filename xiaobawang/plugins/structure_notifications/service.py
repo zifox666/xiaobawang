@@ -5,12 +5,12 @@
 import json
 from datetime import datetime, timezone
 
-import httpx
 from nonebot import logger
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from ..cache import get_cache
+from ..core.utils.common.http_client import create_client
 from ..eve_oauth.api import get_access_token, require_scopes
 from .categories import ALL_STRUCTURE_TYPES, TYPE_TO_CATEGORY, get_type_label
 from .config import plugin_config
@@ -23,7 +23,7 @@ require_scopes("structure_notifications", [
 
 cache = get_cache("structure_notifications")
 
-ESI_NOTIFICATIONS_URL = "https://esi.evetech.net/latest/characters/{character_id}/notifications/"
+ESI_NOTIFICATIONS_URL = "https://esi.evetech.net/characters/{character_id}/notifications/"
 
 
 # ── 订阅 CRUD ──────────────────────────────────────────────
@@ -126,7 +126,7 @@ async def fetch_notifications(character_id: int) -> list[dict]:
 
     proxy = plugin_config.structure_notify_proxy
     try:
-        async with httpx.AsyncClient(timeout=20, proxy=proxy) as client:
+        async with create_client(timeout=20, proxy=proxy) as client:
             resp = await client.get(url, headers=headers)
             if resp.status_code == 304:
                 return []

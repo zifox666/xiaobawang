@@ -14,7 +14,7 @@ ALLOW_CATEGORY = Literal[
 class ESIClient(BaseClient):
     def __init__(self):
         super().__init__()
-        self._base_url = "https://esi.evetech.net/latest"
+        self._base_url = "https://esi.evetech.net"
         self.batch_size = 500
 
     @cache_result(expire_time=cache.TIME_DAY, prefix="esi:get_universe_id", exclude_args=[0])
@@ -55,7 +55,7 @@ class ESIClient(BaseClient):
             分类的名称列表
         """
         result = {}
-        endpoint = "/universe/names/?datasource=tranquility"
+        endpoint = "/universe/names/"
 
         if isinstance(ids, int):
             ids = [ids]
@@ -129,7 +129,7 @@ class ESIClient(BaseClient):
         :return: 卫星信息
         """
         try:
-            endpoint = f"/universe/moons/{moon_id!s}/?datasource=tranquility"
+            endpoint = f"/universe/moons/{moon_id!s}/"
             data = await self._get(endpoint)
             return data
         except Exception as e:
@@ -150,7 +150,7 @@ class ESIClient(BaseClient):
         :return:
         """
         try:
-            endpoint = f"/universe/{type_}/{_id}/?datasource&language={lang}"
+            endpoint = f"/universe/{type_}/{_id}/?language={lang}"
             data = await self._get(endpoint)
             if "name" in data:
                 return data["name"]
@@ -166,7 +166,7 @@ class ESIClient(BaseClient):
         :return: API状态
         """
         try:
-            endpoint = "https://esi.evetech.net/status.json?version=latest"
+            endpoint = "https://esi.evetech.net/meta/status"
             r = await self._client.get(url=endpoint)
             r.raise_for_status()
             data = r.json()
@@ -199,7 +199,7 @@ class ESIClient(BaseClient):
         :return: 服务器状态
         """
         try:
-            endpoint = "/status/?datasource=tranquility"
+            endpoint = "/status/"
             return await self._get(endpoint)
         except Exception as e:
             logger.error(f"获取服务器状态失败: {e}")
@@ -213,7 +213,7 @@ class ESIClient(BaseClient):
         :return: 角色的公共信息
         """
         try:
-            endpoint = f"/characters/{character_id}/?datasource=tranquility"
+            endpoint = f"/characters/{character_id}/"
             return await self._get(endpoint)
         except Exception as e:
             logger.error(f"获取角色公共信息失败: {e}")

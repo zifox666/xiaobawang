@@ -16,7 +16,7 @@ from nonebot_plugin_apscheduler import scheduler
 
 class MarketHandle:
     def __init__(self):
-        self.esi_base_url: str = "https://esi.evetech.net/latest/"
+        self.esi_base_url: str = "https://esi.evetech.net/"
         self.client = get_client()
 
         if plugin_config.EVE_MARKET_API == "esi_cache":

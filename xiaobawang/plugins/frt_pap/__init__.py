@@ -8,6 +8,7 @@ from nonebot.exception import FinishedException
 from nonebot.plugin import PluginMetadata
 
 from .config import Config, plugin_config
+from ..core.utils.common.http_client import create_client
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_uninfo")
@@ -74,9 +75,9 @@ async def get_corp_name(corp_id: int) -> str:
     if not corp_id:
         return "Unknown Corporation"
     try:
-        async with httpx.AsyncClient() as client:
+        async with create_client() as client:
             r = await client.post(
-                "https://esi.evetech.net/latest/universe/names/",
+                "https://esi.evetech.net/universe/names/",
                 json=[corp_id],
                 headers={"Content-Type": "application/json"}
             )
@@ -251,6 +252,3 @@ async def _handle_pap(
         )
 
         await pap_query.finish(UniMessage.image(raw=pic))
-
-
-
