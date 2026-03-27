@@ -23,10 +23,7 @@ require_scopes("structure_notifications", [
 
 cache = get_cache("structure_notifications")
 
-ESI_NOTIFICATIONS_URL = (
-    "https://esi.evetech.net/characters/{character_id}/notifications/"
-    + "?X-Compatibility-Date=2025-12-16"
-)
+ESI_NOTIFICATIONS_URL = "https://esi.evetech.net/characters/{character_id}/notifications/"
 
 
 # ── 订阅 CRUD ──────────────────────────────────────────────
@@ -125,6 +122,7 @@ async def fetch_notifications(character_id: int) -> list[dict]:
     headers = {
         "Accept": "application/json",
         "Authorization": f"Bearer {access_token}",
+        "X-Compatibility-Date": "2025-12-16",
     }
 
     proxy = plugin_config.structure_notify_proxy

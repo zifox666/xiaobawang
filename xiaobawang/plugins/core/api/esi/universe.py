@@ -18,6 +18,7 @@ class ESIClient(BaseClient):
         super().__init__()
         self._base_url = "https://esi.evetech.net"
         self.batch_size = 500
+        self.headers["X-Compatibility-Date"] = "2025-12-16"
 
     @cache_result(expire_time=cache.TIME_DAY, prefix="esi:get_universe_id", exclude_args=[0])
     async def get_universe_id(
@@ -176,28 +177,24 @@ class ESIClient(BaseClient):
         :return: API状态
         """
         try:
-            endpoint = f"https://esi.evetech.net/meta/status?{ESI_VERSION_TAG}"
-            r = await self._client.get(url=endpoint)
-            r.raise_for_status()
-            data = r.json()
-            green, yellow, red, eve_status = 0, 0, 0,  "eve_status"
+            logger.debug(self.headers)
+            endpoint = "/meta/status"
+            data = await self._get(endpoint)
+            green, yellow, red = 0, 0, 0
             for i in data:
                 status = i.get("status")
-                if status == "green":
+                if status == "OK":
                     green += 1
-                elif status == "yellow":
+                elif status == "Degraded":
                     yellow += 1
                 else:
                     red += 1
-                if i.get("endpoint") == "esi-status-protobuf":
-                    eve_status = status
 
             return {
                 "green": green,
                 "yellow": yellow,
                 "red": red,
-                "total": len(data),
-                "eve_status": eve_status
+                "total": len(data)
             }
         except Exception as e:
             logger.error(f"获取API状态失败: {e}")

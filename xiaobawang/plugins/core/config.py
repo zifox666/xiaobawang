@@ -15,7 +15,7 @@ class Config(BaseModel):
 
     proxy: str = None
 
-    user_agent: str = None
+    user_agent: str = "xiaobawang/1.1.0 (https://github.com/zifox666/xiaobawang)"
 
     zkb_listener_method: str = "r2z2"
     zkb_listener_url: str = "https://zkillredisq.stream/listen.php"

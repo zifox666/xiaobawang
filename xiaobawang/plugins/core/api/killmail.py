@@ -23,9 +23,9 @@ async def get_zkb_killmail(
     except Exception as e:
         raise e
     zkb = r.json()[0].get("zkb")
-    esi_url = f"https://esi.evetech.net/killmails/{kill_id}/{zkb.get('hash')}/?X-Compatibility-Date=2025-12-16"
+    esi_url = f"https://esi.evetech.net/killmails/{kill_id}/{zkb.get('hash')}/"
     try:
-        r = await client.get(esi_url)
+        r = await client.get(esi_url, headers={"X-Compatibility-Date": "2025-12-16"})
         r.raise_for_status()
     except Exception as e:
         logger.error(e)
