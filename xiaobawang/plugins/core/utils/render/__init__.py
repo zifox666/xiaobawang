@@ -434,8 +434,6 @@ async def html2gif(
     frame_interval = 1.0 / fps
     max_capture_frames = max(1, int(capture_timeout_seconds * fps))
     min_capture_frames = max(1, int(min_capture_seconds * fps))
-    # 连续若干帧状态不变，视为已进入 live 或播放停止
-    stable_stop_frames = max(6, int(2.0 * fps))
 
     async with get_new_page(
         viewport={"width": viewport_width, "height": viewport_height},
@@ -529,62 +527,44 @@ async def html2gif(
         except Exception:
             clip = None
 
-        async def _get_playback_state() -> tuple[bool, str]:
-            """返回 (是否有可见 Jump to live, 状态签名) 用于停止判断。"""
+        async def _get_time_state() -> tuple[str, str, bool]:
+            """
+            读取页面显示的 "HH:MM:SS / HH:MM:SS"。
+            返回 (current, total, is_done)。
+            is_done=True 表示当前时间已到达总时长。
+            """
             try:
-                state = await page.evaluate("""
+                result = await page.evaluate("""
                     () => {
-                        const isVisible = (el) => {
-                            if (!el) return false;
-                            const style = window.getComputedStyle(el);
-                            const rect = el.getBoundingClientRect();
-                            return (
-                                style.display !== 'none' &&
-                                style.visibility !== 'hidden' &&
-                                rect.width > 0 &&
-                                rect.height > 0
-                            );
-                        };
-
-                        const buttons = Array.from(document.querySelectorAll('button'));
-                        const jumpVisible = buttons.some((b) => {
-                            const text = (b.textContent || '').trim();
-                            return text === 'Jump to live' && isVisible(b);
-                        });
-
-                        const root = document.querySelector('main') || document.body;
-                        const text = root ? root.innerText : '';
-                        const clocks = (text.match(/\b\d{2}:\d{2}:\d{2}\b/g) || []).slice(0, 6);
-                        const counts = (text.match(/\b\d+(?:\.\d+)?[bm]?\b/gi) || []).slice(0, 8);
-                        return { jumpVisible, signature: `${clocks.join('|')}::${counts.join('|')}` };
+                        const text = (document.body && document.body.innerText) || '';
+                        // killmail.app 在进度区显示 "HH:MM:SS / HH:MM:SS"
+                        const m = text.match(/(\d{2}:\d{2}:\d{2})\s*\/\s*(\d{2}:\d{2}:\d{2})/);
+                        if (m) {
+                            return { current: m[1], total: m[2], done: m[1] === m[2] };
+                        }
+                        return { current: '', total: '', done: false };
                     }
                 """)
-                return bool(state.get("jumpVisible", False)), str(state.get("signature", ""))
+                current = str(result.get("current", ""))
+                total = str(result.get("total", ""))
+                done = bool(result.get("done", False))
+                return current, total, done
             except Exception:
-                return True, ""
+                return "", "", False
 
         frames: list[Image.Image] = []
-        last_signature: str | None = None
-        stable_frames = 0
 
         for idx in range(max_capture_frames):
             screenshot = await page.screenshot(clip=clip) if clip else await page.screenshot()
             frame = Image.open(BytesIO(screenshot)).convert("P", palette=Image.ADAPTIVE)
             frames.append(frame)
 
-            if stop_when_live:
-                jump_visible, signature = await _get_playback_state()
-                if signature == last_signature:
-                    stable_frames += 1
-                else:
-                    stable_frames = 0
-                    last_signature = signature
-
-                if idx + 1 >= min_capture_frames:
-                    if (not jump_visible and stable_frames >= stable_stop_frames) or (
-                        stable_frames >= stable_stop_frames * 2
-                    ):
-                        break
+            if stop_when_live and idx + 1 >= min_capture_frames:
+                _, total, is_done = await _get_time_state()
+                # 只有确认拿到了总时长且当前已到达终点才停
+                if is_done and total:
+                    logger.debug(f"html2gif: 动画播完 total={total}，共采集 {len(frames)} 帧，停止录制")
+                    break
 
             await asyncio.sleep(frame_interval)
 

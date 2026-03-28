@@ -193,7 +193,7 @@ async def _(event: Event, url: str = RegexStr()):
             url=url,
             element="main",
             viewport_width=1280,
-            viewport_height=720,
+            viewport_height=800,
             fps=8,
             capture_timeout_seconds=180,
             min_capture_seconds=2,
@@ -203,7 +203,7 @@ async def _(event: Event, url: str = RegexStr()):
             stop_when_live=True,
         )
     except Exception as e:
-        logger.warning(f"killmail.app GIF 生成失败，回退静态图: {e!s}")
+        logger.warning(f"killmail.app GIF 生成失败")
 
     await save_msg_cache(
         await UniMessage.image(raw=gif).send(target=event),
