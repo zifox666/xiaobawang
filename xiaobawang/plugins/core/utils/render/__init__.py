@@ -392,48 +392,48 @@ async def html2gif(
     url: str,
     element: str = "main",
     viewport_width: int = 1280,
-    viewport_height: int = 720,
+    viewport_height: int = 850,
     fps: int = 8,
-    capture_timeout_seconds: float = 180.0,
-    min_capture_seconds: float = 2.0,
+    min_output_seconds: float = 8.0,
     max_output_seconds: float = 15.0,
-    auto_click_play: bool = True,
-    drag_timeline_to_start: bool = True,
-    prefer_speed_labels: tuple[str, ...] = ("100x", "20x", "5x", "1x"),
-    stop_when_live: bool = True,
+    seek_wait_ms: int = 200,
 ) -> bytes:
     """
-    使用 Playwright 连续截帧并生成 GIF。
+    通过 Seek 时间轴逐帧截图生成 GIF（仅适用于带时间轴的 killmail.app 战斗页面）。
+
+    原理：直接按比例点击时间轴 canvas，定位到每个关键帧，无需等待实时播放。
+    速度：约 200~500ms/帧，120 帧约需 50 秒，远优于实时录制（约 170 秒）。
+
+    GIF 时长根据战斗总时长自适应，计算公式：total_seconds / 120，结果夹在
+    [min_output_seconds, max_output_seconds] 之间（每 2 分钟战斗对应约 1 秒 GIF）。
+    无法读取时长时回退到 max_output_seconds。
 
     Args:
-        url: 页面 URL
-        element: 需要裁剪的元素选择器，默认 main
+        url: 页面 URL（需含 canvas.block.h-64.w-full 时间轴）
+        element: 截图裁剪元素选择器，默认 main
         viewport_width: 视口宽度
         viewport_height: 视口高度
         fps: GIF 帧率
-        capture_timeout_seconds: 最长录制时长（秒），用于兜底
-        min_capture_seconds: 最短录制时长（秒），避免过早停止
-        max_output_seconds: GIF 最大输出时长，超过会加速压缩到该时长内
-        auto_click_play: 是否自动尝试点击播放/动画按钮
-        drag_timeline_to_start: 是否尝试将时间轴拖到最左侧
-        prefer_speed_labels: 倍速按钮优先级（从高到低）
-        stop_when_live: 到达 live 后是否自动停止录制
+        min_output_seconds: GIF 最短时长（秒），默认 8
+        max_output_seconds: GIF 最长时长（秒），默认 15
+        seek_wait_ms: 每次 seek 后等待渲染的毫秒数
 
     Returns:
         GIF 二进制数据
+
+    Raises:
+        RuntimeError: 页面无时间轴或未采集到帧
     """
     if fps <= 0:
         raise ValueError("fps 必须大于 0")
-    if capture_timeout_seconds <= 0:
-        raise ValueError("capture_timeout_seconds 必须大于 0")
-    if min_capture_seconds < 0:
-        raise ValueError("min_capture_seconds 不能小于 0")
-    if max_output_seconds <= 0:
-        raise ValueError("max_output_seconds 必须大于 0")
+    if min_output_seconds <= 0 or max_output_seconds <= 0:
+        raise ValueError("输出时长必须大于 0")
+    if min_output_seconds > max_output_seconds:
+        raise ValueError("min_output_seconds 不能大于 max_output_seconds")
 
-    frame_interval = 1.0 / fps
-    max_capture_frames = max(1, int(capture_timeout_seconds * fps))
-    min_capture_frames = max(1, int(min_capture_seconds * fps))
+    frame_duration_ms = max(20, int(1000 / fps))
+    # n_frames 在读完时长后确定，先用最大值做占位
+    n_frames: int = max(2, int(fps * max_output_seconds))
 
     async with get_new_page(
         viewport={"width": viewport_width, "height": viewport_height},
@@ -443,158 +443,94 @@ async def html2gif(
         await page.wait_for_load_state("networkidle")
         await page.wait_for_timeout(1000)
 
-        if drag_timeline_to_start:
-            try:
-                timeline = await page.query_selector("canvas.block.h-64.w-full")
-                if timeline:
-                    parent = await timeline.evaluate_handle("el => el.parentElement")
-                    box = await parent.bounding_box() if parent else None
-                    if box and box["width"] > 20 and box["height"] > 10:
-                        start_x = box["x"] + box["width"] - 5
-                        end_x = box["x"] + 5
-                        y = box["y"] + box["height"] / 2
-                        await page.mouse.move(start_x, y)
-                        await page.mouse.down()
-                        await page.mouse.move(end_x, y, steps=25)
-                        await page.mouse.up()
-                        await page.wait_for_timeout(200)
-            except Exception as e:
-                logger.debug(f"拖动时间轴到起点失败: {e!s}")
+        # 检查时间轴是否存在
+        canvas = page.locator("canvas.block.h-64.w-full")
+        if await canvas.count() == 0:
+            raise RuntimeError("页面无时间轴 canvas，不支持 GIF 生成")
 
-        # 优先选择更高倍速，尽快播放完动画
-        for speed_text in prefer_speed_labels:
-            try:
-                btn = page.locator("button", has_text=speed_text).first
-                if await btn.count() > 0:
-                    await btn.click()
-                    await page.wait_for_timeout(100)
-                    break
-            except Exception:
-                continue
+        canvas_box = await canvas.bounding_box()
+        if not canvas_box or canvas_box["width"] < 10:
+            raise RuntimeError("时间轴 canvas 尺寸异常")
 
-        if auto_click_play:
-            played = False
-            # killmail.app 的播放按钮通常是无文本 SVG 按钮（path 前缀固定）
-            try:
-                played = await page.evaluate("""
-                    () => {
-                        const buttons = Array.from(document.querySelectorAll('button'));
-                        const target = buttons.find((b) => {
-                            const d = b.querySelector('svg path')?.getAttribute('d') || '';
-                            return d.startsWith('M240,128a15.74');
-                        });
-                        if (target) {
-                            target.click();
-                            return true;
-                        }
-                        return false;
-                    }
-                """)
-            except Exception:
-                played = False
+        # 拖动时间轴到最左侧（重置到 0 点）
+        cx = canvas_box["x"]
+        cy = canvas_box["y"] + canvas_box["height"] / 2
+        cw = canvas_box["width"]
+        await page.mouse.move(cx + cw - 5, cy)
+        await page.mouse.down()
+        await page.mouse.move(cx, cy, steps=25)
+        await page.mouse.up()
+        await page.wait_for_timeout(200)
 
-            if not played:
-                candidate_selectors = [
-                    'button:has-text("Play")',
-                    'button:has-text("播放")',
-                    'button:has-text("Animate")',
-                    'button:has-text("动画")',
-                    '[aria-label*="play" i]',
-                    '[title*="play" i]',
-                ]
-                for selector in candidate_selectors:
-                    try:
-                        btn = await page.query_selector(selector)
-                        if btn:
-                            await btn.click()
-                            await page.wait_for_timeout(300)
-                            break
-                    except Exception:
-                        continue
-
-        clip = None
+        # 读取战斗总时长，自适应计算 GIF 输出帧数
         try:
-            element_handle = await page.wait_for_selector(element, timeout=3000)
-            if element_handle:
-                box = await element_handle.bounding_box()
+            total_seconds: int = await page.evaluate("""
+                () => {
+                    const m = (document.body.innerText || '').match(
+                        /(\\d{2}):(\\d{2}):(\\d{2})\\s*\\/\\s*(\\d{2}):(\\d{2}):(\\d{2})/
+                    );
+                    if (!m) return 0;
+                    return (+m[4]) * 3600 + (+m[5]) * 60 + (+m[6]);
+                }
+            """)
+        except Exception:
+            total_seconds = 0
+
+        if total_seconds > 0:
+            # 每 2 分钟战斗 ≈ 1 秒 GIF，夹在 [min, max] 范围内
+            adaptive = total_seconds / 120.0
+            output_seconds = max(min_output_seconds, min(max_output_seconds, adaptive))
+        else:
+            output_seconds = max_output_seconds
+
+        n_frames = max(2, int(fps * output_seconds))
+        logger.debug(
+            f"html2gif: 战斗时长={total_seconds}s，GIF={output_seconds:.1f}s，"
+            f"帧数={n_frames}，url={url}"
+        )
+
+        # 获取截图区域（element 的 bounding box）
+        clip: dict | None = None
+        try:
+            el = await page.wait_for_selector(element, timeout=3000)
+            if el:
+                box = await el.bounding_box()
                 if box and box["width"] > 0 and box["height"] > 0:
                     clip = {
-                        "x": box["x"],
-                        "y": box["y"],
-                        "width": min(box["width"], viewport_width),
-                        "height": min(box["height"], viewport_height),
+                        "x": max(0.0, box["x"]),
+                        "y": max(0.0, box["y"]),
+                        "width": min(box["width"], float(viewport_width)),
+                        "height": min(box["height"], float(viewport_height)),
                     }
         except Exception:
             clip = None
 
-        async def _get_time_state() -> tuple[str, str, bool]:
-            """
-            读取页面显示的 "HH:MM:SS / HH:MM:SS"。
-            返回 (current, total, is_done)。
-            is_done=True 表示当前时间已到达总时长。
-            """
-            try:
-                result = await page.evaluate("""
-                    () => {
-                        const text = (document.body && document.body.innerText) || '';
-                        // killmail.app 在进度区显示 "HH:MM:SS / HH:MM:SS"
-                        const m = text.match(/(\d{2}:\d{2}:\d{2})\s*\/\s*(\d{2}:\d{2}:\d{2})/);
-                        if (m) {
-                            return { current: m[1], total: m[2], done: m[1] === m[2] };
-                        }
-                        return { current: '', total: '', done: false };
-                    }
-                """)
-                current = str(result.get("current", ""))
-                total = str(result.get("total", ""))
-                done = bool(result.get("done", False))
-                return current, total, done
-            except Exception:
-                return "", "", False
-
         frames: list[Image.Image] = []
 
-        for idx in range(max_capture_frames):
-            screenshot = await page.screenshot(clip=clip) if clip else await page.screenshot()
-            frame = Image.open(BytesIO(screenshot)).convert("P", palette=Image.ADAPTIVE)
-            frames.append(frame)
+        for i in range(n_frames):
+            ratio = i / (n_frames - 1)
+            # 点击时间轴对应位置进行 seek
+            await page.mouse.click(cx + ratio * cw, cy)
+            await page.wait_for_timeout(seek_wait_ms)
+            png = await page.screenshot(clip=clip) if clip else await page.screenshot()
+            img = Image.open(BytesIO(png)).convert("P", palette=Image.ADAPTIVE, colors=256)
+            frames.append(img)
 
-            if stop_when_live and idx + 1 >= min_capture_frames:
-                _, total, is_done = await _get_time_state()
-                # 只有确认拿到了总时长且当前已到达终点才停
-                if is_done and total:
-                    logger.debug(f"html2gif: 动画播完 total={total}，共采集 {len(frames)} 帧，停止录制")
-                    break
+        logger.debug(f"html2gif: seek 采集完成，共 {len(frames)} 帧，url={url}")
 
-            await asyncio.sleep(frame_interval)
+    if not frames:
+        raise RuntimeError("未采集到任何帧")
 
-        if not frames:
-            raise RuntimeError("未采集到任何帧")
-        
-        max_output_frames = max(1, int(max_output_seconds * fps))
-        if len(frames) > max_output_frames:
-            if max_output_frames == 1:
-                frames = [frames[-1]]
-            else:
-                sampled_frames: list[Image.Image] = []
-                total = len(frames)
-                for i in range(max_output_frames):
-                    idx = round(i * (total - 1) / (max_output_frames - 1))
-                    sampled_frames.append(frames[idx])
-                frames = sampled_frames
-
-        gif_bytes = BytesIO()
-        frame_duration_ms = max(20, int(frame_interval * 1000))
-
-        frames[0].save(
-            gif_bytes,
-            format="GIF",
-            save_all=True,
-            append_images=frames[1:],
-            duration=frame_duration_ms,
-            loop=0,
-            optimize=True,
-            disposal=2,
-        )
-        return gif_bytes.getvalue()
+    gif_bytes = BytesIO()
+    frames[0].save(
+        gif_bytes,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=frame_duration_ms,
+        loop=0,
+        optimize=True,
+        disposal=2,
+    )
+    return gif_bytes.getvalue()
 
