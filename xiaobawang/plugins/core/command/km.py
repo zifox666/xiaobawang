@@ -1,5 +1,8 @@
+import re
 from arclet.alconna import Arparma
+from nonebot import logger, on_regex
 from nonebot.internal.adapter import Event
+from nonebot.params import RegexStr
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, UniMessage, on_alconna
 
 from ..api.killmail import get_zkb_killmail
@@ -10,16 +13,7 @@ from ..utils.render import render_template, templates_path
 
 __all__ = ["km_handler", "km_sub_push_test"]
 
-km_handler = on_alconna(
-    Alconna(
-        "km",
-        Args["kill_id", str],
-        meta=CommandMeta(description="查询击毁邮件信息"),
-    ),
-    use_cmd_start=True,
-)
-
-km_handler.shortcut(r"https://zkillboard\.com/kill/(\d+)/", command="/km {0}", fuzzy=True)
+km_handler = on_regex(r"https://zkillboard.com/kill/([0-9]{9})/")
 
 km_sub_push_test = on_alconna(
     Alconna(
@@ -33,11 +27,15 @@ km_sub_push_test = on_alconna(
 
 @km_handler.handle()
 async def handle_km(
-    result: Arparma,
     event: Event,
+    url: str = RegexStr(),
 ):
     await emoji_action(event)
-    kill_id = result["kill_id"]
+    matched = re.match(r"https://zkillboard.com/kill/([0-9]{9})/", url)
+    if not matched:
+        logger.debug(f"URL不匹配: {url}")
+        return
+    kill_id = matched.group(1)
     data = await km.get(kill_id)
     data["title"] = "击毁报告"
     pic = await render_template(
@@ -48,8 +46,8 @@ async def handle_km(
         height=100,
     )
     await save_msg_cache(
-        await km_handler.send(UniMessage.reply(event.message_id) + UniMessage.image(raw=pic)),
-        f"https://zkillboard.com/kill/{kill_id}/",
+        await UniMessage.image(raw=pic).send(target=event, reply_to=True),
+        url,
     )
 
 

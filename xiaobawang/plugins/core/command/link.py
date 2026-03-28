@@ -1,6 +1,7 @@
 import re
 
 from arclet.alconna import Alconna, Arparma, Option
+from nonebot import logger
 from nonebot import Bot, on_regex
 from nonebot.internal.adapter import Event
 from nonebot.params import RegexStr
@@ -10,7 +11,7 @@ from ..helper.zkb.killmail import km
 from ..utils.common import convert_time, get_reply_message_id
 from ..utils.common.cache import get_msg_cache, save_msg_cache
 from ..utils.common.emoji import emoji_action
-from ..utils.render import html2pic_br, html2pic_war_beacon
+from ..utils.render import html2gif, html2pic, html2pic_br, html2pic_war_beacon
 
 link = on_alconna(
     Alconna(
@@ -30,6 +31,8 @@ br_preview_zkb = on_regex(r"https://zkillboard.com/related/([0-9]{8})/([0-9]{12}
 br_preview_alt = on_regex(r"https://br.evetools.org/related/([0-9]{8})/([0-9]{12})")
 wb_preview_alt = on_regex(r"https://warbeacon.net/br/report/([a-zA-Z0-9\-]+)")
 wb_preview_time = on_regex(r"https://warbeacon.net/br/related/([0-9]{8})/([0-9]{12})")
+kmapp_preview_time = on_regex(r"https://killmail.app/related/([0-9]{8})/([0-9]{12})")
+kmapp_preview_alt = on_regex(r"https://killmail.app/br/([a-zA-Z0-9\-]+)") # https://killmail.app/br/PTWi4A7Pyh-atioth-2026-03-28
 
 
 @link.handle()
@@ -166,5 +169,43 @@ async def _(event: Event, url: str = RegexStr()):
                 click_text=None,
             )
         ).send(target=event, reply_to=True),
+        url,
+    )
+
+@kmapp_preview_time.handle()
+@kmapp_preview_alt.handle()
+async def _(event: Event, url: str = RegexStr()):
+    await emoji_action(event)
+
+    pic = await html2pic(
+        url=url,
+        viewport_width=1280,
+        viewport_height=720,
+        element="main"
+    )
+    await save_msg_cache(
+        await UniMessage.image(raw=pic).send(target=event, reply_to=True),
+        url,
+    )
+
+    try:
+        gif = await html2gif(
+            url=url,
+            element="main",
+            viewport_width=1280,
+            viewport_height=720,
+            fps=8,
+            capture_timeout_seconds=180,
+            min_capture_seconds=2,
+            max_output_seconds=15,
+            auto_click_play=True,
+            drag_timeline_to_start=True,
+            stop_when_live=True,
+        )
+    except Exception as e:
+        logger.warning(f"killmail.app GIF 生成失败，回退静态图: {e!s}")
+
+    await save_msg_cache(
+        await UniMessage.image(raw=gif).send(target=event),
         url,
     )
