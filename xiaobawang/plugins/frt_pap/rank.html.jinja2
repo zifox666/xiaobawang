@@ -151,7 +151,7 @@
                             <div class="flex flex-wrap gap-1 mt-2">
                                 {% for ship in slacker.ships %}
                                 <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                                    <img src="https://images.evetech.net/types/{{ ship.ship_type_id }}/icon?size=32" class="w-4 h-4 rounded" alt="">
+                                    <img src="https://images.newdoublex.space/types/{{ ship.ship_type_id }}/icon?size=32" class="w-4 h-4 rounded" alt="">
                                     {{ ship.ship_type_name }} ×{{ ship.count }}{% if ship.pap %} · {{ ship.pap }} PAP{% endif %}
                                 </span>
                                 {% endfor %}
@@ -189,7 +189,7 @@
                         
                         <!-- 舰船信息 -->
                         <img 
-                            src="https://images.evetech.net/types/{{ ship.ship_type_id }}/icon?size=64" 
+                            src="https://images.newdoublex.space/types/{{ ship.ship_type_id }}/icon" 
                             alt="{{ ship.ship_type_name }}"
                             class="w-10 h-10 rounded"
                         />

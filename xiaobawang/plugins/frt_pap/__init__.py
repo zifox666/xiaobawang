@@ -74,7 +74,7 @@ async def get_corp_name(corp_id: int) -> str:
     if not corp_id:
         return "Unknown Corporation"
     try:
-        async with create_client() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             r = await client.post(
                 "https://esi.evetech.net/universe/names/",
                 json=[corp_id],
