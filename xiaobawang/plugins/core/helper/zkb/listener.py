@@ -11,8 +11,9 @@ from ...utils.common.cache import cache as redis_cache
 from ...utils.common.http_client import get_client
 from .killmail import km
 
-MAX_CONCURRENT = 20  # 同时处理 km.check 的最大并发数
-WORKER_COUNT = 10  # 消费者 worker 数量
+MAX_CONCURRENT = 5   # 同时处理 km.check 的最大并发数
+WORKER_COUNT = 5    # 消费者 worker 数量
+KM_PROCESS_RATE = 3.0  # 每秒最多触发 km.check() 的次数（令牌桶限速）
 KM_DEDUP_EXPIRE = 600  # killmail_id 去重缓存有效期（秒）
 KM_DEDUP_PREFIX = "zkb:km_seen:"  # Redis 去重 key 前缀
 QUEUE_DEPTH_LOG_INTERVAL = 30  # 队列深度监控日志最短间隔（秒）
@@ -23,6 +24,30 @@ R2Z2_SEQUENCE_KEY = "zkb:r2z2:last_sequence"  # Redis 中持久化 sequence 的 
 R2Z2_POLL_INTERVAL = 0.1  # 成功拉取后的轮询间隔（秒），对应 10次/秒
 R2Z2_EMPTY_WAIT = 6  # 收到 404 后等待秒数（官方要求最少 6 秒）
 R2Z2_RATE_LIMIT_WAIT = 10  # 收到 429 后等待秒数
+
+
+class _TokenBucket:
+    """异步令牌桶限速器，控制每秒最大调用次数"""
+
+    def __init__(self, rate: float):
+        self._rate = rate          # 每秒令牌数
+        self._tokens = rate        # 当前令牌数（初始满桶）
+        self._last_refill = time.monotonic()
+        self._lock = asyncio.Lock()
+
+    async def acquire(self):
+        """消耗一个令牌，不足时等待直至补充"""
+        async with self._lock:
+            now = time.monotonic()
+            elapsed = now - self._last_refill
+            self._tokens = min(self._rate, self._tokens + elapsed * self._rate)
+            self._last_refill = now
+            if self._tokens < 1:
+                wait = (1.0 - self._tokens) / self._rate
+                await asyncio.sleep(wait)
+                self._tokens = 0.0
+            else:
+                self._tokens -= 1.0
 
 
 class ZkbListener:
@@ -50,6 +75,7 @@ class ZkbListener:
             self._stats_deduped: int = 0
             self._stats_processed: int = 0
             self._stats_enqueued: int = 0
+            self._rate_limiter = _TokenBucket(KM_PROCESS_RATE)
 
             self._initialized = True
 
@@ -124,6 +150,7 @@ class ZkbListener:
                     continue
 
                 async with self._semaphore:
+                    await self._rate_limiter.acquire()  # 令牌桶限速
                     try:
                         await km.check(data)
                         self._stats_processed += 1
