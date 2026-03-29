@@ -23,9 +23,15 @@ zkb = on_alconna(
         CommandMeta(
             description="查询ZKB统计数据(character/corporation)",
             usage="/zkb <name> -t [character|corporation]",
-        ),
+        ),    
     ),
+    aliases={"kill"},
     use_cmd_start=True,
+)
+zkb.shortcut(
+    r"^kkn (.+)$",
+    command="zkb {0} -t character -l 10",
+    fuzzy=True
 )
 
 zkb_preview = on_regex(r"https://zkillboard.com/([a-zA-Z]+)/([0-9]+)/")

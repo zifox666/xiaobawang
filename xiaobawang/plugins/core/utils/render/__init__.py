@@ -388,6 +388,216 @@ async def html2pic(
     )
 
 
+async def html2pic_kmapp(url: str, viewport_width: int = 1280) -> bytes:
+    """
+    截取 killmail.app 战斗报告并垂直拼合四个区域：
+
+      1. Overview 比分详情（不含 Kill Feed）
+      2. Pilots 联盟飞行员分布（隐藏中间比较列，避免重复）
+      3. Composition 舰种构成（Ship Type 视图，双侧展开）
+      4. 底部战损进度图（舰队强度 + 累计 ISK 损失）
+
+    Args:
+        url: killmail.app 战斗报告 URL
+        viewport_width: 视口宽度，默认 1280
+
+    Returns:
+        PNG 二进制数据
+    """
+    TITLE_SEL = (
+        "#root > div > main > div > "
+        "div.shrink-0.border-b.px-5.py-3.border-white\/5"
+    )
+    SCORE_SEL = (
+        "#root > div > main > div > "
+        "div.hidden.min-h-0.w-full.flex-col.items-center.overflow-auto.sm\\:flex "
+        "> div > div.flex.items-start.gap-6"
+    )
+    SCROLL_SEL = (
+        "#root > div > main > div > "
+        "div.hidden.min-h-0.w-full.flex-col.items-center.overflow-auto.sm\\:flex"
+    )
+
+    async with get_new_page(
+        viewport={"width": viewport_width, "height": 920},
+        device_scale_factor=1,
+    ) as page:
+        await page.goto(url)
+        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(1500)
+
+        async def _shoot_full_width(selector: str) -> bytes:
+            """截图时统一使用 x=0、宽度=viewport_width，保证各分区宽度一致（居中）。"""
+            el = await page.wait_for_selector(selector, timeout=8000)
+            box = await el.bounding_box()
+            return await page.screenshot(
+                clip={
+                    "x": 0.0,
+                    "y": max(0.0, box["y"]),
+                    "width": float(viewport_width),
+                    "height": box["height"],
+                }
+            )
+
+        async def _click_tab(text: str) -> None:
+            await page.evaluate(
+                """(t) => {
+                    const btn = Array.from(document.querySelectorAll('button'))
+                        .find(b => b.textContent?.trim() === t
+                            && b.getBoundingClientRect().width > 0);
+                    btn?.click();
+                }""",
+                text,
+            )
+            await page.wait_for_timeout(800)
+
+        # ── 顶部标题栏（始终可见，先截图备用）────────────────────
+        title_png = await _shoot_full_width(TITLE_SEL)
+
+        # ── 最先：隐藏底栏速度控件，截底部固定栏，然后永久隐藏底栏────
+        # 隐藏播放倍数控件（gap-1 hidden sm:flex，只在 seek 后可见，预先处理）
+        await page.evaluate("""() => {
+            const ctrlRow = document.querySelector(
+                'div.fixed.bottom-0.w-screen div.mb-3.flex.items-center');
+            if (!ctrlRow) return;
+            for (const el of ctrlRow.children) {
+                if (el.textContent?.includes('1x') && el.textContent?.includes('100x')) {
+                    el.style.display = 'none';
+                }
+            }
+        }""")
+        bottom_box = await page.evaluate("""() => {
+            const el = document.querySelector('div.fixed.bottom-0.w-screen');
+            const r = el?.getBoundingClientRect();
+            return r ? {y: r.y, h: r.height} : null;
+        }""")
+        bottom_png: bytes | None = None
+        if bottom_box and bottom_box["h"] > 0:
+            bottom_png = await page.screenshot(
+                clip={
+                    "x": 0.0,
+                    "y": float(bottom_box["y"]),
+                    "width": float(viewport_width),
+                    "height": float(bottom_box["h"]),
+                }
+            )
+        # 隐藏底栏：避免 Pilots 等内容被 fixed 层遮挡
+        await page.evaluate("""() => {
+            const bar = document.querySelector('div.fixed.bottom-0.w-screen');
+            if (bar) bar.style.display = 'none';
+        }""")
+
+        # ── 1. Overview 比分区（默认已在 Overview tab）────────────
+        # 把"of N·X lost"子行从舰船列移到 ISK 列旁边
+        await page.evaluate("""(sel) => {
+            const container = document.querySelector(sel);
+            if (!container) return;
+            const sides = [container.children[0], container.children[2]];
+            for (const side of sides) {
+                const statsRow  = side?.children[1]?.children[0];
+                const shipsCol  = statsRow?.children[0];
+                const subLine   = shipsCol?.children[1];
+                const iskCol    = statsRow?.children[1];
+                if (subLine && iskCol) iskCol.appendChild(subLine);
+            }
+        }""", SCORE_SEL)
+        overview_png = await _shoot_full_width(SCORE_SEL)
+
+        # ── 2. Pilots tab（隐藏：中间比较列 + 队名标题 + 飞行员/损失汇总行）
+        await _click_tab("Pilots")
+        await page.evaluate("""(sel) => {
+            const container = document.querySelector(sel);
+            if (!container) return;
+            // 中间列 (PILOTS 754 v 532 + ISK EFF)
+            if (container.children[1]) container.children[1].style.display = 'none';
+            // 左右队名标题（children[0/2].children[0]）
+            const hideEl = el => { if (el) el.style.display = 'none'; };
+            hideEl(container.children[0]?.children[0]);
+            hideEl(container.children[2]?.children[0]);
+            // 左侧"754 pilots / 59 ships lost"汇总行（children[0].children[1].children[0]）
+            hideEl(container.children[0]?.children[1]?.children[0]);
+            // 右侧"532 pilots / 130 ships lost"汇总行
+            hideEl(container.children[2]?.children[1]?.children[0]);
+        }""", SCORE_SEL)
+        pilots_png = await _shoot_full_width(SCORE_SEL)
+
+        # ── 2. Composition tab (Ship Type) ───────────────────────
+        await _click_tab("Composition")
+
+        # 双侧切换为 Ship Type 粒度
+        await page.evaluate("""() => {
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+            let node;
+            while ((node = walker.nextNode())) {
+                if (node.children.length === 0
+                    && node.textContent?.trim() === 'Ship type'
+                    && getComputedStyle(node).cursor === 'pointer') {
+                    node.click();
+                }
+            }
+        }""")
+        await page.wait_for_timeout(600)
+
+        # 隐藏 Composition 的中间列 + 队名
+        await page.evaluate("""(sel) => {
+            const container = document.querySelector(sel);
+            if (!container) return;
+            if (container.children[1]) container.children[1].style.display = 'none';
+            const hideEl = el => { if (el) el.style.display = 'none'; };
+            hideEl(container.children[0]?.children[0]);
+            hideEl(container.children[2]?.children[0]);
+        }""", SCORE_SEL)
+
+        # 解除滚动容器溢出，获取内容完整高度
+        comp_h: int = await page.evaluate(
+            """(scrollSel) => {
+                const container = document.querySelector(scrollSel);
+                if (container) {
+                    container.style.overflow = 'visible';
+                    container.style.height = 'auto';
+                    container.style.maxHeight = 'none';
+                }
+                const inner = container?.querySelector('div > div.flex.items-start.gap-6');
+                if (!inner) return 0;
+                const r = inner.getBoundingClientRect();
+                return Math.ceil(r.height);
+            }""",
+            SCROLL_SEL,
+        )
+
+        if comp_h > 0:
+            await page.set_viewport_size({"width": viewport_width, "height": comp_h + 80})
+            # 滚动到底再回顶，触发懒渲染
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await page.wait_for_timeout(400)
+            await page.evaluate("window.scrollTo(0, 0)")
+            await page.wait_for_timeout(300)
+
+        comp_png = await _shoot_full_width(SCORE_SEL)
+
+    # ── 拼合 ──────────────────────────────────────────────────────
+    parts: list[Image.Image] = [
+        Image.open(BytesIO(title_png)).convert("RGB"),
+        Image.open(BytesIO(overview_png)).convert("RGB"),
+        Image.open(BytesIO(pilots_png)).convert("RGB"),
+        Image.open(BytesIO(comp_png)).convert("RGB"),
+    ]
+    if bottom_png:
+        parts.append(Image.open(BytesIO(bottom_png)).convert("RGB"))
+
+    canvas_w = max(img.width for img in parts)
+    canvas_h = sum(img.height for img in parts)
+    canvas = Image.new("RGB", (canvas_w, canvas_h), (6, 8, 12))
+    y_off = 0
+    for img in parts:
+        canvas.paste(img, (0, y_off))
+        y_off += img.height
+
+    out = BytesIO()
+    canvas.save(out, format="PNG")
+    return out.getvalue()
+
+
 async def html2gif(
     url: str,
     element: str = "main",
@@ -461,6 +671,18 @@ async def html2gif(
         await page.mouse.move(cx, cy, steps=25)
         await page.mouse.up()
         await page.wait_for_timeout(200)
+
+        # 隐藏播放倍数控件（seek 后出现，截图前移除）
+        await page.evaluate("""() => {
+            const ctrlRow = document.querySelector(
+                'div.fixed.bottom-0.w-screen div.mb-3.flex.items-center');
+            if (!ctrlRow) return;
+            for (const el of ctrlRow.children) {
+                if (el.textContent?.includes('1x') && el.textContent?.includes('100x')) {
+                    el.style.display = 'none';
+                }
+            }
+        }""") 
 
         # 读取战斗总时长，自适应计算 GIF 输出帧数
         try:

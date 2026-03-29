@@ -11,7 +11,7 @@ from ..helper.zkb.killmail import km
 from ..utils.common import convert_time, get_reply_message_id
 from ..utils.common.cache import get_msg_cache, save_msg_cache
 from ..utils.common.emoji import emoji_action
-from ..utils.render import html2gif, html2pic, html2pic_br, html2pic_war_beacon
+from ..utils.render import html2gif, html2pic, html2pic_br, html2pic_kmapp, html2pic_war_beacon
 
 link = on_alconna(
     Alconna(
@@ -21,8 +21,16 @@ link = on_alconna(
     aliases={"链接"},
 )
 
+wb = on_alconna(
+    Alconna("wb", Option("damage|d"), Option("timeline|t"), Option("summary|s"), Option("composition|c")),
+    use_cmd_start=True,
+)
 br = on_alconna(
-    Alconna("br", Option("damage|d"), Option("timeline|t"), Option("summary|s"), Option("composition|c")),
+    Alconna("br"),
+    use_cmd_start=True,
+)
+gif = on_alconna(
+    Alconna("gif"),
     use_cmd_start=True,
 )
 
@@ -54,6 +62,43 @@ async def _(
     event: Event,
     result: Arparma,
 ):
+    msg_id = await get_reply_message_id(bot, event)
+    save_link = await get_msg_cache(msg_id)
+    if not save_link or not isinstance(save_link, str):
+        await br.finish("未找到相关链接或链接格式不正确")
+    if save_link.startswith("https://zkillboard"):
+        matched = re.search(r"https://zkillboard\.com/kill/(\d+)/", save_link)
+        kill_id = matched.group(1)
+        data = await km.get(kill_id)
+        br_link = f"https://killmail.app/related/{data['solar_system_id']}/{convert_time(data['killmail_time'])}"
+        no_url = False
+    else:
+        br_link = save_link
+        no_url = True
+    
+    if br_link:
+        if not no_url:
+            await save_msg_cache(
+                await br.send(UniMessage.reply(msg_id) + UniMessage.text(br_link)),
+                br_link,
+            )
+        await save_msg_cache(
+            await br.send(UniMessage.reply(msg_id) + UniMessage.image(
+                    raw=await html2pic_kmapp(
+                        url=br_link,
+                    )
+                )
+            ),
+            br_link,
+        )
+
+
+@wb.handle()
+async def _(
+    bot: Bot,
+    event: Event,
+    result: Arparma,
+):
     click_selector = "参与者"
     if result.find("damage"):
         click_selector = "伤害"
@@ -67,7 +112,7 @@ async def _(
     msg_id = await get_reply_message_id(bot, event)
     save_link = await get_msg_cache(msg_id)
     if not save_link or not isinstance(save_link, str):
-        await br.finish("未找到相关链接或链接格式不正确")
+        await wb.finish("未找到相关链接或链接格式不正确")
     if save_link.startswith("https://zkillboard"):
         matched = re.search(r"https://zkillboard\.com/kill/(\d+)/", save_link)
         kill_id = matched.group(1)
@@ -81,11 +126,11 @@ async def _(
     if br_link:
         if not no_url:
             await save_msg_cache(
-                await br.send(UniMessage.reply(msg_id) + UniMessage.text(br_link)),
+                await wb.send(UniMessage.reply(msg_id) + UniMessage.text(br_link)),
                 br_link,
             )
         await save_msg_cache(
-            await br.send(
+            await wb.send(
                 UniMessage.reply(msg_id)
                 + UniMessage.image(
                     raw=await html2pic_war_beacon(
@@ -107,14 +152,12 @@ async def _(event: Event, url: str = RegexStr()):
 
     await emoji_action(event)
     system, time = matched.groups()
-    url = f"https://warbeacon.net/br/related/{system}/{time}"
+    url = f"https://killmail.app/related/{system}/{time}"
 
     await save_msg_cache(
         await UniMessage.image(
-            raw=await html2pic_war_beacon(
+            raw=await html2pic_kmapp(
                 url=url,
-                element_class="compact-teams",
-                click_text=None,
             )
         ).send(target=event, reply_to=True),
         url,
@@ -143,14 +186,12 @@ async def _(event: Event, url: str = RegexStr()):
         return
     await emoji_action(event)
     system, time = matched.groups()
-    url = f"https://warbeacon.net/br/related/{system}/{time}"
+    url = f"https://killmail.app/related/{system}/{time}"
 
     await save_msg_cache(
         await UniMessage.image(
-            raw=await html2pic_war_beacon(
+            raw=await html2pic_kmapp(
                 url=url,
-                element_class="compact-teams",
-                click_text=None,
             )
         ).send(target=event, reply_to=True),
         url,
@@ -177,12 +218,7 @@ async def _(event: Event, url: str = RegexStr()):
 async def _(event: Event, url: str = RegexStr()):
     await emoji_action(event)
 
-    pic = await html2pic(
-        url=url,
-        viewport_width=1280,
-        viewport_height=720,
-        element="main"
-    )
+    pic = await html2pic_kmapp(url=url, viewport_width=1280)
     await save_msg_cache(
         await UniMessage.image(raw=pic).send(target=event, reply_to=True),
         url,
@@ -204,4 +240,37 @@ async def _(event: Event, url: str = RegexStr()):
             url,
         )
     except Exception as e:
-        logger.warning(f"killmail.app GIF 生成失败: {e!s}")
+        await gif.finish(f"killmail.app GIF 生成失败: {e!s}")
+
+
+@gif.handle()
+async def _(bot: Bot, event: Event):
+    msg_id = await get_reply_message_id(bot, event)
+    save_link = await get_msg_cache(msg_id)
+    if not save_link or not isinstance(save_link, str):
+        await gif.finish("未找到相关链接或链接格式不正确")
+    if save_link.startswith("https://zkillboard"):
+        matched = re.search(r"https://zkillboard\.com/kill/(\d+)/", save_link)
+        kill_id = matched.group(1)
+        data = await km.get(kill_id)
+        url = f"https://killmail.app/related/{data['solar_system_id']}/{convert_time(data['killmail_time'])}"
+    else:
+        url = save_link
+
+    try:
+        gif_bytes = await html2gif(
+            url=url,
+            element="main",
+            viewport_width=1280,
+            viewport_height=850,
+            fps=8,
+            min_output_seconds=8,
+            max_output_seconds=15,
+            seek_wait_ms=200,
+        )
+        await save_msg_cache(
+            await gif.send(UniMessage.reply(msg_id) + UniMessage.image(raw=gif_bytes)),
+            url,
+        )
+    except Exception as e:
+        await gif.finish(f"GIF 生成失败: {e!s}")
