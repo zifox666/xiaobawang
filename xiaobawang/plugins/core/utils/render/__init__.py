@@ -454,6 +454,9 @@ async def html2pic_kmapp(url: str, viewport_width: int = 1280) -> bytes:
         # ── 顶部标题栏（始终可见，先截图备用）────────────────────
         title_png = await _shoot_full_width(TITLE_SEL)
 
+        # ── 0. Overview tab（默认显示，先截图）────────────────────
+        overview_png = await _shoot_full_width(SCORE_SEL)
+
         # ── 最先：隐藏底栏速度控件，截底部固定栏，然后永久隐藏底栏────
         # 隐藏播放倍数控件（gap-1 hidden sm:flex，只在 seek 后可见，预先处理）
         await page.evaluate("""() => {
@@ -487,24 +490,26 @@ async def html2pic_kmapp(url: str, viewport_width: int = 1280) -> bytes:
             if (bar) bar.style.display = 'none';
         }""")
 
-        # ── 1. Overview 比分区（默认已在 Overview tab）────────────
-        # 把"of N·X lost"子行从舰船列移到 ISK 列旁边
-        await page.evaluate("""(sel) => {
-            const container = document.querySelector(sel);
-            if (!container) return;
-            const sides = [container.children[0], container.children[2]];
-            for (const side of sides) {
-                const statsRow  = side?.children[1]?.children[0];
-                const shipsCol  = statsRow?.children[0];
-                const subLine   = shipsCol?.children[1];
-                const iskCol    = statsRow?.children[1];
-                if (subLine && iskCol) iskCol.appendChild(subLine);
-            }
-        }""", SCORE_SEL)
-        overview_png = await _shoot_full_width(SCORE_SEL)
-
-        # ── 2. Pilots tab（隐藏：中间比较列 + 队名标题 + 飞行员/损失汇总行）
+        # ── 1. Pilots tab（隐藏：中间比较列 + 队名标题 + 飞行员/损失汇总行）
         await _click_tab("Pilots")
+
+        # 在隐藏汇总行之前读取双方飞行员总数
+        total_pilots: int = await page.evaluate(
+            """(sel) => {
+                const c = document.querySelector(sel);
+                if (!c) return 0;
+                const num = t => {
+                    const m = (t || '').match(/([\\d,]+)\\s*pilots/i);
+                    return m ? parseInt(m[1].replace(/,/g, ''), 10) : 0;
+                };
+                const left  = c.children[0]?.children[1]?.children[0]?.innerText ?? '';
+                const right = c.children[2]?.children[1]?.children[0]?.innerText ?? '';
+                return num(left) + num(right);
+            }""",
+            SCORE_SEL,
+        )
+        logger.debug(f"html2pic_kmapp: 双方飞行员总数={total_pilots}")
+
         await page.evaluate("""(sel) => {
             const container = document.querySelector(sel);
             if (!container) return;
@@ -524,19 +529,20 @@ async def html2pic_kmapp(url: str, viewport_width: int = 1280) -> bytes:
         # ── 2. Composition tab (Ship Type) ───────────────────────
         await _click_tab("Composition")
 
-        # 双侧切换为 Ship Type 粒度
-        await page.evaluate("""() => {
-            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
-            let node;
-            while ((node = walker.nextNode())) {
-                if (node.children.length === 0
-                    && node.textContent?.trim() === 'Ship type'
-                    && getComputedStyle(node).cursor === 'pointer') {
-                    node.click();
+        # 双方飞行员总数超过 40 时才切换为 Ship Type 粒度
+        if total_pilots > 40:
+            await page.evaluate("""() => {
+                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+                let node;
+                while ((node = walker.nextNode())) {
+                    if (node.children.length === 0
+                        && node.textContent?.trim() === 'Ship type'
+                        && getComputedStyle(node).cursor === 'pointer') {
+                        node.click();
+                    }
                 }
-            }
-        }""")
-        await page.wait_for_timeout(600)
+            }""")
+            await page.wait_for_timeout(600)
 
         # 隐藏 Composition 的中间列 + 队名
         await page.evaluate("""(sel) => {
