@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 import traceback
 
-from arclet.alconna import Alconna, Args, Arparma, CommandMeta, Option
+from arclet.alconna import Alconna, Args, Arparma, CommandMeta, MultiVar, Option
 import httpx
 from nonebot import logger, require
 from nonebot.exception import FinishedException
@@ -37,6 +37,12 @@ pap_query = on_alconna(
             Option("-m|--month", Args["month", str], default="0"),
             Option("-y|--year", Args["year", str], default="0"),
         ),
+        Subcommand(
+            "query",
+            Args["name", MultiVar(str)],
+            Option("-m|--month", Args["month", str], default="0"),
+            Option("-y|--year", Args["year", str], default="0"),
+        ),
         CommandMeta(
             description="查询FRT联盟成员PAP",
             usage="/pap -m <month> -y <year>",
@@ -54,6 +60,8 @@ frt_bind = on_alconna(
     ),
     use_cmd_start=True
 )
+pap_query_by_name = pap_query.dispatch("query")
+pap_rank = pap_query.dispatch("rank")
 
 
 @frt_bind.handle()
@@ -90,7 +98,7 @@ async def get_corp_name(corp_id: int) -> str:
         return "Unknown Corporation"
 
 
-@pap_query.assign("rank")
+@pap_rank.handle()
 async def _handle_pap_rank(
     arp: Arparma,
     user_info: Uninfo,
@@ -111,7 +119,8 @@ async def _handle_pap_rank(
 
     try:
         async with httpx.AsyncClient(
-            headers={"x-api-key": f"{plugin_config.api_key}"}
+            headers={"x-api-key": f"{plugin_config.api_key}"},
+            timeout=120
         ) as client:
             r = await client.get(url)
             r.raise_for_status()
@@ -162,11 +171,106 @@ async def _handle_pap_rank(
         await pap_query.finish(f"排名查询失败: {e!s}")
 
 
+async def _render_pap_pic(data: dict, month: int, year: int) -> bytes:
+    """从API响应data中提取ship统计并渲染PAP模板，返回图片二进制。"""
+    pap = data.get("total_pap", 0)
+    fleets = data.get("fleets", [])
+
+    ship_stats: dict[str, dict] = {}
+    for fleet in fleets:
+        ship = fleet.get("ship", {})
+        type_id = ship.get("typeID") or ship.get("type_id") or ""
+        type_name = ship.get("typeName") or ship.get("type_name") or "Unknown"
+        group_name = ship.get("groupName") or ship.get("group_name") or "Unknown"
+
+        key = str(type_id) if str(type_id) != "" else type_name
+        if key not in ship_stats:
+            ship_stats[key] = {
+                "name": type_name,
+                "type": group_name,
+                "num": 0,
+            }
+        ship_stats[key]["num"] += 1
+
+    sorted_items = sorted(
+        ship_stats.items(),
+        key=lambda kv: kv[1]["num"],
+        reverse=True,
+    )
+    ship_result: dict[str, dict] = {}
+    for idx, (type_id, info) in enumerate(sorted_items):
+        ship_result[str(idx)] = {
+            "name": info["name"],
+            "type": info["type"],
+            "num": info["num"],
+            "type_id": type_id,
+        }
+
+    template_data = {
+        "name": data.get("main_character"),
+        "charterID": data.get("main_character_id"),
+        "characterName": data.get("main_character"),
+        "pap": pap,
+        "yearly_total_pap": data.get("yearly_total_pap", 0),
+        "month": month,
+        "year": year,
+        "ship": ship_result,
+        "fleets": fleets,
+        "ranking": data.get("ranking"),
+        "corporation_id": data.get("ranking", {}).get("corporation_id", ""),
+        "corporation_name": await get_corp_name(data.get("ranking", {}).get("corporation_id", 0)),
+    }
+
+    return await template_to_pic(
+        template_path=str(__file__).replace("__init__.py", ""),
+        template_name="template.html.jinja2",
+        templates=template_data,
+        pages={
+            "viewport": {"width": 1200, "height": 100},
+            "base_url": f"file://{__file__.replace('__init__.py', '')}",
+        },
+    )
+
+
+@pap_query_by_name.handle()
+async def _handle_pap_query(
+    arp: Arparma,
+):
+    month = arp.other_args.get("month", "0")
+    year = arp.other_args.get("year", "0")
+    if not month.isdigit() or not year.isdigit():
+        await pap_query.finish("月份和年份必须为数字")
+    character_name = " ".join(arp.name)
+
+    month = int(month)
+    year = int(year)
+
+    if month == 0:
+        month = datetime.now(UTC).month
+    if year == 0:
+        year = datetime.now(UTC).year
+    
+    async with httpx.AsyncClient(
+        headers={"x-api-key": f"{plugin_config.api_key}"},
+        timeout=120
+    ) as client:
+        url = f"{plugin_config.pap_track_url}/api/pap/main?main_character={character_name}&month={month}&year={year}"
+        r = await client.get(url)
+        if r.status_code == 404:
+            await pap_query.finish(f"未找到角色[{character_name}]的PAP数据，可能是因为该角色没有PAP记录或者名字输入有误。")
+        r.raise_for_status()
+        data = r.json()
+        pic = await _render_pap_pic(data, month, year)
+        await pap_query.finish(UniMessage.image(raw=pic))
+
+
 @pap_query.handle()
 async def _handle_pap(
     arp: Arparma,
     user_info: Uninfo,
 ):
+    if arp.find("rank") or arp.find("query"):
+        return
     month = arp.other_args.get("month", "0")
     year = arp.other_args.get("year", "0")
     if not month.isdigit() or not year.isdigit():
@@ -188,69 +292,6 @@ async def _handle_pap(
             await pap_query.finish("你没有授权机器人访问你的联盟seat，请私聊机器人发送\n\n/bind_frt\n\n进行操作")
         r.raise_for_status()
         data = r.json()
-        pap = data.get("total_pap", 0)
-        fleets = data.get("fleets", [])
-
-        ship_stats: dict[str, dict] = {}
-        for fleet in fleets:
-            ship = fleet.get("ship", {})
-            type_id = ship.get("typeID") or ship.get("type_id") or ""
-            type_name = ship.get("typeName") or ship.get("type_name") or "Unknown"
-            group_name = ship.get("groupName") or ship.get("group_name") or "Unknown"
-
-            key = str(type_id) if str(type_id) != "" else type_name
-            if key not in ship_stats:
-                ship_stats[key] = {
-                    "name": type_name,
-                    "type": group_name,
-                    "num": 0,
-                }
-            ship_stats[key]["num"] += 1
-
-        result = {
-            "pap": pap,
-            "name": data.get("main_character"),
-            "charterID": data.get("main_character_id"),
-            "characterName": data.get("main_character"),
-            "ship": {},
-        }
-
-        sorted_items = sorted(
-            ship_stats.items(),
-            key=lambda kv: kv[1]["num"],
-            reverse=True,
-        )
-        for idx, (type_id, info) in enumerate(sorted_items):
-            result["ship"][str(idx)] = {
-                "name": info["name"],
-                "type": info["type"],
-                "num": info["num"],
-                "type_id": type_id,
-            }
-
-        template_data = {
-            "name": data.get("main_character"),
-            "charterID": data.get("main_character_id"),
-            "characterName": data.get("main_character"),
-            "pap": pap,
-            "yearly_total_pap": data.get("yearly_total_pap", 0),
-            "month": month,
-            "year": year,
-            "ship": result["ship"],
-            "fleets": fleets,
-            "ranking": data.get("ranking"),
-            "corporation_id": data.get("ranking", {}).get("corporation_id", ""),
-            "corporation_name": await get_corp_name(data.get("ranking", {}).get("corporation_id", 0)),
-        }
-
-        pic = await template_to_pic(
-            template_path=str(__file__).replace("__init__.py", ""),
-            template_name="template.html.jinja2",
-            templates=template_data,
-            pages={
-                "viewport": {"width": 1200, "height": 100},
-                "base_url": f"file://{__file__.replace('__init__.py', '')}",
-            },
-        )
-
+        pic = await _render_pap_pic(data, month, year)
         await pap_query.finish(UniMessage.image(raw=pic))
+
