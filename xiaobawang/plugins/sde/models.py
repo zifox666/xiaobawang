@@ -70,3 +70,14 @@ class TrnTranslations(Base):
     keyID = Column(Integer, primary_key=True)
     languageID = Column(String(50), primary_key=True)
     text = Column(Text, nullable=False)
+
+
+class MapSolarSystemJumps(Base):
+    __tablename__ = "mapSolarSystemJumps"
+
+    fromRegionID = Column(Integer)
+    fromConstellationID = Column(Integer)
+    fromSolarSystemID = Column(Integer, primary_key=True)
+    toSolarSystemID = Column(Integer, primary_key=True)
+    toConstellationID = Column(Integer)
+    toRegionID = Column(Integer)
