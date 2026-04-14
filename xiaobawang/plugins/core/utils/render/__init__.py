@@ -23,6 +23,80 @@ from nonebot_plugin_htmlrender import get_new_page, template_to_pic
 templates_path = SRC_PATH / "templates"
 
 
+async def _paged_screenshot(
+    page,
+    bounding_box: dict,
+    page_height: int = 1080,
+    wait_ms: int = 300,
+    hide_elements: list[str] | None = None,
+) -> bytes:
+    """
+    分页截图并垂直拼接，替代设置超大视口的截图方式。
+
+    原理：通过 window.scrollTo 逐段滚动到目标位置后截图，读取实际滚动位置
+    来计算正确的 clip Y 偏移（处理浏览器 clamp），最后将各段垂直拼接。
+
+    Args:
+        page: Playwright Page 对象
+        bounding_box: 目标区域 {'x', 'y', 'width', 'height'}，y 为视口坐标，height 须为完整内容高度
+        page_height: 每页截图高度（像素），默认 1080
+        wait_ms: 每次滚动后等待渲染的毫秒数
+        hide_elements: 需要隐藏的元素选择器列表（每页截图前应用）
+
+    Returns:
+        拼接后的 PNG 二进制数据
+    """
+    el_x = float(bounding_box["x"])
+    el_y = float(bounding_box["y"])
+    el_w = float(bounding_box["width"])
+    el_h = float(bounding_box["height"])
+
+    # bounding_box.y 是视口坐标，doc_y 是文档绝对坐标
+    current_scroll_y = await page.evaluate("() => window.scrollY")
+    doc_y = el_y + current_scroll_y
+
+    if el_h <= page_height:
+        # 单张截图：滚动到目标位置，用实际偏移计算 clipY
+        await page.evaluate(f"window.scrollTo(0, {doc_y})")
+        await page.wait_for_timeout(wait_ms)
+        actual_y = await page.evaluate("() => window.scrollY")
+        clip_y = doc_y - actual_y
+        return await page.screenshot(
+            clip={"x": el_x, "y": clip_y, "width": el_w, "height": el_h}
+        )
+
+    imgs: list[Image.Image] = []
+    offset = 0.0
+    max_pages = 5
+    page_count = 0
+    while offset < el_h and page_count < max_pages:
+        target_scroll = doc_y + offset
+        await page.evaluate(f"window.scrollTo(0, {target_scroll})")
+        await page.wait_for_timeout(wait_ms)
+        # 读取实际滚动位置，浏览器可能 clamp 到 [0, bodyH - vpH]
+        actual_y = await page.evaluate("() => window.scrollY")
+        clip_y = target_scroll - actual_y
+        chunk_h = min(float(page_height), el_h - offset)
+        chunk = await page.screenshot(
+            clip={"x": el_x, "y": clip_y, "width": el_w, "height": chunk_h},
+            type="jpeg",
+            quality=92,
+        )
+        imgs.append(Image.open(BytesIO(chunk)).convert("RGB"))
+        offset += page_height
+        page_count += 1
+
+    canvas = Image.new("RGB", (int(el_w), sum(img.height for img in imgs)))
+    y_off = 0
+    for img in imgs:
+        canvas.paste(img, (0, y_off))
+        y_off += img.height
+
+    buf = BytesIO()
+    canvas.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 async def capture_element(
     url: str | None = None,
     html_content: str | None = None,
@@ -82,42 +156,15 @@ async def capture_element(
             raise ValueError(f"无法获取元素 '{element}' 的边界框")
 
         element_width = bounding_box["width"]
-        element_height = bounding_box["height"]
+        # 通过 scrollHeight 获取完整内容高度，不受视口裁剪影响
+        element_height = await element_handle.evaluate("el => el.scrollHeight")
 
-        if full_page:
-            screenshots = []
-            viewport_height = min(viewport_height, 1080)
-
-            for offset in range(0, int(element_height), viewport_height):
-                await page.evaluate(f"window.scrollTo(0, {offset})")
-                await page.wait_for_timeout(500)
-
-                screenshot = await page.screenshot(
-                    clip={
-                        "x": bounding_box["x"],
-                        "y": bounding_box["y"] - offset if bounding_box["y"] > offset else 0,
-                        "width": element_width,
-                        "height": min(viewport_height, element_height - offset),
-                    }
-                )
-                screenshots.append(screenshot)
-
-            stitched_image = Image.new("RGB", (int(element_width), int(element_height)))
-            current_height = 0
-            for screenshot in screenshots:
-                img = Image.open(BytesIO(screenshot))
-                stitched_image.paste(img, (0, current_height))
-                current_height += img.height
-        else:
-            await page.set_viewport_size({"width": int(viewport_width), "height": int(element_height)})
-            await page.wait_for_load_state("networkidle")
-
-            # 截图整个元素
-            screenshot = await page.screenshot(
-                clip={"x": bounding_box["x"], "y": bounding_box["y"], "width": element_width, "height": element_height}
-            )
-
-        return screenshot
+        page_h = min(viewport_height, 1080)
+        return await _paged_screenshot(
+            page,
+            {"x": bounding_box["x"], "y": bounding_box["y"], "width": element_width, "height": float(element_height)},
+            page_height=page_h,
+        )
 
 
 async def render_template(
@@ -193,11 +240,6 @@ async def html2pic_br(
 
         bounding_box = await element_handle.bounding_box()
         element_width = bounding_box["width"]
-        element_height = bounding_box["height"]
-
-        await page.set_viewport_size({"width": int(element_width), "height": min(3000, int(element_height))})
-
-        await page.wait_for_load_state("networkidle")
 
         if click_selector:
             try:
@@ -209,14 +251,18 @@ async def html2pic_br(
             except Exception as e:
                 logger.error(f"点击元素 '{click_selector}' 失败: {e!s}")
 
+        # 点击后获取完整内容高度（不受视口限制）
+        element_height = await element_handle.evaluate("el => el.scrollHeight")
+
         clip_width = element_width
         clip_x = bounding_box["x"]
         if trim_width and trim_width * 2 < element_width:
             clip_width = element_width - trim_width * 2
             clip_x = bounding_box["x"] + trim_width
 
-        screenshot = await page.screenshot(
-            clip={"x": clip_x, "y": bounding_box["y"], "width": clip_width, "height": element_height}
+        screenshot = await _paged_screenshot(
+            page,
+            {"x": clip_x, "y": bounding_box["y"], "width": clip_width, "height": float(element_height)},
         )
 
         return screenshot
@@ -225,7 +271,7 @@ async def html2pic_br(
 async def html2pic_war_beacon(
     url: str,
     click_text: str | None = None,
-    element_class: str = "compact-teams",
+    element_class: str = "battle-report-involved",
 ) -> bytes:
     """
     截图战争信标(War Beacon)网页的特定元素，支持懒加载和虚拟滚动
@@ -294,15 +340,16 @@ async def html2pic_war_beacon(
             raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
 
         # 设置适当的视口大小
+        # 视口宽度必须足够容纳内容：x + width + margin，否则截图会超出视口边界
         if element_class == "compact-teams":
-            # 对于两队情况，增加额外空间
             extra_height = 320 if count == 2 else 100
+            padding_x = 20
             viewport_size = {
-                "width": int(main_element_box["width"] + 20 * count),
-                "height": min(3240, max(1080, int(capture_element_box["height"] + extra_height))),
+                "width": int(main_element_box["x"] + main_element_box["width"] + padding_x),
+                "height": max(1080, int(capture_element_box["height"] + extra_height)),
             }
         else:
-            viewport_size = {"width": 1920, "height": min(3240, int(main_element_box["height"] + 100))}
+            viewport_size = {"width": 1920, "height": int(main_element_box["height"] + 100)}
 
         await page.set_viewport_size(viewport_size)
         await page.wait_for_timeout(1000)
@@ -311,45 +358,36 @@ async def html2pic_war_beacon(
 
         # 为两队情况再次调整尺寸并展开容器
         if count == 2:
-            # 第一次调整后重新获取尺寸
             capture_element_box = await get_element_dimensions(page, capture_class)
             if not capture_element_box:
                 raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
 
-            # 额外增加高度，限制最大高度为 3000
-            viewport_size["height"] = min(3000, int(capture_element_box["height"] + 300))
+            viewport_size["height"] = int(capture_element_box["height"] + 300)
             await page.set_viewport_size(viewport_size)
             await page.wait_for_timeout(1000)
 
-            # 再次展开容器并等待图片加载
             await expand_scrollable_containers(page)
             await wait_for_all_images_in_viewport(page)
 
-            # 最后一次获取实际尺寸
             capture_element_box = await get_element_dimensions(page, capture_class)
             if not capture_element_box:
                 raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
 
-        # 计算裁剪区域
-        if element_class == "compact-teams":
-            padding_x = 20 * count
-            padding_y = 10 if count > 2 else 11
-            clip = {
-                "x": capture_element_box["x"] - padding_x / 2,
-                "y": capture_element_box["y"] - padding_y,
-                "width": main_element_box["width"] + padding_x * 2,
-                "height": capture_element_box["height"] + padding_y * 2,
-            }
-        else:
-            clip = {
-                "x": capture_element_box["x"],
-                "y": capture_element_box["y"] - 10,
-                "width": main_element_box["width"],
-                "height": main_element_box["height"] + 10,
-            }
+        # 视口调整完毕后重新获取 main_element_box，布局已重排坐标可能变化
+        main_element_box = await get_element_dimensions(page, f".{element_class}")
+        if not main_element_box:
+            raise ValueError(f"无法获取元素 '.{element_class}' 的边界框（重排后）")
 
-        # 截图并返回
-        screenshot = await page.screenshot(clip=clip)
+        # 计算裁剪区域：x/w 用 compact-teams（实际内容列），y/h 用 battle-report-involved（含顶部摘要栏）
+        clip = {
+            "x": main_element_box["x"],
+            "y": capture_element_box["y"],
+            "width": main_element_box["width"],
+            "height": capture_element_box["height"],
+        }
+
+        # 分页截图并返回
+        screenshot = await _paged_screenshot(page, clip, page_height=1080)
         return screenshot
 
 
@@ -427,16 +465,14 @@ async def html2pic_kmapp(url: str, viewport_width: int = 1280) -> bytes:
         await page.wait_for_timeout(1500)
 
         async def _shoot_full_width(selector: str) -> bytes:
-            """截图时统一使用 x=0、宽度=viewport_width，保证各分区宽度一致（居中）。"""
+            """截图时统一使用 x=0、宽度=viewport_width，保证各分区宽度一致（居中）。分页拼接支持超长内容。"""
             el = await page.wait_for_selector(selector, timeout=8000)
             box = await el.bounding_box()
-            return await page.screenshot(
-                clip={
-                    "x": 0.0,
-                    "y": max(0.0, box["y"]),
-                    "width": float(viewport_width),
-                    "height": box["height"],
-                }
+            full_h = float(await el.evaluate("el => el.scrollHeight"))
+            return await _paged_screenshot(
+                page,
+                {"x": 0.0, "y": max(0.0, box["y"]), "width": float(viewport_width), "height": full_h},
+                page_height=920,
             )
 
         async def _click_tab(text: str) -> None:
@@ -572,8 +608,7 @@ async def html2pic_kmapp(url: str, viewport_width: int = 1280) -> bytes:
         )
 
         if comp_h > 0:
-            await page.set_viewport_size({"width": viewport_width, "height": comp_h + 80})
-            # 滚动到底再回顶，触发懒渲染
+            # 滚动到底再回顶，触发懒渲染（_shoot_full_width 分页截图时会按需滚动）
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page.wait_for_timeout(400)
             await page.evaluate("window.scrollTo(0, 0)")

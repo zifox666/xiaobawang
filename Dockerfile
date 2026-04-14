@@ -11,10 +11,10 @@ RUN chmod +x /start.sh
 ENV MAX_WORKERS=1
 
 RUN pip install --no-cache-dir uv
-COPY ./pyproject.toml ./uv.lock* /app/
+COPY ./pyproject.toml ./uv.lock /app/
 
-RUN uv sync --frozen
-RUN uv run playwright install --with-deps
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 
 COPY . /app/
 

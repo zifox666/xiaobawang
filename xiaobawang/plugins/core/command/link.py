@@ -172,7 +172,7 @@ async def _(event: Event, url: str = RegexStr()):
             raw=await html2pic_br(
                 url=url,
                 element=".development",
-                hide_elements=["bp3-navbar", "bp3-fixed-top", "bp3-dark", "_2ds1SVI_"],
+                hide_elements=[".bp3-fixed-top"],
             )
         ).send(target=event, reply_to=True),
         url,

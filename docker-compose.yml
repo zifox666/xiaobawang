@@ -26,6 +26,20 @@ services:
     depends_on:
       redis:
         condition: service_started
+      playwright:
+        condition: service_healthy
+    networks:
+      - xiaobawang
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.56.0-noble
+    command: npx playwright@1.56.0 run-server --port 3000 --host 0.0.0.0
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/json/version"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - xiaobawang
 
