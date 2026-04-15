@@ -35,6 +35,8 @@ services:
     image: mcr.microsoft.com/playwright:v1.56.0-noble
     command: npx playwright@1.56.0 run-server --port 3000 --host 0.0.0.0
     restart: always
+    volumes:
+      - ./xiaobawang:/app/xiaobawang:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/json/version"]
       interval: 5s

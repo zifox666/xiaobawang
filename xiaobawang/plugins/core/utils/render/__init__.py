@@ -302,8 +302,37 @@ async def html2pic_war_beacon(
         await page.reload()
         await page.wait_for_load_state("networkidle")
 
-        # 滚动加载所有内容
-        await scroll_and_load_all_content(page)
+        # 移除虚拟滚动：warbeacon 的 VirtualScroll 组件监听 scroll/resize，
+        # 按 innerHeight 只渲染视口内条目。截图时反复滚动会不断触发重算导致 CPU 飙高。
+        # 方案：先让所有条目渲染，再用静态 DOM 克隆替换虚拟滚动容器，彻底断开 Vue 响应式。
+        await page.evaluate("""() => {
+            // 1) 欺骗 VirtualScroll，让它认为视口极大，一次性渲染所有条目
+            Object.defineProperty(window, 'innerHeight', {
+                get: () => 100000,
+                configurable: true
+            });
+            window.dispatchEvent(new Event('resize'));
+        }""")
+        await page.wait_for_timeout(500)
+        await page.evaluate("""() => {
+            // 2) 深克隆每个虚拟列表容器并替换原节点，断开 Vue 响应式
+            document.querySelectorAll('.team-details-list').forEach(list => {
+                const clone = list.cloneNode(true);
+                clone.style.height = 'auto';
+                clone.style.position = 'static';
+                Array.from(clone.children).forEach(child => {
+                    child.style.position = 'static';
+                    child.style.top = 'auto';
+                });
+                list.parentNode.replaceChild(clone, list);
+            });
+            // 3) 阻止后续 scroll/resize 监听（防止残留 watcher 重建虚拟列表）
+            const origAdd = EventTarget.prototype.addEventListener;
+            EventTarget.prototype.addEventListener = function(type, fn, opts) {
+                if (this === window && (type === 'scroll' || type === 'resize')) return;
+                return origAdd.call(this, type, fn, opts);
+            };
+        }""")
 
         # 如果需要点击特定文本
         if click_text:
@@ -313,7 +342,6 @@ async def html2pic_war_beacon(
                     await element_with_text.click()
                     await page.wait_for_timeout(1000)
                     await page.wait_for_load_state("networkidle")
-                    await scroll_and_load_all_content(page)
             except Exception as e:
                 logger.error(f"点击文字 '{click_text}' 失败: {e!s}")
 
