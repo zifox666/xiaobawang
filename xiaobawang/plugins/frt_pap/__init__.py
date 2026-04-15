@@ -252,7 +252,7 @@ async def _handle_pap_query(
         r.raise_for_status()
         data = r.json()
         pic = await _render_pap_pic(data, month, year)
-        await pap_query.finish(UniMessage.image(raw=pic))
+        await pap_query.finish(UniMessage.image(raw=pic), reply_to=True)
 
 
 @npc_kills_query.handle()
@@ -291,6 +291,8 @@ async def _handle_npc_kills(
                     f"未找到刷怪数据，可能是因为没有记录或未授权。\n"
                     f"请前往 {plugin_config.pap_track_url}/oauth/login 进行授权"
                 )
+            elif r.status_code == 500:
+                await npc_kills_query.finish(r.json().get("error", "服务器错误"))
             r.raise_for_status()
             data = r.json()
 
@@ -327,7 +329,7 @@ async def _handle_npc_kills(
                 "base_url": f"file://{__file__.replace('__init__.py', '')}",
             },
         )
-        await npc_kills_query.finish(UniMessage.image(raw=pic))
+        await npc_kills_query.finish(UniMessage.image(raw=pic), reply_to=True)
     except FinishedException:
         pass
     except Exception as e:
@@ -364,5 +366,5 @@ async def _handle_pap(
         r.raise_for_status()
         data = r.json()
         pic = await _render_pap_pic(data, month, year)
-        await pap_query.finish(UniMessage.image(raw=pic))
+        await pap_query.finish(UniMessage.image(raw=pic), reply_to=True)
 
