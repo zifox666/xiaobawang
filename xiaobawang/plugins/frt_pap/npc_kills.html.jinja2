@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>刷怪报表 - {{ year }}年{{ month }}月</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-900 text-white">
+    <div class="container mx-auto px-6 py-8 max-w-5xl">
+
+        <!-- 标题 -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold tracking-wide">刷 怪 报 表</h1>
+            <p class="text-lg opacity-50 mt-2">{{ year }}年{{ month }}月</p>
+        </div>
+
+        <!-- 汇总卡片 -->
+        <div class="grid grid-cols-6 gap-3 mb-8">
+            <div class="bg-gray-800 rounded-xl p-4 text-center col-span-1">
+                <div class="text-xs opacity-50 mb-2">刷怪赏金</div>
+                <div class="text-lg font-bold text-green-400 leading-tight">{{ summary.total_bounty }}</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 text-center col-span-1">
+                <div class="text-xs opacity-50 mb-2">ESS 收入</div>
+                <div class="text-lg font-bold text-blue-400 leading-tight">{{ summary.total_ess }}</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 text-center col-span-1">
+                <div class="text-xs opacity-50 mb-2">交税金额</div>
+                <div class="text-lg font-bold text-red-400 leading-tight">{{ summary.total_tax }}</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 text-center col-span-1">
+                <div class="text-xs opacity-50 mb-2">实际收入</div>
+                <div class="text-lg font-bold text-emerald-400 leading-tight">{{ summary.actual_income }}</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 text-center col-span-1">
+                <div class="text-xs opacity-50 mb-2">总记录数</div>
+                <div class="text-4xl font-bold text-white">{{ summary.total_records }}</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 text-center col-span-1">
+                <div class="text-xs opacity-50 mb-2">预估时长 (h)</div>
+                <div class="text-4xl font-bold text-white">{{ summary.estimated_hours }}</div>
+            </div>
+        </div>
+
+        <!-- NPC分类 & 时间趋势 -->
+        <div class="grid grid-cols-2 gap-6">
+
+            <!-- 按NPC分类 Top5 -->
+            <div class="bg-gray-800 rounded-xl p-6">
+                <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
+                    <span class="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-600 rounded"></span>
+                    按 NPC 分类
+                </h2>
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left pb-3 text-xs opacity-50 font-normal">#</th>
+                            <th class="text-left pb-3 text-xs opacity-50 font-normal">NPC 名称</th>
+                            <th class="text-right pb-3 text-xs opacity-50 font-normal">
+                                击杀数量
+                                <span class="inline-block ml-1 opacity-60">⇅</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set npc_max = by_npc[0].count if by_npc else 1 %}
+                        {% for npc in by_npc[:5] %}
+                        <tr class="border-b border-gray-700/40">
+                            <td class="py-3 pr-3 text-sm opacity-50 w-6">{{ loop.index }}</td>
+                            <td class="py-3 pr-4">
+                                <div class="font-medium text-sm leading-tight">{{ npc.npc_name }}</div>
+                                <div class="mt-1 bg-gray-700 rounded-full h-1.5">
+                                    <div class="bg-blue-500 h-1.5 rounded-full"
+                                         style="width: {{ ((npc.count / npc_max) * 100) | round }}%"></div>
+                                </div>
+                            </td>
+                            <td class="py-3 text-right font-bold text-blue-400 text-lg">{{ npc.count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 时间趋势 Top5 by amount -->
+            <div class="bg-gray-800 rounded-xl p-6">
+                <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
+                    <span class="w-1 h-6 bg-gradient-to-b from-green-500 to-emerald-600 rounded"></span>
+                    时间趋势
+                </h2>
+                {% set trend_sorted = trend | sort(attribute='amount', reverse=True) %}
+                {% set trend_top5 = trend_sorted[:5] | list %}
+                {% set max_amount = trend_top5[0].amount if trend_top5 else 1 %}
+                <div class="space-y-5">
+                    {% for item in trend_top5 %}
+                    <div>
+                        <div class="flex justify-between items-baseline mb-1.5">
+                            <span class="text-sm opacity-60">{{ item.date }}</span>
+                            <div class="text-right">
+                                <span class="text-emerald-400 font-bold">{{ item.amount_fmt }} ISK</span>
+                                <span class="text-xs opacity-40 ml-2">{{ item.count }} 条</span>
+                            </div>
+                        </div>
+                        <div class="bg-gray-700 rounded-full h-3">
+                            <div class="bg-gradient-to-r from-green-600 to-emerald-400 h-3 rounded-full"
+                                 style="width: {{ ((item.amount / max_amount) * 100) | round }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not trend_top5 %}
+                    <div class="text-center opacity-50 py-8">暂无趋势数据</div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 页脚 -->
+        <div class="text-center mt-8 opacity-30 text-xs">
+            <p>刷怪报表 · Powered by 小霸王机器人</p>
+        </div>
+    </div>
+</body>
+</html>
