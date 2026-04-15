@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -7,6 +8,7 @@ from nonebot import logger, require
 from PIL import Image
 
 from ...config import SRC_PATH
+from ..common.cache import cache as redis_cache
 from .utils import (
     expand_scrollable_containers,
     get_element_dimensions,
@@ -21,6 +23,12 @@ from nonebot_plugin_htmlrender import get_new_page, template_to_pic
 
 # 定义模板路径
 templates_path = SRC_PATH / "templates"
+
+# 同时只允许一个 War Beacon 截图任务
+_WAR_BEACON_SEMAPHORE = asyncio.Semaphore(1)
+
+# 截图缓存时间（3 小时）
+_SCREENSHOT_CACHE_TTL = 3 * 60 * 60
 
 
 async def _paged_screenshot(
@@ -204,6 +212,14 @@ async def html2pic_br(
     :param click_selector: 选择需要点击的元素 bp3-tab-panel_general_ [involved,summary,timeline,damage,composition]
     :return:
     """
+    cache_key: str | None = None
+    if url:
+        _cache_raw = f"{url}|{element}|{click_selector}|{trim_class}"
+        cache_key = f"render:br:{hashlib.md5(_cache_raw.encode()).hexdigest()}"
+        cached = await redis_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     async with get_new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1) as page:
         if url:
             await page.goto(url)
@@ -265,13 +281,15 @@ async def html2pic_br(
             {"x": clip_x, "y": bounding_box["y"], "width": clip_width, "height": float(element_height)},
         )
 
-        return screenshot
+    if cache_key:
+        await redis_cache.set(cache_key, screenshot, _SCREENSHOT_CACHE_TTL)
+    return screenshot
 
 
 async def html2pic_war_beacon(
     url: str,
     click_text: str | None = None,
-    element_class: str = "battle-report-involved",
+    element_class: str = "compact-teams",
 ) -> bytes:
     """
     截图战争信标(War Beacon)网页的特定元素，支持懒加载和虚拟滚动
@@ -287,136 +305,126 @@ async def html2pic_war_beacon(
     if not url:
         raise ValueError("必须提供URL")
 
-    async with get_new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1) as page:
-        # 配置页面
-        await page.route("**/*", lambda route: route.continue_())
-        await page.goto(url)
+    cache_key = f"render:war_beacon:{hashlib.md5(f'{url}|{click_text}|{element_class}'.encode()).hexdigest()}"
+    cached = await redis_cache.get(cache_key)
+    if cached is not None:
+        return cached
 
-        # 设置本地存储以改变语言和隐藏提示
-        await page.evaluate("""
-            localStorage.setItem('eve-warbeacon-locale', 'zh');
-            localStorage.setItem('hideDragDropTip', 'true');
-        """)
+    async with _WAR_BEACON_SEMAPHORE:
+        # 获得信号量后再次检查缓存（防止重复渲染）
+        cached = await redis_cache.get(cache_key)
+        if cached is not None:
+            return cached
 
-        # 重新加载页面以应用设置
-        await page.reload()
-        await page.wait_for_load_state("networkidle")
+        async with get_new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1) as page:
+            # 配置页面
+            await page.route("**/*", lambda route: route.continue_())
+            await page.goto(url)
 
-        # 移除虚拟滚动：warbeacon 的 VirtualScroll 组件监听 scroll/resize，
-        # 按 innerHeight 只渲染视口内条目。截图时反复滚动会不断触发重算导致 CPU 飙高。
-        # 方案：先让所有条目渲染，再用静态 DOM 克隆替换虚拟滚动容器，彻底断开 Vue 响应式。
-        await page.evaluate("""() => {
-            // 1) 欺骗 VirtualScroll，让它认为视口极大，一次性渲染所有条目
-            Object.defineProperty(window, 'innerHeight', {
-                get: () => 100000,
-                configurable: true
-            });
-            window.dispatchEvent(new Event('resize'));
-        }""")
-        await page.wait_for_timeout(500)
-        await page.evaluate("""() => {
-            // 2) 深克隆每个虚拟列表容器并替换原节点，断开 Vue 响应式
-            document.querySelectorAll('.team-details-list').forEach(list => {
-                const clone = list.cloneNode(true);
-                clone.style.height = 'auto';
-                clone.style.position = 'static';
-                Array.from(clone.children).forEach(child => {
-                    child.style.position = 'static';
-                    child.style.top = 'auto';
-                });
-                list.parentNode.replaceChild(clone, list);
-            });
-            // 3) 阻止后续 scroll/resize 监听（防止残留 watcher 重建虚拟列表）
-            const origAdd = EventTarget.prototype.addEventListener;
-            EventTarget.prototype.addEventListener = function(type, fn, opts) {
-                if (this === window && (type === 'scroll' || type === 'resize')) return;
-                return origAdd.call(this, type, fn, opts);
-            };
-        }""")
+            # 设置本地存储以改变语言和隐藏提示
+            await page.evaluate("""
+                localStorage.setItem('eve-warbeacon-locale', 'zh');
+                localStorage.setItem('hideDragDropTip', 'true');
+            """)
 
-        # 如果需要点击特定文本
-        if click_text:
-            try:
-                element_with_text = await page.wait_for_selector(f"text='{click_text}'", timeout=2000)
-                if element_with_text:
-                    await element_with_text.click()
-                    await page.wait_for_timeout(1000)
-                    await page.wait_for_load_state("networkidle")
-            except Exception as e:
-                logger.error(f"点击文字 '{click_text}' 失败: {e!s}")
+            # 重新加载页面以应用设置
+            await page.reload()
+            await page.wait_for_load_state("networkidle")
 
-        # 获取队伍数量
-        count = await get_teams_count(page)
+            # 滚动加载所有内容
+            await scroll_and_load_all_content(page)
 
-        # 获取主元素和捕获元素的尺寸
-        main_element_box = await get_element_dimensions(page, f".{element_class}")
-        if not main_element_box:
-            raise ValueError(f"未找到元素 '.{element_class}'")
+            # 如果需要点击特定文本
+            if click_text:
+                try:
+                    element_with_text = await page.wait_for_selector(f"text='{click_text}'", timeout=2000)
+                    if element_with_text:
+                        await element_with_text.click()
+                        await page.wait_for_timeout(1000)
+                        await page.wait_for_load_state("networkidle")
+                        await scroll_and_load_all_content(page)
+                except Exception as e:
+                    logger.error(f"点击文字 '{click_text}' 失败: {e!s}")
 
-        element_handle = await page.wait_for_selector(f".{element_class}")
-        if element_handle:
-            await element_handle.scroll_into_view_if_needed()
+            # 获取队伍数量
+            count = await get_teams_count(page)
 
-        # 等待图片加载
-        await wait_for_all_images_in_viewport(page)
-        await page.wait_for_timeout(500)
+            # 获取主元素和捕获元素的尺寸
+            main_element_box = await get_element_dimensions(page, f".{element_class}")
+            if not main_element_box:
+                raise ValueError(f"未找到元素 '.{element_class}'")
 
-        # 获取捕获元素的尺寸
-        capture_class = ".battle-report-involved"
-        capture_element_box = await get_element_dimensions(page, capture_class)
-        if not capture_element_box:
-            raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
+            element_handle = await page.wait_for_selector(f".{element_class}")
+            if element_handle:
+                await element_handle.scroll_into_view_if_needed()
 
-        # 设置适当的视口大小
-        # 视口宽度必须足够容纳内容：x + width + margin，否则截图会超出视口边界
-        if element_class == "compact-teams":
-            extra_height = 320 if count == 2 else 100
-            padding_x = 20
-            viewport_size = {
-                "width": int(main_element_box["x"] + main_element_box["width"] + padding_x),
-                "height": max(1080, int(capture_element_box["height"] + extra_height)),
-            }
-        else:
-            viewport_size = {"width": 1920, "height": int(main_element_box["height"] + 100)}
+            # 等待图片加载
+            await wait_for_all_images_in_viewport(page)
+            await page.wait_for_timeout(500)
 
-        await page.set_viewport_size(viewport_size)
-        await page.wait_for_timeout(1000)
-        await expand_scrollable_containers(page)
-        await wait_for_all_images_in_viewport(page)
-
-        # 为两队情况再次调整尺寸并展开容器
-        if count == 2:
+            # 获取捕获元素的尺寸
+            capture_class = ".battle-report-involved"
             capture_element_box = await get_element_dimensions(page, capture_class)
             if not capture_element_box:
                 raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
 
-            viewport_size["height"] = int(capture_element_box["height"] + 300)
+            # 设置适当的视口大小
+            if element_class == "compact-teams":
+                extra_height = 320 if count == 2 else 100
+                viewport_size = {
+                    "width": int(main_element_box["width"] + 20 * count),
+                    "height": min(3800, max(1080, int(capture_element_box["height"] + extra_height))),
+                }
+            else:
+                viewport_size = {"width": 1920, "height": min(3800, int(main_element_box["height"] + 100))}
+
             await page.set_viewport_size(viewport_size)
             await page.wait_for_timeout(1000)
-
             await expand_scrollable_containers(page)
             await wait_for_all_images_in_viewport(page)
 
-            capture_element_box = await get_element_dimensions(page, capture_class)
-            if not capture_element_box:
-                raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
+            # 为两队情况再次调整尺寸并展开容器
+            if count == 2:
+                capture_element_box = await get_element_dimensions(page, capture_class)
+                if not capture_element_box:
+                    raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
 
-        # 视口调整完毕后重新获取 main_element_box，布局已重排坐标可能变化
-        main_element_box = await get_element_dimensions(page, f".{element_class}")
-        if not main_element_box:
-            raise ValueError(f"无法获取元素 '.{element_class}' 的边界框（重排后）")
+                # 限制最大高度为 3800
+                viewport_size["height"] = min(3800, int(capture_element_box["height"] + 300))
+                await page.set_viewport_size(viewport_size)
+                await page.wait_for_timeout(1000)
 
-        # 计算裁剪区域：x/w 用 compact-teams（实际内容列），y/h 用 battle-report-involved（含顶部摘要栏）
-        clip = {
-            "x": main_element_box["x"],
-            "y": capture_element_box["y"],
-            "width": main_element_box["width"],
-            "height": capture_element_box["height"],
-        }
+                # 再次展开可滚动容器
+                await expand_scrollable_containers(page)
+                await wait_for_all_images_in_viewport(page)
 
-        # 分页截图并返回
-        screenshot = await _paged_screenshot(page, clip, page_height=1080)
-        return screenshot
+                # 再次获取捕获元素尺寸
+                capture_element_box = await get_element_dimensions(page, capture_class)
+                if not capture_element_box:
+                    raise ValueError(f"无法获取元素 '{capture_class}' 的边界框")
+
+            # 计算裁剪区域
+            if element_class == "compact-teams":
+                padding_x = 20 * count
+                padding_y = 10 if count > 2 else 11
+                clip = {
+                    "x": capture_element_box["x"] - padding_x / 2,
+                    "y": capture_element_box["y"] - padding_y,
+                    "width": main_element_box["width"] + padding_x * 2,
+                    "height": capture_element_box["height"] + padding_y * 2,
+                }
+            else:
+                clip = {
+                    "x": capture_element_box["x"],
+                    "y": capture_element_box["y"] - 10,
+                    "width": main_element_box["width"],
+                    "height": main_element_box["height"] + 10,
+                }
+
+            screenshot = await page.screenshot(clip=clip)
+
+        await redis_cache.set(cache_key, screenshot, _SCREENSHOT_CACHE_TTL)
+    return screenshot
 
 
 async def html2pic(
@@ -470,6 +478,11 @@ async def html2pic_kmapp(url: str, viewport_width: int = 1280) -> bytes:
     Returns:
         PNG 二进制数据
     """
+    cache_key = f"render:kmapp:{hashlib.md5(f'{url}|{viewport_width}'.encode()).hexdigest()}"
+    cached = await redis_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     TITLE_SEL = (
         "#root > div > main > div > "
         "div.shrink-0.border-b.px-5.py-3.border-white\/5"
@@ -664,7 +677,9 @@ async def html2pic_kmapp(url: str, viewport_width: int = 1280) -> bytes:
 
     out = BytesIO()
     canvas.save(out, format="PNG")
-    return out.getvalue()
+    result = out.getvalue()
+    await redis_cache.set(cache_key, result, _SCREENSHOT_CACHE_TTL)
+    return result
 
 
 async def html2gif(
