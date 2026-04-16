@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}小霸王{% endblock %}</title>
+    <!-- 在 Tailwind 加载前为 html 元素注入 dark class，避免截图闪白 -->
+    <script>
+        (function () {
+            var h = (new Date().getUTCHours() + 8) % 24;
+            if (h >= 18 || h < 6) { document.documentElement.classList.add('dark'); }
+        })();
+    </script>
+    <!-- 告知 Tailwind Play CDN 使用 class-based 暗色模式 -->
+    <script>tailwind = { config: { darkMode: 'class' } }</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        body { font-family: 'Noto Sans SC', sans-serif; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
+    {% block content %}{% endblock %}
+</body>
+</html>

@@ -80,6 +80,19 @@ mining_query = on_alconna(
     use_cmd_start=True
 )
 
+srp_query = on_alconna(
+    Alconna(
+        "srp",
+        Option("-m|--month", Args["month", str], default="0"),
+        Option("-y|--year", Args["year", str], default="0"),
+        CommandMeta(
+            description="查询 SRP 赔偿申请",
+            usage="/srp -m <month> -y <year>",
+        )
+    ),
+    use_cmd_start=True
+)
+
 
 async def get_corp_name(corp_id: int) -> str:
     """通过ESI API获取军团名称"""
@@ -446,6 +459,92 @@ async def _handle_mining(
     except Exception as e:
         logger.error(f"Error in mining query: {e} \n {traceback.format_exc()}")
         await mining_query.finish(f"挖矿报表查询失败: {e!s}")
+
+
+@srp_query.handle()
+async def _handle_srp(
+    arp: Arparma,
+    user_info: Uninfo,
+):
+    month = arp.other_args.get("month", "0")
+    year = arp.other_args.get("year", "0")
+    if not month.isdigit() or not year.isdigit():
+        await srp_query.finish("月份和年份必须为数字")
+    month = int(month)
+    year = int(year)
+
+    if month == 0:
+        month = datetime.now(UTC).month
+    if year == 0:
+        year = datetime.now(UTC).year
+
+    try:
+        async with httpx.AsyncClient(
+            headers={"x-api-key": f"{plugin_config.api_key}"},
+            timeout=120,
+        ) as client:
+            url = (
+                f"{plugin_config.pap_track_url}/api/srp"
+                f"?qq={user_info.user.id}&month={month}&year={year}"
+            )
+            r = await client.get(url)
+            if r.status_code == 404:
+                await srp_query.finish(
+                    f"未找到 SRP 数据，可能是因为没有记录或未授权。\n"
+                    f"请前往 {plugin_config.pap_track_url}/oauth/login 进行授权"
+                )
+            r.raise_for_status()
+            data = r.json()
+
+        def _fmt_m(v: float) -> str:
+            """ISK 转换为 M 并保批1位小数"""
+            return f"{float(v) / 1_000_000:.1f}"
+
+        claims_raw: list[dict] = data.get("claims", [])
+        # 按 submitted_at 降序，取最新 5 条
+        claims_sorted = sorted(
+            claims_raw,
+            key=lambda c: c.get("submitted_at", ""),
+            reverse=True,
+        )[:5]
+
+        paid_count = sum(1 for c in claims_raw if c.get("paid_out"))
+        total_paid = sum(
+            float(c.get("approved_value", 0))
+            for c in claims_raw
+            if c.get("paid_out")
+        )
+
+        # 为每条记录预处理格式化金额
+        for c in claims_sorted:
+            c["approved_value_fmt"] = _fmt_m(c.get("approved_value", 0))
+
+        template_data = {
+            "year": year,
+            "month": month,
+            "main_character": data.get("main_character", ""),
+            "main_character_id": data.get("main_character_id", ""),
+            "total": data.get("total", len(claims_raw)),
+            "paid_count": paid_count,
+            "total_paid_fmt": _fmt_m(total_paid),
+            "claims": claims_sorted,
+        }
+
+        pic = await template_to_pic(
+            template_path=str(__file__).replace("__init__.py", ""),
+            template_name="srp.html.jinja2",
+            templates=template_data,
+            pages={
+                "viewport": {"width": 800, "height": 100},
+                "base_url": f"file://{__file__.replace('__init__.py', '')}",
+            },
+        )
+        await srp_query.finish(UniMessage.image(raw=pic), reply_to=True)
+    except FinishedException:
+        pass
+    except Exception as e:
+        logger.error(f"Error in srp query: {e} \n {traceback.format_exc()}")
+        await srp_query.finish(f"SRP 查询失败: {e!s}")
 
 
 @pap_query.handle()

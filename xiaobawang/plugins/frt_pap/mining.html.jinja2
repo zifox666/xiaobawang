@@ -1,138 +1,190 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>挖矿报表 - {{ year }}年{{ month }}月</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
-        body {
-            font-family: 'Noto Sans SC', sans-serif;
-        }
-    </style>
-</head>
-<body class="min-h-screen bg-gray-900 text-white">
-    <div class="container mx-auto px-6 py-8 max-w-5xl">
-
-        <!-- 标题 -->
-        <div class="flex items-center justify-between mb-8">
-            <div class="flex items-center gap-4">
-                {% if main_character_id %}
-                <img
-                    src="https://images.evetech.net/characters/{{ main_character_id }}/portrait?size=64"
-                    alt="{{ main_character }}"
-                    class="w-14 h-14 rounded-full ring-2 ring-gray-600"
-                />
-                {% endif %}
-                <div>
-                    <div class="text-2xl font-bold">{{ main_character }}</div>
-                    <div class="text-sm opacity-50">{{ year }}年{{ month }}月</div>
-                </div>
-            </div>
-            <h1 class="text-3xl font-bold tracking-wide opacity-80">挖 矿 报 表</h1>
-        </div>
-
-        <!-- 汇总卡片 -->
-        <div class="grid grid-cols-4 gap-3 mb-8">
-            <div class="bg-gray-800 rounded-xl p-4 text-center">
-                <div class="text-xs opacity-50 mb-2">总采矿量</div>
-                <div class="text-xl font-bold text-yellow-400 leading-tight">{{ summary.total_quantity }}</div>
-            </div>
-            <div class="bg-gray-800 rounded-xl p-4 text-center">
-                <div class="text-xs opacity-50 mb-2">矿石种类</div>
-                <div class="text-4xl font-bold text-purple-400">{{ summary.distinct_types }}</div>
-            </div>
-            <div class="bg-gray-800 rounded-xl p-4 text-center">
-                <div class="text-xs opacity-50 mb-2">采矿星系</div>
-                <div class="text-4xl font-bold text-blue-400">{{ summary.distinct_systems }}</div>
-            </div>
-            <div class="bg-gray-800 rounded-xl p-4 text-center">
-                <div class="text-xs opacity-50 mb-2">采矿天数</div>
-                <div class="text-4xl font-bold text-emerald-400">{{ summary.mining_days }}</div>
-            </div>
-        </div>
-
-        <!-- 矿石分类 & 时间趋势 -->
-        <div class="grid grid-cols-2 gap-6 mb-6">
-
-            <!-- 按矿石分类 Top5 -->
-            <div class="bg-gray-800 rounded-xl p-6">
-                <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
-                    <span class="w-1 h-6 bg-gradient-to-b from-yellow-500 to-orange-500 rounded"></span>
-                    按矿石分类
-                </h2>
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b border-gray-700">
-                            <th class="text-left pb-3 text-xs opacity-50 font-normal">#</th>
-                            <th class="text-left pb-3 text-xs opacity-50 font-normal">矿石名称</th>
-                            <th class="text-right pb-3 text-xs opacity-50 font-normal">采矿量 ⇅</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% set ore_max = by_type[0].quantity if by_type else 1 %}
-                        {% for ore in by_type[:5] %}
-                        <tr class="border-b border-gray-700/40">
-                            <td class="py-3 pr-3 text-sm opacity-50 w-6">{{ loop.index }}</td>
-                            <td class="py-3 pr-4">
-                                <div class="flex items-center gap-2">
-                                    <img
-                                        src="https://images.newdoublex.space/types/{{ ore.type_id }}/icon"
-                                        alt="{{ ore.type_name }}"
-                                        class="w-8 h-8 rounded"
-                                        onerror="this.style.display='none'"
-                                    />
-                                    <div>
-                                        <div class="font-medium text-sm leading-tight">{{ ore.type_name }}</div>
-                                        <div class="mt-1 bg-gray-700 rounded-full h-1.5">
-                                            <div class="bg-yellow-500 h-1.5 rounded-full"
-                                                 style="width: {{ ((ore.quantity / ore_max) * 100) | round }}%"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="py-3 text-right font-bold text-yellow-400 text-lg">{{ ore.quantity_fmt }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- 时间趋势 Top5 by quantity -->
-            <div class="bg-gray-800 rounded-xl p-6">
-                <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
-                    <span class="w-1 h-6 bg-gradient-to-b from-green-500 to-emerald-600 rounded"></span>
-                    时间趋势
-                </h2>
-                {% set trend_sorted = trend | sort(attribute='quantity', reverse=True) %}
-                {% set trend_top5 = trend_sorted[:5] | list %}
-                {% set max_qty = trend_top5[0].quantity if trend_top5 else 1 %}
-                <div class="space-y-5">
-                    {% for item in trend_top5 %}
-                    <div>
-                        <div class="flex justify-between items-baseline mb-1.5">
-                            <span class="text-sm opacity-60">{{ item.date }}</span>
-                            <span class="text-emerald-400 font-bold">{{ item.quantity_fmt }}</span>
-                        </div>
-                        <div class="bg-gray-700 rounded-full h-3">
-                            <div class="bg-gradient-to-r from-green-600 to-emerald-400 h-3 rounded-full"
-                                 style="width: {{ ((item.quantity / max_qty) * 100) | round }}%"></div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% if not trend_top5 %}
-                    <div class="text-center opacity-50 py-8">暂无趋势数据</div>
-                    {% endif %}
-                </div>
-            </div>
-
-        </div>
-
-        <!-- 页脚 -->
-        <div class="text-center mt-8 opacity-30 text-xs">
-            <p>挖矿报表 · Powered by 小霸王机器人</p>
-        </div>
+﻿{% extends "base.html.jinja2" %}{% block title %}挖矿报表 - {{ year }}年{{ month
+}}月{% endblock %}{% block content %}
+<div class="container mx-auto px-6 py-8 max-w-5xl">
+  <!-- 标题 -->
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center gap-4">
+      {% if main_character_id %}
+      <img
+        src="https://images.evetech.net/characters/{{ main_character_id }}/portrait?size=64"
+        alt="{{ main_character }}"
+        class="w-14 h-14 rounded-full ring-2 ring-gray-400 dark:ring-gray-600"
+      />
+      {% endif %}
+      <div>
+        <div class="text-2xl font-bold">{{ main_character }}</div>
+        <div class="text-sm opacity-50">{{ year }}年{{ month }}月</div>
+      </div>
     </div>
-</body>
-</html>
+    <h1 class="text-3xl font-bold tracking-wide opacity-80">挖 矿 报 表</h1>
+  </div>
+  <!-- 汇总卡片 -->
+  <div class="grid grid-cols-4 gap-3 mb-8">
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center"
+    >
+      <div class="text-xs opacity-50 mb-2">总采矿量</div>
+      <div
+        class="text-xl font-bold text-yellow-500 dark:text-yellow-400 leading-tight"
+      >
+        {{ summary.total_quantity }}
+      </div>
+    </div>
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center"
+    >
+      <div class="text-xs opacity-50 mb-2">矿石种类</div>
+      <div class="text-4xl font-bold text-purple-500 dark:text-purple-400">
+        {{ summary.distinct_types }}
+      </div>
+    </div>
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center"
+    >
+      <div class="text-xs opacity-50 mb-2">采矿星系</div>
+      <div class="text-4xl font-bold text-blue-500 dark:text-blue-400">
+        {{ summary.distinct_systems }}
+      </div>
+    </div>
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center"
+    >
+      <div class="text-xs opacity-50 mb-2">采矿天数</div>
+      <div class="text-4xl font-bold text-emerald-500 dark:text-emerald-400">
+        {{ summary.mining_days }}
+      </div>
+    </div>
+  </div>
+  <!-- 矿石分类 & 时间趋势 -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+    <!-- 按矿石分类 Top5 -->
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-6"
+    >
+      <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
+        <span
+          class="w-1 h-6 bg-gradient-to-b from-yellow-500 to-orange-500 rounded"
+        ></span>
+        按矿石分类
+      </h2>
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-gray-200 dark:border-gray-700">
+            <th class="text-left pb-3 text-xs opacity-50 font-normal">#</th>
+            <th class="text-left pb-3 text-xs opacity-50 font-normal">
+              矿石名称
+            </th>
+            <th class="text-right pb-3 text-xs opacity-50 font-normal">
+              采矿量 ⇅
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set ore_max = by_type[0].quantity if by_type else 1 %} {% for ore
+          in by_type[:5] %}
+          <tr class="border-b border-gray-100 dark:border-gray-700/40">
+            <td class="py-3 pr-3 text-sm opacity-50 w-6">{{ loop.index }}</td>
+            <td class="py-3 pr-4">
+              <div class="flex items-center gap-2">
+                <img
+                  src="https://images.newdoublex.space/types/{{ ore.type_id }}/icon"
+                  alt="{{ ore.type_name }}"
+                  class="w-8 h-8 rounded"
+                  onerror="this.style.display = 'none'"
+                />
+                <div>
+                  <div class="font-medium text-sm leading-tight">
+                    {{ ore.type_name }}
+                  </div>
+                  <div
+                    class="mt-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5"
+                  >
+                    <div
+                      class="bg-yellow-500 h-1.5 rounded-full"
+                      style="width: {{ ((ore.quantity / ore_max) * 100) | round }}%"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td
+              class="py-3 text-right font-bold text-yellow-500 dark:text-yellow-400 text-lg"
+            >
+              {{ ore.quantity_fmt }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <!-- 时间趋势 Top5 by quantity -->
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-6"
+    >
+      <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
+        <span
+          class="w-1 h-6 bg-gradient-to-b from-green-500 to-emerald-600 rounded"
+        ></span>
+        时间趋势
+      </h2>
+      {% set trend_sorted = trend | sort(attribute='quantity', reverse=True) %}
+      {% set trend_top5 = trend_sorted[:5] | list %} {% set max_qty =
+      trend_top5[0].quantity if trend_top5 else 1 %}
+      <div class="space-y-5">
+        {% for item in trend_top5 %}
+        <div>
+          <div class="flex justify-between items-baseline mb-1.5">
+            <span class="text-sm opacity-60">{{ item.date }}</span>
+            <span class="text-emerald-500 dark:text-emerald-400 font-bold"
+              >{{ item.quantity_fmt }}</span
+            >
+          </div>
+          <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+            <div
+              class="bg-gradient-to-r from-green-600 to-emerald-400 h-3 rounded-full"
+              style="width: {{ ((item.quantity / max_qty) * 100) | round }}%"
+            ></div>
+          </div>
+        </div>
+        {% endfor %} {% if not trend_top5 %}
+        <div class="text-center opacity-50 py-8">暂无趋势数据</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <!-- 按星系分类 -->
+  <div
+    class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-6 mb-6"
+  >
+    <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
+      <span
+        class="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-600 rounded"
+      ></span>
+      按星系分类
+    </h2>
+    {% set sys_max = by_system[0].quantity if by_system else 1 %}
+    <div class="space-y-3">
+      {% for sys in by_system[:5] %}
+      <div>
+        <div class="flex justify-between items-baseline mb-1.5">
+          <span class="font-medium text-sm">{{ sys.solar_system_name }}</span>
+          <span class="text-blue-500 dark:text-blue-400 font-bold"
+            >{{ sys.quantity_fmt }}</span
+          >
+        </div>
+        <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+          <div
+            class="bg-gradient-to-r from-blue-600 to-purple-500 h-2.5 rounded-full"
+            style="width: {{ ((sys.quantity / sys_max) * 100) | round }}%"
+          ></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <!-- 页脚 -->
+  <div class="text-center mt-8 opacity-30 text-xs">
+    <p>挖矿报表 · Powered by 小霸王机器人</p>
+  </div>
+</div>
+{% endblock %}

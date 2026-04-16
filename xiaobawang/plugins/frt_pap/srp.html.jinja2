@@ -1,0 +1,131 @@
+﻿{% extends "base.html.jinja2" %}{% block title %}SRP 报表 - {{ year }}年{{ month
+}}月{% endblock %}{% block content %}
+<div class="container mx-auto px-6 py-8 max-w-4xl">
+  <!-- 标题 -->
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center gap-4">
+      {% if main_character_id %}
+      <img
+        src="https://images.evetech.net/characters/{{ main_character_id }}/portrait?size=64"
+        alt="{{ main_character }}"
+        class="w-14 h-14 rounded-full ring-2 ring-gray-400 dark:ring-gray-600"
+      />
+      {% endif %}
+      <div>
+        <div class="text-2xl font-bold">{{ main_character }}</div>
+        <div class="text-sm opacity-50">{{ year }}年{{ month }}月</div>
+      </div>
+    </div>
+    <div class="text-right">
+      <h1 class="text-3xl font-bold tracking-wide opacity-80">S R P 报 表</h1>
+      <div class="text-sm opacity-40 mt-1">共 {{ total }} 条申请</div>
+    </div>
+  </div>
+  <!-- 汇总卡片 -->
+  <div class="grid grid-cols-3 gap-4 mb-8">
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center"
+    >
+      <div class="text-xs opacity-50 mb-2">总申请数</div>
+      <div class="text-4xl font-bold">{{ total }}</div>
+    </div>
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center"
+    >
+      <div class="text-xs opacity-50 mb-2">已赔付</div>
+      <div class="text-4xl font-bold text-emerald-500 dark:text-emerald-400">
+        {{ paid_count }}
+      </div>
+    </div>
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center"
+    >
+      <div class="text-xs opacity-50 mb-2">赔付总额 (M ISK)</div>
+      <div class="text-2xl font-bold text-yellow-500 dark:text-yellow-400">
+        {{ total_paid_fmt }}
+      </div>
+    </div>
+  </div>
+  <!-- 申请列表 -->
+  <div class="space-y-4">
+    {% for claim in claims %}
+    <div
+      class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-5"
+    >
+      <div class="flex items-start gap-4">
+        <!-- 舰船图标 -->
+        <img
+          src="https://images.evetech.net/types/{{ claim.ship_type_id }}/icon"
+          alt="{{ claim.ship_type }}"
+          class="w-14 h-14 rounded-lg flex-shrink-0"
+          onerror="this.style.display = 'none'"
+        />
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-lg">{{ claim.ship_type }}</span>
+              <!-- 状态标签 -->
+              {% if claim.paid_out %}
+              <span
+                class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-700 text-emerald-700 dark:text-emerald-200"
+                >已打款</span
+              >
+              {% elif claim.approver_status == 2 %}
+              <span
+                class="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-700 text-blue-700 dark:text-blue-200"
+                >已批准</span
+              >
+              {% elif claim.approver_status == 0 %}
+              <span
+                class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-700 text-yellow-700 dark:text-yellow-200"
+                >待审核</span
+              >
+              {% elif claim.approver_status == -1 %}
+              <span
+                class="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-700 text-red-700 dark:text-red-200"
+                >已拒绝</span
+              >
+              {% else %}
+              <span
+                class="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300"
+                >{{ claim.approver_status }}</span
+              >
+              {% endif %}
+            </div>
+            <div
+              class="text-xl font-bold text-yellow-500 dark:text-yellow-400 flex-shrink-0"
+            >
+              {{ claim.approved_value_fmt }} M
+            </div>
+          </div>
+          <div class="text-sm opacity-60 mt-1">
+            {{ claim.character_name }} {% if claim.corporation_name %} · {{
+            claim.corporation_name }}{% endif %}
+          </div>
+          <div class="text-sm opacity-50 mt-1">
+            <span>{{ claim.solar_system }}</span> <span class="mx-1">·</span>
+            <span>{{ claim.region }}</span> <span class="mx-1">·</span>
+            <span>FC: {{ claim.operation_fc }}</span>
+          </div>
+          <div class="text-xs opacity-40 mt-2 truncate">
+            {{ claim.operation_title }}
+          </div>
+          <div class="flex justify-between mt-2 text-xs opacity-40">
+            <span>击杀: {{ claim.killmail_time }}</span>
+            <span>提交: {{ claim.submitted_at }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %} {% if not claims %}
+    <div class="text-center opacity-50 py-16 text-lg">
+      本月暂无 SRP 申请记录
+    </div>
+    {% endif %}
+  </div>
+  <!-- 页脚 -->
+  <div class="text-center mt-8 opacity-30 text-xs">
+    <p>SRP 报表 · Powered by 小霸王机器人</p>
+  </div>
+</div>
+{% endblock %}
