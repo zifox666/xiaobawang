@@ -16,9 +16,21 @@
     <div class="container mx-auto px-6 py-8 max-w-5xl">
 
         <!-- 标题 -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold tracking-wide">刷 怪 报 表</h1>
-            <p class="text-lg opacity-50 mt-2">{{ year }}年{{ month }}月</p>
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-4">
+                {% if main_character_id %}
+                <img
+                    src="https://images.evetech.net/characters/{{ main_character_id }}/portrait?size=64"
+                    alt="{{ main_character }}"
+                    class="w-14 h-14 rounded-full ring-2 ring-gray-600"
+                />
+                {% endif %}
+                <div>
+                    <div class="text-2xl font-bold">{{ main_character }}</div>
+                    <div class="text-sm opacity-50">{{ year }}年{{ month }}月</div>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold tracking-wide opacity-80">刷 怪 报 表</h1>
         </div>
 
         <!-- 汇总卡片 -->

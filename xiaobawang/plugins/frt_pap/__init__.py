@@ -67,6 +67,19 @@ npc_kills_query = on_alconna(
     use_cmd_start=True
 )
 
+mining_query = on_alconna(
+    Alconna(
+        "挖矿报表",
+        Option("-m|--month", Args["month", str], default="0"),
+        Option("-y|--year", Args["year", str], default="0"),
+        CommandMeta(
+            description="查询挖矿报表",
+            usage="/挖矿报表 -m <month> -y <year>",
+        )
+    ),
+    use_cmd_start=True
+)
+
 
 async def get_corp_name(corp_id: int) -> str:
     """通过ESI API获取军团名称"""
@@ -292,15 +305,20 @@ async def _handle_npc_kills(
                     f"请前往 {plugin_config.pap_track_url}/oauth/login 进行授权"
                 )
             elif r.status_code == 500:
-                await npc_kills_query.finish(r.json().get("error", "服务器错误"))
+                await npc_kills_query.finish(
+                    f"未找到刷怪数据，可能是因为没有记录或未授权。\n"
+                    f"请前往 {plugin_config.pap_track_url}/oauth/login 进行授权"
+                    f"{r.json().get('error', '')}"
+                )
             r.raise_for_status()
             data = r.json()
 
         def _fmt_isk(v: float) -> str:
             return f"{v:,.0f}"
 
-        summary_raw = data.get("summary", {})
-        trend_raw: list[dict] = data.get("trend", [])
+        stats = data.get("stats", data)
+        summary_raw = stats.get("summary", {})
+        trend_raw: list[dict] = stats.get("trend", [])
         # 为每条趋势数据预计算格式化金额，供模板直接使用
         for item in trend_raw:
             item["amount_fmt"] = _fmt_isk(item.get("amount", 0))
@@ -308,6 +326,8 @@ async def _handle_npc_kills(
         template_data = {
             "year": year,
             "month": month,
+            "main_character": data.get("main_character", ""),
+            "main_character_id": data.get("main_character_id", ""),
             "summary": {
                 "total_bounty": _fmt_isk(summary_raw.get("total_bounty", 0)),
                 "total_ess": _fmt_isk(summary_raw.get("total_ess", 0)),
@@ -316,7 +336,7 @@ async def _handle_npc_kills(
                 "total_records": summary_raw.get("total_records", 0),
                 "estimated_hours": int(summary_raw.get("estimated_hours", 0)),
             },
-            "by_npc": data.get("by_npc", []),
+            "by_npc": stats.get("by_npc", []),
             "trend": trend_raw,
         }
 
@@ -335,6 +355,97 @@ async def _handle_npc_kills(
     except Exception as e:
         logger.error(f"Error in npc kills query: {e} \n {traceback.format_exc()}")
         await npc_kills_query.finish(f"刷怪报表查询失败: {e!s}")
+
+
+@mining_query.handle()
+async def _handle_mining(
+    arp: Arparma,
+    user_info: Uninfo,
+):
+    month = arp.other_args.get("month", "0")
+    year = arp.other_args.get("year", "0")
+    if not month.isdigit() or not year.isdigit():
+        await mining_query.finish("月份和年份必须为数字")
+    month = int(month)
+    year = int(year)
+
+    if month == 0:
+        month = datetime.now(UTC).month
+    if year == 0:
+        year = datetime.now(UTC).year
+
+    start_date = f"{year}-{month:02d}-01"
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = f"{year}-{month:02d}-{last_day:02d}"
+
+    try:
+        async with httpx.AsyncClient(
+            headers={"x-api-key": f"{plugin_config.api_key}"},
+            timeout=120,
+        ) as client:
+            url = (
+                f"{plugin_config.pap_track_url}/api/mining/ledger"
+                f"?qq={user_info.user.id}&start_date={start_date}&end_date={end_date}&lang=zh"
+            )
+            r = await client.get(url)
+            if r.status_code == 404:
+                await mining_query.finish(
+                    f"未找到挖矿数据，可能是因为没有记录或未授权。\n"
+                    f"请前往 {plugin_config.pap_track_url}/oauth/login 进行授权"
+                )
+            r.raise_for_status()
+            data = r.json()
+
+        def _fmt_qty(v: int | float) -> str:
+            return f"{int(v):,}"
+
+        stats = data.get("stats", data)
+        summary_raw = stats.get("summary", {})
+
+        by_type = stats.get("by_type", [])
+        for item in by_type:
+            item["quantity_fmt"] = _fmt_qty(item.get("quantity", 0))
+
+        by_system = stats.get("by_system", [])
+        for item in by_system:
+            item["quantity_fmt"] = _fmt_qty(item.get("quantity", 0))
+
+        trend_raw: list[dict] = stats.get("trend", [])
+        for item in trend_raw:
+            item["quantity_fmt"] = _fmt_qty(item.get("quantity", 0))
+
+        template_data = {
+            "year": year,
+            "month": month,
+            "main_character": data.get("main_character", ""),
+            "main_character_id": data.get("main_character_id", ""),
+            "summary": {
+                "total_quantity": _fmt_qty(summary_raw.get("total_quantity", 0)),
+                "total_records": summary_raw.get("total_records", 0),
+                "distinct_types": summary_raw.get("distinct_types", 0),
+                "distinct_systems": summary_raw.get("distinct_systems", 0),
+                "mining_days": summary_raw.get("mining_days", 0),
+            },
+            "by_type": by_type,
+            "by_system": by_system,
+            "trend": trend_raw,
+        }
+
+        pic = await template_to_pic(
+            template_path=str(__file__).replace("__init__.py", ""),
+            template_name="mining.html.jinja2",
+            templates=template_data,
+            pages={
+                "viewport": {"width": 1000, "height": 100},
+                "base_url": f"file://{__file__.replace('__init__.py', '')}",
+            },
+        )
+        await mining_query.finish(UniMessage.image(raw=pic), reply_to=True)
+    except FinishedException:
+        pass
+    except Exception as e:
+        logger.error(f"Error in mining query: {e} \n {traceback.format_exc()}")
+        await mining_query.finish(f"挖矿报表查询失败: {e!s}")
 
 
 @pap_query.handle()
