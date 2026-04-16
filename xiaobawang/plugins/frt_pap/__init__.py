@@ -497,8 +497,11 @@ async def _handle_srp(
             data = r.json()
 
         def _fmt_m(v: float) -> str:
-            """ISK 转换为 M 并保批1位小数"""
-            return f"{float(v) / 1_000_000:.1f}"
+            """ISK 转换为 M 并保留1位小数，空字符串视为 0"""
+            try:
+                return f"{float(v) / 1_000_000:.1f}"
+            except (ValueError, TypeError):
+                return "0.0"
 
         claims_raw: list[dict] = data.get("claims", [])
         # 按 submitted_at 降序，取最新 5 条
@@ -510,7 +513,7 @@ async def _handle_srp(
 
         paid_count = sum(1 for c in claims_raw if c.get("paid_out"))
         total_paid = sum(
-            float(c.get("approved_value", 0))
+            float(c.get("approved_value") or 0)
             for c in claims_raw
             if c.get("paid_out")
         )
