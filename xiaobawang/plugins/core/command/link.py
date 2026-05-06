@@ -11,7 +11,8 @@ from ..helper.zkb.killmail import km
 from ..utils.common import convert_time, get_reply_message_id
 from ..utils.common.cache import get_msg_cache, save_msg_cache
 from ..utils.common.emoji import emoji_action
-from ..utils.render import html2gif, html2pic, html2pic_br, html2pic_kmapp, html2pic_war_beacon
+from ..utils.render import html2gif, html2pic, html2pic_br, html2pic_kmapp
+from ..utils.render.warbecaon import html2pic_warbeacon
 
 link = on_alconna(
     Alconna(
@@ -84,7 +85,7 @@ async def _(
             )
         await save_msg_cache(
             await br.send(UniMessage.reply(msg_id) + UniMessage.image(
-                    raw=await html2pic_kmapp(
+                    raw=await html2pic_warbeacon(
                         url=br_link,
                     )
                 )
@@ -97,18 +98,7 @@ async def _(
 async def _(
     bot: Bot,
     event: Event,
-    result: Arparma,
 ):
-    click_selector = "参与者"
-    if result.find("damage"):
-        click_selector = "伤害"
-    elif result.find("timeline"):
-        click_selector = "时间线"
-    elif result.find("summary"):
-        click_selector = "统计"
-    elif result.find("composition"):
-        click_selector = "构成"
-
     msg_id = await get_reply_message_id(bot, event)
     save_link = await get_msg_cache(msg_id)
     if not save_link or not isinstance(save_link, str):
@@ -133,10 +123,8 @@ async def _(
             await wb.send(
                 UniMessage.reply(msg_id)
                 + UniMessage.image(
-                    raw=await html2pic_war_beacon(
+                    raw=await html2pic_warbeacon(
                             url=br_link,
-                            element_class="compact-teams" if click_selector != "时间线" else "battle-report-involved",
-                            click_text=click_selector,
                         )
                 )
             ),
@@ -156,7 +144,7 @@ async def _(event: Event, url: str = RegexStr()):
 
     await save_msg_cache(
         await UniMessage.image(
-            raw=await html2pic_kmapp(
+            raw=await html2pic_warbeacon(
                 url=url,
             )
         ).send(target=event, reply_to=True),
@@ -190,7 +178,7 @@ async def _(event: Event, url: str = RegexStr()):
 
     await save_msg_cache(
         await UniMessage.image(
-            raw=await html2pic_kmapp(
+            raw=await html2pic_warbeacon(
                 url=url,
             )
         ).send(target=event, reply_to=True),
@@ -204,10 +192,8 @@ async def _(event: Event, url: str = RegexStr()):
     await emoji_action(event)
     await save_msg_cache(
         await UniMessage.image(
-            raw=await html2pic_war_beacon(
+            raw=await html2pic_warbeacon(
                 url=url,
-                element_class="compact-teams",
-                click_text=None,
             )
         ).send(target=event, reply_to=True),
         url,
