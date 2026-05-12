@@ -21,7 +21,6 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 
-import httpx
 from nonebot import logger
 
 from .auto_group import faction_key, perform_auto_teaming
@@ -34,6 +33,7 @@ from .sources import (
     fetch_warbeacon_auto,
     fetch_warbeacon_hash,
 )
+from ..common.http_client import get_client
 from ..render import render_template
 
 # 模板目录：xiaobawang/src/templates/battlereport/
@@ -136,19 +136,19 @@ async def _fetch_esi_names(ids: list[int]) -> dict[int, str]:
 
     result: dict[int, str] = {}
     chunk_size = 1000
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        for i in range(0, len(valid_ids), chunk_size):
-            chunk = valid_ids[i : i + chunk_size]
-            try:
-                resp = await client.post(
-                    f"{ESI_BASE}/universe/names/?datasource=tranquility",
-                    json=chunk,
-                )
-                if resp.status_code == 200:
-                    for item in resp.json():
-                        result[item["id"]] = item["name"]
-            except Exception:
-                pass
+    client = get_client()
+    for i in range(0, len(valid_ids), chunk_size):
+        chunk = valid_ids[i : i + chunk_size]
+        try:
+            resp = await client.post(
+                f"{ESI_BASE}/universe/names/?datasource=tranquility",
+                json=chunk,
+            )
+            if resp.status_code == 200:
+                for item in resp.json():
+                    result[item["id"]] = item["name"]
+        except Exception:
+            pass
     return result
 
 
@@ -177,12 +177,11 @@ async def _fetch_esi_tickers(
             else f"{ESI_BASE}/corporations/{eid}/"
         )
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(url)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    if "ticker" in data:
-                        tickers[eid] = data["ticker"]
+            resp = await get_client().get(url)
+            if resp.status_code == 200:
+                data = resp.json()
+                if "ticker" in data:
+                    tickers[eid] = data["ticker"]
         except Exception:
             pass
 
@@ -314,10 +313,12 @@ async def _post_warbeacon_create(
         "teams": teams_payload,
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(f"{WARBEACON_API}/create", json=payload)
-        resp.raise_for_status()
-        result = resp.json()
+    logger.debug(f"_post_warbeacon_create payload: {payload}")
+
+    client = get_client()
+    resp = await client.post(f"{WARBEACON_API}/create", json=payload)
+    resp.raise_for_status()
+    result = resp.json()
 
     data_field = result.get("data", {})
     uuid: str = data_field.get("id") or data_field.get("uuid") or ""

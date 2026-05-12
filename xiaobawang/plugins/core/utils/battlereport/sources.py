@@ -276,8 +276,11 @@ async def fetch_warbeacon_hash(uuid: str) -> UnifiedBR:
 
 async def fetch_warbeacon_auto(solar_system_id: int, middle_time: str) -> UnifiedBR:
     """
-    调用 warbeacon auto 接口创建新战报。
-    来源标识：'warbeacon_auto'，已在 warbeacon 服务端创建，不再重复提交。
+    调用 warbeacon /auto 接口获取战报原始数据，自行分队。
+
+    /auto 返回体直接包含 killmails / locations / timeRange，但 teams 字段为空，
+    不再调用 /report/{uuid}（UUID 无分队数据，获取没有意义）。
+    teams=None 会在 br_render 中触发 auto_group 自动分队。
 
     :param solar_system_id: EVE 星系 ID
     :param middle_time: 战斗时间中点，ISO 8601 UTC 格式，如 '2026-05-05T06:00:00Z'
@@ -294,22 +297,17 @@ async def fetch_warbeacon_auto(solar_system_id: int, middle_time: str) -> Unifie
     resp.raise_for_status()
     api_result: dict = resp.json()
 
-    # 响应中找 UUID
-    data_field = api_result.get("data", {})
-    uuid: str = (
-        data_field.get("id")
-        or data_field.get("uuid")
-        or ""
-    )
-    if not uuid:
-        raise ValueError(f"warbeacon auto API 未返回 UUID，响应：{api_result}")
+    # /auto 响应体的 data 字段直接含有 killmails/locations/timeRange，但无 teams
+    data: dict = api_result.get("data", {})
+    if not data:
+        raise ValueError(f"warbeacon /auto API 返回数据为空，响应：{api_result}")
 
-    # 获取完整战报
-    resp2 = await client.get(f"{WARBEACON_API}/report/{uuid}")
-    resp2.raise_for_status()
-    data: dict = resp2.json()["data"]
+    uuid: str = data.get("id") or data.get("uuid") or ""
 
+    # 强制 teams=None，交由 auto_group 分队（/auto 不提供分队信息）
     br = _warbeacon_data_to_unified(data, source="warbeacon_auto", uuid=uuid)
+    br.teams = None
+
     await _cache.set(cache_key, br, expire=_BR_CACHE_TTL)
     return br
 
