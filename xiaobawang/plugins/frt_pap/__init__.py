@@ -1,6 +1,8 @@
 import calendar
+import re
 from datetime import UTC, datetime
 import traceback
+from typing import Union
 
 from arclet.alconna import Alconna, Args, Arparma, CommandMeta, MultiVar, Option
 import httpx
@@ -14,9 +16,9 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_htmlrender")
 
-from nonebot_plugin_alconna import Subcommand, UniMessage, on_alconna
+from nonebot_plugin_alconna import At, Match, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_htmlrender import template_to_pic
-from nonebot_plugin_uninfo import Uninfo
+from nonebot_plugin_uninfo import Uninfo, QryItrface
 
 __plugin_meta__ = PluginMetadata(
     name="FRT PAP 查询插件",
@@ -89,6 +91,18 @@ srp_query = on_alconna(
             description="查询 SRP 赔偿申请",
             usage="/srp -m <month> -y <year>",
         )
+    ),
+    use_cmd_start=True
+)
+
+pap_pk = on_alconna(
+    Alconna(
+       "bbpap",
+       Args["target", Union[str, At]],
+       CommandMeta(
+              description="和某人的PAP进行PK",
+              usage="/bbpap @<目标>",
+       )
     ),
     use_cmd_start=True
 )
@@ -580,4 +594,75 @@ async def _handle_pap(
         data = r.json()
         pic = await _render_pap_pic(data, month, year)
         await pap_query.finish(UniMessage.image(raw=pic), reply_to=True)
+
+
+@pap_pk.handle()
+async def _handle_pap_pk(
+    user_info: Uninfo,
+    interface: QryItrface,
+    target: Match[Union[str, At]]
+):
+    target_value = target.result
+
+    month = datetime.now(UTC).month
+    year = datetime.now(UTC).year
+
+    target_user = await interface.get_member(str(target_value))
+    if not target_user:
+        await pap_pk.finish(f"未找到目标用户 {target_value}，请确认输入是否正确")
+    target_nick = target_user.nick
+    if not target_nick:
+        await pap_pk.finish(f"目标用户查询PAP失败")
+    else:
+        match = re.search(r'/(.+)$', target_nick)
+        target_character_name = match.group(1) if match else target_nick
+
+    async with httpx.AsyncClient(
+        headers={"x-api-key": f"{plugin_config.api_key}"}
+    ) as client:
+        url = f"{plugin_config.pap_track_url}/api/pap?qq={user_info.user.id}&month={month}&year={year}"
+        r = await client.get(url)
+        if r.status_code == 404:
+            await pap_query.finish(f"你没有授权机器人访问你的联盟seat\n 请前往{plugin_config.pap_track_url}/oauth/login 进行授权")
+        r.raise_for_status()
+        owner_data = r.json()
+
+        url = f"{plugin_config.pap_track_url}/api/pap/main?main_character={target_character_name}&month={month}&year={year}"
+        r = await client.get(url)
+        if r.status_code == 404:
+            await pap_pk.finish(f"未找到目标用户的PAP数据，可能是因为该角色没有PAP记录或者名字输入有误。")
+        r.raise_for_status()
+        target_data = r.json()
+
+    owner_name = owner_data.get("main_character", "你")
+    target_name = target_data.get("main_character", target_character_name)
+
+    owner_month_pap = owner_data.get("total_pap", 0)
+    target_month_pap = target_data.get("total_pap", 0)
+    owner_year_pap = owner_data.get("yearly_total_pap", 0)
+    target_year_pap = target_data.get("yearly_total_pap", 0)
+
+    def _pk_line(a_name: str, a_val: int | float, b_name: str, b_val: int | float, label: str) -> str:
+        a_val = int(a_val)
+        b_val = int(b_val)
+        if a_val > b_val:
+            result = f"🏆 {a_name} 胜！({a_val} vs {b_val})"
+        elif a_val < b_val:
+            result = f"🏆 {b_name} 胜！({b_val} vs {a_val})"
+        else:
+            result = f"🤝 平局！({a_val} vs {b_val})"
+        return f"【{label}】{result}"
+
+    month_line = _pk_line(owner_name, owner_month_pap, target_name, target_month_pap, f"{year}年{month}月 PAP")
+    year_line = _pk_line(owner_name, owner_year_pap, target_name, target_year_pap, f"{year}年度 PAP")
+
+    msg = (
+        f"⚔️ PAP PK 结果 ⚔️\n"
+        f"挑战者：{owner_name}\n"
+        f"被挑战：{target_name}\n"
+        f"{'─' * 20}\n"
+        f"{month_line}\n"
+        f"{year_line}"
+    )
+    await pap_pk.finish(msg, reply_to=True)
 

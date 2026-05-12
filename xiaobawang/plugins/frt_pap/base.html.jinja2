@@ -11,9 +11,9 @@
             if (h >= 18 || h < 6) { document.documentElement.classList.add('dark'); }
         })();
     </script>
-    <!-- 告知 Tailwind Play CDN 使用 class-based 暗色模式 -->
-    <script>tailwind = { config: { darkMode: 'class' } }</script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 告知 Tailwind Play CDN 使用 class-based 暗色模式（须在 CDN 加载后配置） -->
+    <script>tailwind.config = { darkMode: 'class' }</script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
         body { font-family: 'Noto Sans SC', sans-serif; }
