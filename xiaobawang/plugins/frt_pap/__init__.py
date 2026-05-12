@@ -607,32 +607,58 @@ async def _handle_pap_pk(
     month = datetime.now(UTC).month
     year = datetime.now(UTC).year
 
-    target_user = await interface.get_member(str(target_value))
-    if not target_user:
-        await pap_pk.finish(f"未找到目标用户 {target_value}，请确认输入是否正确")
-    target_nick = target_user.nick
-    if not target_nick:
-        await pap_pk.finish(f"目标用户查询PAP失败")
+    # 目标：At 时取 QQ，同时尝试从 nick 提取角色名；str 时直接作为角色名
+    target_qq = None
+    target_character_name = None
+    if isinstance(target_value, At):
+        target_qq = target_value.target
+        target_user = await interface.get_member(
+            scene_id=user_info.scene.id,
+            scene_type=user_info.scene.type,
+            user_id=target_qq
+        )
+        if target_user and target_user.nick:
+            m = re.search(r'/(.+)$', target_user.nick)
+            target_character_name = m.group(1) if m else target_user.nick
     else:
-        match = re.search(r'/(.+)$', target_nick)
-        target_character_name = match.group(1) if match else target_nick
+        target_character_name = str(target_value)
+
+    # 发起者：尝试从 nick 提取角色名（QQ 回退用）
+    owner_character_name = None
+    owner_nick = (user_info.member.nick if user_info.member else None) or user_info.user.nick
+    if owner_nick:
+        m = re.search(r'/(.+)$', owner_nick)
+        owner_character_name = m.group(1) if m else owner_nick
 
     async with httpx.AsyncClient(
         headers={"x-api-key": f"{plugin_config.api_key}"}
     ) as client:
-        url = f"{plugin_config.pap_track_url}/api/pap?qq={user_info.user.id}&month={month}&year={year}"
-        r = await client.get(url)
-        if r.status_code == 404:
-            await pap_query.finish(f"你没有授权机器人访问你的联盟seat\n 请前往{plugin_config.pap_track_url}/oauth/login 进行授权")
-        r.raise_for_status()
-        owner_data = r.json()
+        # 发起者：优先 QQ，回退角色名
+        owner_data = None
+        r = await client.get(f"{plugin_config.pap_track_url}/api/pap?qq={user_info.user.id}&month={month}&year={year}")
+        if r.status_code == 200:
+            owner_data = r.json()
+        elif r.status_code == 404 and owner_character_name:
+            r2 = await client.get(f"{plugin_config.pap_track_url}/api/pap/main?main_character={owner_character_name}&month={month}&year={year}")
+            if r2.status_code == 200:
+                owner_data = r2.json()
+        if owner_data is None:
+            await pap_pk.finish(
+                f"未找到你的PAP数据，请前往 {plugin_config.pap_track_url}/oauth/login 进行授权，或确认角色名是否正确"
+            )
 
-        url = f"{plugin_config.pap_track_url}/api/pap/main?main_character={target_character_name}&month={month}&year={year}"
-        r = await client.get(url)
-        if r.status_code == 404:
-            await pap_pk.finish(f"未找到目标用户的PAP数据，可能是因为该角色没有PAP记录或者名字输入有误。")
-        r.raise_for_status()
-        target_data = r.json()
+        # 目标：优先 QQ，回退角色名
+        target_data = None
+        if target_qq:
+            r = await client.get(f"{plugin_config.pap_track_url}/api/pap?qq={target_qq}&month={month}&year={year}")
+            if r.status_code == 200:
+                target_data = r.json()
+        if target_data is None and target_character_name:
+            r = await client.get(f"{plugin_config.pap_track_url}/api/pap/main?main_character={target_character_name}&month={month}&year={year}")
+            if r.status_code == 200:
+                target_data = r.json()
+        if target_data is None:
+            await pap_pk.finish("未找到目标用户的PAP数据，可能是因为该角色没有PAP记录或者名字输入有误。")
 
     owner_name = owner_data.get("main_character", "你")
     target_name = target_data.get("main_character", target_character_name)
@@ -642,9 +668,9 @@ async def _handle_pap_pk(
     owner_year_pap = owner_data.get("yearly_total_pap", 0)
     target_year_pap = target_data.get("yearly_total_pap", 0)
 
-    def _pk_line(a_name: str, a_val: int | float, b_name: str, b_val: int | float, label: str) -> str:
-        a_val = int(a_val)
-        b_val = int(b_val)
+    def _pk_line(a_name: str, a_val: float | float, b_name: str, b_val: float | float, label: str) -> str:
+        a_val = float(a_val)
+        b_val = float(b_val)
         if a_val > b_val:
             result = f"🏆 {a_name} 胜！({a_val} vs {b_val})"
         elif a_val < b_val:
@@ -654,7 +680,7 @@ async def _handle_pap_pk(
         return f"【{label}】{result}"
 
     month_line = _pk_line(owner_name, owner_month_pap, target_name, target_month_pap, f"{year}年{month}月 PAP")
-    year_line = _pk_line(owner_name, owner_year_pap, target_name, target_year_pap, f"{year}年度 PAP")
+    year_line = _pk_line(owner_name, owner_year_pap, target_name, target_year_pap, f"{year}年年度 PAP")
 
     msg = (
         f"⚔️ PAP PK 结果 ⚔️\n"

@@ -191,7 +191,7 @@
           <span class="ship-col-title" style="color: {{ team.color }};">
             {{ team.main_faction_ticker }}
           </span>
-          {% if n > 2 %}
+          {% if report.display_mode != 'individual' %}
           <span class="ship-col-meta">
             <span class="col-count">总数</span>
             <span class="col-count">阵亡</span>
@@ -341,11 +341,9 @@
   <!-- ═══════════════════════════════════════════════════════════       FOOTER
   ═══════════════════════════════════════════════════════════════ -->
   <div id="br-footer">
-    Powered by Xiaobawang
-    {% if report.uuid %}
+    Powered by 小霸王机器人
     <span style="margin: 0 8px; color: var(--border-strong);">|</span>
-    {{ report.uuid[:8] | upper }}
-    {% endif %}
+    战报预览
     <span style="margin: 0 8px; color: var(--border-strong);">|</span>
     {{ report.time_start }}
   </div>
