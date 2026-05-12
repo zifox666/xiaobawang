@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>战斗报告 | {{ report.system }}</title>
+    <link rel="stylesheet" href="battlereport.css">
+    <script src="../tailwindcss.js"></script>
+</head>
+<body>
+{#
+  Expected context:
+    report:
+      uuid, system, region, time_start, time_end,
+      total_participants, total_kills,
+      total_isk_lost_fmt, display_mode
+    teams: list of:
+      team_id, color,
+      main_faction_id, main_faction_name, main_faction_ticker, is_alliance,
+      participant_count, kills, losses,
+      isk_lost_fmt, isk_killed_fmt, isk_efficiency,
+      isk_killed_share (normalized 0-100, bar width %),
+      top_factions: [{faction_id, name, ticker, participant_count, is_alliance}],
+      ship_type_stats: [{ship_type_id, name, count, losses, isk_lost, isk_lost_fmt,
+                         damage_done, damage_done_fmt, damage_taken, damage_taken_fmt}],
+      ship_group_stats: [{group_id, name, count, isk_lost, isk_lost_fmt}],
+      individual_stats: [{character_id, name, corp_id, kills, losses,
+                          isk_lost, isk_lost_fmt, damage_done, damage_done_fmt,
+                          damage_taken, damage_taken_fmt}]
+#}
+
+{# ─── Compute container width based on team count ────────────── #}
+{% set n = teams | length %}
+{% if n <= 2 %}{% set cw = 1200 %}
+{% elif n == 3 %}{% set cw = 1400 %}
+{% elif n == 4 %}{% set cw = 1600 %}
+{% elif n == 5 %}{% set cw = 1800 %}
+{% else %}{% set cw = 2000 %}{% endif %}
+
+<div id="br-root" style="width: {{ cw }}px;">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HEADER
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="br-header">
+    <div class="br-title">
+      {{ report.system | upper if report.system else '战斗报告' }}
+    </div>
+    <div class="br-subtitle">
+      {% if report.region %}<span>{{ report.region }}</span><span class="sep">·</span>{% endif %}
+      <span>{{ report.time_start }} – {{ report.time_end }}</span>
+      <span class="sep">·</span>
+      <span>{{ report.total_participants }} 飞行员</span>
+      <span class="sep">·</span>
+      <span>{{ report.total_kills }} 击杀</span>
+      <span class="sep">·</span>
+      <span>{{ report.total_isk_lost_fmt }} ISK 摧毁</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       ISK EFFICIENCY BAR  (proportional per team)
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="br-isk-bar">
+    {% for team in teams %}
+    {# isk_killed_share is pre-normalized 0-100, so bar segment width = share% #}
+    {% if team.isk_killed_share > 0 %}
+    <div class="isk-bar-segment"
+         style="width: {{ '%.2f' | format(team.isk_killed_share) }}%;
+                background: {{ team.color }};
+                opacity: 0.85;"
+         title="{{ team.main_faction_name }}: {{ '%.1f' | format(team.isk_efficiency) }}% ISK Eff.">
+      {% if team.isk_killed_share > 5 %}
+      <span class="isk-bar-label">
+        {{ team.main_faction_ticker }} {{ '%.0f' | format(team.isk_efficiency) }}%
+      </span>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    {# Fill remaining (unattributed) with dark #}
+    {% set used_share = namespace(v=0) %}
+    {% for team in teams %}{% set used_share.v = used_share.v + team.isk_killed_share %}{% endfor %}
+    {% if used_share.v < 99 %}
+    <div class="isk-bar-segment"
+         style="width: {{ '%.2f' | format(100 - used_share.v) }}%;
+                background: rgba(255,255,255,0.04);">
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       TEAMS OVERVIEW  (one card per team)
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="br-teams" class="team-count-{{ n }}">
+    {% for team in teams %}
+    <div class="br-team-card"
+         style="border-top: 3px solid {{ team.color }};">
+
+      <!-- Logo + name -->
+      <div class="team-header">
+        <img class="team-logo"
+             src="https://images.evetech.net/{{ 'alliances' if team.is_alliance else 'corporations' }}/{{ team.main_faction_id }}/logo?size=64"
+             onerror="this.src='https://images.evetech.net/corporations/1000001/logo?size=64'"
+             alt="{{ team.main_faction_name }}">
+        <div class="team-identity">
+          <div class="team-name" style="color: {{ team.color }};">
+            {{ team.main_faction_name }}
+          </div>
+          <div class="team-ticker">[{{ team.main_faction_ticker }}]</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="team-stats">
+        <div class="stat-item">
+          <div class="stat-value stat-pilots">{{ team.participant_count }}</div>
+          <div class="stat-label">参战</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value stat-kills">{{ team.kills }}</div>
+          <div class="stat-label">击杀</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value stat-losses">{{ team.losses }}</div>
+          <div class="stat-label">损失</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value stat-isk-lost">{{ team.isk_lost_fmt }}</div>
+          <div class="stat-label">ISK损失</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value stat-isk-lost" style="color: #22c55e;">{{ team.isk_killed_fmt }}</div>
+          <div class="stat-label">ISK摧毁</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value stat-efficiency">{{ '%.1f' | format(team.isk_efficiency) }}%</div>
+          <div class="stat-label">效率</div>
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FACTION BREAKDOWN  (corps / alliances per team)
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="br-factions" class="team-count-{{ n }}">
+    {% for team in teams %}
+    <div class="br-faction-col"
+         style="border-left: 2px solid {{ team.color }}20;">
+      <div class="section-label" style="color: {{ team.color }}80;">
+        {{ team.main_faction_ticker }} 阵营构成
+      </div>
+      {% for faction in team.top_factions[:8] %}
+      <div class="faction-row">
+        <img class="faction-logo"
+             src="https://images.evetech.net/{{ 'alliances' if faction.is_alliance else 'corporations' }}/{{ faction.faction_id }}/logo?size=32"
+             onerror="this.src='https://images.evetech.net/corporations/1000001/logo?size=32'"
+             alt="{{ faction.name }}">
+        <span class="faction-name">{{ faction.name }}</span>
+        <span class="faction-count" style="color: {{ team.color }};">{{ faction.participant_count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SHIP STATS  (mode: individual / ship_type / ship_group)
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="br-ships">
+    <div class="section-header-bar">
+      舰船统计
+      <span style="margin-left: 8px; color: var(--text-accent);">·</span>
+      <span style="margin-left: 8px;">
+        {% if report.display_mode == 'individual' %}按飞行员 (&lt; 50)
+        {% elif report.display_mode == 'ship_type' %}按舰船类型 (50–200)
+        {% else %}按舰船组分类 (200+)
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="br-ship-cols team-count-{{ n }}">
+      {% for team in teams %}
+      <div class="br-ship-col">
+
+        <!-- Column header -->
+        <div class="ship-col-header"
+             style="background: {{ team.color }}10; border-bottom: 1px solid {{ team.color }}30;">
+          <span class="ship-col-title" style="color: {{ team.color }};">
+            {{ team.main_faction_ticker }}
+          </span>
+          {% if n > 2 %}
+          <span class="ship-col-meta">
+            <span class="col-count">总数</span>
+            <span class="col-count">阵亡</span>
+            <span class="col-isk">ISK</span>
+            <span class="col-dmg">输出</span>
+            <span class="col-take">承伤</span>
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- ── INDIVIDUAL mode ──────────────────────────────── -->
+        {% if report.display_mode == 'individual' %}
+        {% for pilot in team.individual_stats[:20] %}
+        <div class="pilot-row {{ 'pilot-row-odd' if loop.index is odd }} {{ 'pilot-row-loss' if pilot.losses > 0 }}">
+          <!-- 舰船图标 -->
+          {% if pilot.ship_type_id %}
+          <img class="pilot-ship-icon"
+               src="https://images.evetech.net/types/{{ pilot.ship_type_id }}/icon?size=32"
+               onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"
+               title="{{ pilot.ship_name }}">
+          {% else %}
+          <div class="pilot-ship-icon pilot-no-ship"></div>
+          {% endif %}
+          <!-- 角色头像 -->
+          <img class="pilot-portrait"
+               src="https://images.evetech.net/characters/{{ pilot.character_id }}/portrait?size=32"
+               onerror="this.src='https://images.evetech.net/corporations/1000001/logo?size=32'"
+               title="{{ pilot.name }}">
+          <!-- 名称 + 舰船型号 -->
+          <div class="pilot-nameblock">
+            <div class="pilot-name">{{ pilot.name }}</div>
+            <div class="pilot-shipname">{{ pilot.ship_name }}</div>
+          </div>
+          <!-- 弹性间距 -->
+          <div class="pilot-spacer"></div>
+          <!-- 统计 -->
+          <div class="pilot-stats">
+            {% if pilot.isk_lost > 0 %}
+            <div class="pilot-isk">{{ pilot.isk_lost_fmt }}</div>
+            {% endif %}
+            <div class="pilot-dmg">
+              {{ pilot.damage_done_fmt if pilot.damage_done > 0 else '—' }}
+              {%- if pilot.damage_taken > 0 %} / {{ pilot.damage_taken_fmt }}{%- endif %}
+              ({{ pilot.participated }})
+            </div>
+          </div>
+          <!-- 军团 logo -->
+          <img class="pilot-corp-logo"
+               src="https://images.evetech.net/corporations/{{ pilot.corp_id }}/logo?size=32"
+               onerror="this.src='https://images.evetech.net/corporations/1000001/logo?size=32'">
+          <!-- 联盟 logo -->
+          {% if pilot.alliance_id %}
+          <img class="pilot-alliance-logo"
+               src="https://images.evetech.net/alliances/{{ pilot.alliance_id }}/logo?size=32"
+               onerror="this.src='https://images.evetech.net/corporations/1000001/logo?size=32'">
+          {% else %}
+          <div class="pilot-alliance-logo pilot-no-alliance"></div>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <!-- ── SHIP TYPE mode ───────────────────────────────── -->
+        {% elif report.display_mode == 'ship_type' %}
+        {% for ship in team.ship_type_stats[:22] %}
+        <div class="ship-row {{ 'ship-row-odd' if loop.index is odd }}">
+          <img class="ship-icon"
+               src="https://images.evetech.net/types/{{ ship.ship_type_id }}/icon?size=32"
+               onerror="this.src='https://images.evetech.net/types/670/icon?size=32'"
+               alt="{{ ship.name }}">
+          <span class="ship-name">{{ ship.name }}</span>
+          <span class="ship-count">{{ ship.count }}</span>
+          <span class="ship-count" style="color: var(--red);">{{ ship.losses if ship.losses > 0 else '—' }}</span>
+          <span class="ship-isk {{ 'isk-neg' if ship.isk_lost > 0 else 'isk-zero' }}">
+            {% if ship.isk_lost > 0 %}{{ ship.isk_lost_fmt }}{% else %}—{% endif %}
+          </span>
+          <span class="ship-dmg">{{ ship.damage_done_fmt if ship.damage_done > 0 else '—' }}</span>
+          <span class="ship-take">{{ ship.damage_taken_fmt if ship.damage_taken > 0 else '—' }}</span>
+        </div>
+        {% endfor %}
+
+        <!-- ── SHIP GROUP mode ──────────────────────────────── -->
+        {% else %}
+        {% for grp in team.ship_group_stats[:18] %}
+        <div class="ship-row {{ 'ship-row-odd' if loop.index is odd }}">
+          <span class="ship-name">{{ grp.name }}</span>
+          <span class="ship-count">{{ grp.count }}</span>
+          <span class="ship-count" style="color: var(--red);">{{ grp.losses if grp.losses > 0 else '—' }}</span>
+          <span class="ship-isk {{ 'isk-neg' if grp.isk_lost > 0 else 'isk-zero' }}">
+            {% if grp.isk_lost > 0 %}{{ grp.isk_lost_fmt }}{% else %}—{% endif %}
+          </span>
+          <span class="ship-dmg">{{ grp.damage_done_fmt if grp.damage_done > 0 else '—' }}</span>
+          <span class="ship-take">{{ grp.damage_taken_fmt if grp.damage_taken > 0 else '—' }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+      </div><!-- /br-ship-col -->
+      {% endfor %}
+    </div><!-- /br-ship-cols -->
+  </div><!-- /br-ships -->
+
+  <!-- ═══════════════════════════════════════════════════════════       ISK LOSS TIMELINE CHART
+  ═══════════════════════════════════════════════════════════ -->
+  {% if isk_chart %}
+  <div id="br-chart">
+    <div class="section-header-bar chart-header">
+      ISK损失时间线
+      <div class="chart-legend">
+        {% for s in isk_chart.svg_series %}
+        <span class="legend-item" style="color: {{ s.color }};">
+          ■ {{ s.ticker }} {{ s.final_isk_fmt }}
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="chart-body">
+      <div class="chart-yaxis">
+        <span>{{ isk_chart.max_isk_fmt }}</span>
+        <span style="margin-top: auto;">0</span>
+      </div>
+      <div class="chart-area">
+        <svg class="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <!-- Grid lines -->
+          <line x1="0" y1="5"  x2="100" y2="5"  stroke="rgba(255,255,255,0.04)" stroke-width="0.3"/>
+          <line x1="0" y1="30" x2="100" y2="30" stroke="rgba(255,255,255,0.04)" stroke-width="0.3"/>
+          <line x1="0" y1="55" x2="100" y2="55" stroke="rgba(255,255,255,0.04)" stroke-width="0.3"/>
+          <line x1="0" y1="80" x2="100" y2="80" stroke="rgba(255,255,255,0.04)" stroke-width="0.3"/>
+          <!-- Area fills -->
+          {% for s in isk_chart.svg_series %}
+          <polygon points="{{ s.fill_points }}" fill="{{ s.color }}" opacity="0.10"/>
+          {% endfor %}
+          <!-- Lines (rendered on top) -->
+          {% for s in isk_chart.svg_series %}
+          <polyline points="{{ s.points }}" stroke="{{ s.color }}"
+                    stroke-width="0.5" fill="none" opacity="0.9"/>
+          {% endfor %}
+        </svg>
+        <div class="chart-xaxis">
+          <span>{{ isk_chart.t_start_label }}</span>
+          <span>{{ isk_chart.t_end_label }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══════════════════════════════════════════════════════════       FOOTER
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="br-footer">
+    Powered by Xiaobawang
+    {% if report.uuid %}
+    <span style="margin: 0 8px; color: var(--border-strong);">|</span>
+    {{ report.uuid[:8] | upper }}
+    {% endif %}
+    <span style="margin: 0 8px; color: var(--border-strong);">|</span>
+    {{ report.time_start }}
+  </div>
+
+</div><!-- /#br-root -->
+</body>
+</html>

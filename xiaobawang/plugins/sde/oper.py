@@ -205,6 +205,33 @@ class SDESearch:
 
             return group_name
 
+    @cache_result(prefix="group_name_", exclude_args=[0])
+    async def get_group_name(
+        self, group_id: int, language: str | None = None
+    ) -> str | None:
+        """
+        直接用 group_id 查询船型组的本地化名称。
+
+        Args:
+            group_id: InvGroups.groupID
+            language: 语言代码，默认使用 self.default_lang
+        Returns:
+            组名称字符串，查不到时返回 None
+        """
+        if language is None:
+            language = self.default_lang
+
+        async with await get_session() as session:
+            tns_query = select(TrnTranslations.text).where(
+                and_(
+                    TrnTranslations.tcID == TC_GROUP_ID,
+                    TrnTranslations.keyID == group_id,
+                    TrnTranslations.languageID == language,
+                )
+            )
+            tns_result = await session.execute(tns_query)
+            return tns_result.scalar_one_or_none()
+
     @cache_result(prefix="fuzzy_search_", exclude_args=[0])
     async def trans_items(
         self, search_item: str, limit: int = 10, source_lang: str | None = None, target_lang: str = "en"
