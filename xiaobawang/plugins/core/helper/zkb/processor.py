@@ -170,6 +170,7 @@ class KillmailProcessor:
                 "attacker_number": attacker_number,
                 "attackMember": (attack_members := self._format_attackers(attackers, entity_names, item_names)),
                 "faction_stats": self._compute_faction_stats(attack_members),
+                "ship_stats": self._compute_ship_stats(attack_members),
                 "slot_list": slot_list_raw,
                 "slot_list_merged": self._merge_slot_items(slot_list_raw),
                 "zkb": killmail_data.get("zkb", {}),
@@ -768,6 +769,23 @@ class KillmailProcessor:
                 logo_url = f"https://images.newdoublex.space/corporations/{a.get('attacker_corp_id', 0)}/logo?size=64"
             if key not in groups:
                 groups[key] = {"name": name, "logo_url": logo_url, "count": 0}
+            groups[key]["count"] += 1
+        return sorted(groups.values(), key=lambda x: x["count"], reverse=True)
+
+    @classmethod
+    def _compute_ship_stats(cls, attack_members: list[dict]) -> list[dict]:
+        """按舰船类型分组统计攻击者"""
+        groups: dict[str, dict] = {}
+        for a in attack_members:
+            ship_id = a.get("ship_type_id", 0)
+            ship_name = a.get("ship_type_name", "未知舰船")
+            key = str(ship_id)
+            if key not in groups:
+                groups[key] = {
+                    "name": ship_name,
+                    "ship_id": ship_id,
+                    "count": 0,
+                }
             groups[key]["count"] += 1
         return sorted(groups.values(), key=lambda x: x["count"], reverse=True)
 

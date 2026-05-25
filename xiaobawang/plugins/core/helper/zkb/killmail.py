@@ -72,7 +72,7 @@ class KillmailHelper:
         async with _render_semaphore:
             pic = await render_template(
                 template_path=templates_path / "killmail",
-                template_name="killmail_v2.html.jinja2",
+                template_name="killmail_v3.html.jinja2",
                 data=html_data,
                 width=1060,
                 height=100,

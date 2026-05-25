@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1100">
+<title>击毁报告{% if killmail_id is defined %} #{{ killmail_id }}{% endif %}</title>
+<style>{% include 'killmail_v3.css' %}</style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<div class="km-header">
+  <span class="km-title">击毁报告</span>
+  <span class="km-id">#{{ killmail_id }}</span>
+  <span class="km-time">{{ time }}（{{ time_difference }}）</span>
+</div>
+
+<!-- ===== 3-column body ===== -->
+<div class="km-body">
+
+  <!-- ═══════════════ LEFT COLUMN — 信息栏 ═══════════════ -->
+  <div class="col-left">
+
+    <!-- Character card -->
+    <div class="char-card">
+      <div class="char-portrait">
+        {% if victim.victim_id %}
+        <img src="https://images.newdoublex.space/characters/{{ victim.victim_id }}/portrait?size=256"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=128'" />
+        {% else %}
+        <img src="https://images.newdoublex.space/corporations/{{ victim.victim_corp_id }}/logo?size=128"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=128'" />
+        {% endif %}
+      </div>
+      <div class="char-logos">
+        <img src="https://images.newdoublex.space/corporations/{{ victim.victim_corp_id }}/logo?size=64"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+        {% if victim.victim_alliance_id %}
+        <img src="https://images.newdoublex.space/alliances/{{ victim.victim_alliance_id }}/logo?size=64"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+        {% endif %}
+      </div>
+      <div class="char-info">
+        <div class="ci-line ci-name">
+          {% if victim.victim_name and victim.victim_name != 'Unknown' %}{{ victim.victim_name }}{% else %}{{ victim.ship_type_name }}{% endif %}
+        </div>
+        <div class="ci-line ci-title">{% if victim.victim_title %}{{ victim.victim_title }}{% else %}&nbsp;{% endif %}</div>
+        <div class="ci-line ci-ship">{{ victim.ship_type_name }}（{{ victim.ship_group_name }}）</div>
+        <div class="ci-line ci-corp">{{ victim.victim_corp }}</div>
+        <div class="ci-line ci-ally">{% if victim.victim_alliance_name %}{{ victim.victim_alliance_name }}{% else %}&nbsp;{% endif %}</div>
+      </div>
+    </div>
+
+    <!-- Location -->
+    <div class="info-row">
+      <span class="ir-label">星系</span>
+      <span class="ir-system">{{ solar_system }}</span>
+      <span class="ir-sec" style="color:var({{ sec_color }})">{{ sec }}</span>
+      {% if constellation %}<span class="ir-dot">&lt;</span><span class="ir-sub">{{ constellation }}</span>{% endif %}
+      {% if region %}<span class="ir-dot">&lt;</span><span class="ir-sub">{{ region }}</span>{% endif %}
+    </div>
+
+    <!-- Time -->
+    <div class="info-row">
+      <span class="ir-label">时间</span>
+      <span class="ir-value">{{ time }}（{{ time_difference }}）</span>
+    </div>
+
+    <!-- Distance -->
+    {% if location_name is defined and location_name %}
+    <div class="info-row">
+      <span class="ir-label">距离</span>
+      <span class="ir-value">{{ location_name }}{% if distance_str is defined and distance_str %}　{{ distance_str }}{% endif %}</span>
+    </div>
+    {% endif %}
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-cell">
+        <div class="sc-lbl">总价值</div>
+        <div class="sc-val c-red">{{ total_value_abbr }}</div>
+        <div class="sc-sub">ISK</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-lbl">掉落</div>
+        <div class="sc-val c-green">{{ drop_value_abbr }}</div>
+        <div class="sc-sub">ISK</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-lbl">伤害</div>
+        <div class="sc-val c-blue">{{ victim.damage_taken }}</div>
+        <div class="sc-sub">&nbsp;</div>
+      </div>
+    </div>
+
+    <!-- Faction stats -->
+    {% if faction_stats %}
+    <div class="stats-block">
+      <div class="sb-title">势力统计</div>
+      {% for fs in faction_stats %}
+      <div class="sb-row">
+        <img src="{{ fs.logo_url }}"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+        <span class="sb-name">{{ fs.name }}</span>
+        <span class="sb-count">{{ fs.count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Ship stats -->
+    {% if ship_stats %}
+    <div class="stats-block">
+      <div class="sb-title">舰船统计</div>
+      {% for ss in ship_stats %}
+      <div class="sb-row">
+        <img src="https://images.newdoublex.space/types/{{ ss.ship_id }}/icon?size=32"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+        <span class="sb-name">{{ ss.name }}</span>
+        <span class="sb-count">{{ ss.count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div><!-- /col-left -->
+
+  <!-- ═══════════════ CENTER COLUMN — HUD + 装备详情 ═══════════════ -->
+  <div class="col-mid">
+
+    <!-- HUD -->
+    <div class="hud-section">
+      {% if slot_list %}
+      <div class="hud-wrap">
+        <div class="hud-orbit-outer"></div>
+        <div class="hud-orbit-inner"></div>
+        <div class="hud-circle">
+          <img src="https://images.newdoublex.space/types/{{ victim.ship_type_id }}/render?size=512"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/{{ victim.ship_type_id }}/render?size=256'" />
+        </div>
+        {% set pfx_map = {'high':'h','med':'m','low':'l','rig':'r','subsystem':'ss','service':'sv'} %}
+        {% set max_slots_map = {'h':8,'m':8,'l':8,'r':3,'ss':4,'sv':5} %}
+        {% for slot in slot_list %}
+        {% if slot.slotType in pfx_map %}
+        {% set pfx = pfx_map[slot.slotType] %}
+        {% set max_slots = max_slots_map[pfx] if pfx in max_slots_map else 8 %}
+        {% set ns = namespace(pos=1) %}
+        {% for item in slot.slot_items %}
+        {% set count = item.item_number if item.item_number is defined else 1 %}
+        {% if count <= max_slots %}
+        {% for _ in range(count) %}
+        {% set slot_cls = pfx ~ ns.pos %}
+        <div class="slot {{ slot_cls }}" title="{{ item.item_name }}">
+          {% if item.blueprint %}
+          <img src="https://images.newdoublex.space/types/{{ item.item_id }}/bpc?size=32"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/{{ item.item_id }}/icon?size=32'" />
+          {% else %}
+          <img src="https://images.newdoublex.space/types/{{ item.item_id }}/icon?size=32"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+          {% endif %}
+        </div>
+        {% if item.nested_items and item.nested_items|length > 0 %}
+        <div class="slot ammo {{ slot_cls }}" title="{{ item.nested_items[0].item_name }}">
+          <img src="https://images.newdoublex.space/types/{{ item.nested_items[0].item_id }}/icon?size=32"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+        </div>
+        {% endif %}
+        {% set ns.pos = ns.pos + 1 %}
+        {% endfor %}
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="color:var(--text-sec);font-size:12px;">无装备记录</div>
+      {% endif %}
+    </div>
+
+    <!-- 装备详情 -->
+    {% if slot_list_merged %}
+    <div class="fit-section">
+      {% for slot in slot_list_merged %}
+      {% if slot.slot_items %}
+      {% if slot.slotType in ('cargo','drone','fighter','other') %}
+        {% set _all = slot.slot_items | sort(attribute='item_price_total', reverse=True) %}
+        {% set _show = _all[:10] %}
+        {% set _hidden = (_all | length) - (_show | length) %}
+      {% else %}
+        {% set _show = slot.slot_items %}
+        {% set _hidden = 0 %}
+      {% endif %}
+      <div class="fit-group">
+        <div class="fit-group-hdr">{{ slot.slotName }}
+          <span style="margin-left:auto;font-weight:400;">{{ slot.slot_items | length }}</span>
+        </div>
+        {% for item in _show %}
+        <div class="fit-item{% if item.qty_dropped > 0 and item.qty_destroyed == 0 %} dropped{% endif %}">
+          <div class="fit-icon">
+            {% if item.blueprint %}
+            <img src="https://images.newdoublex.space/types/{{ item.item_id }}/bpc?size=32"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/{{ item.item_id }}/icon?size=32'" />
+            {% else %}
+            <img src="https://images.newdoublex.space/types/{{ item.item_id }}/icon?size=32"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+            {% endif %}
+          </div>
+          <span class="fit-name">{{ item.item_name }}</span>
+          {% if item.qty_total > 1 %}<span class="fit-qty">×{{ item.qty_total }}</span>{% endif %}
+          {% if item.item_price_total_str %}<span class="fit-price">{{ item.item_price_total_str }}</span>{% endif %}
+        </div>
+        {% if item.nested_items %}
+        {% set _ni_all = item.nested_items %}
+        {% set _ni_show = _ni_all[:10] %}
+        {% set _ni_hidden = (_ni_all | length) - (_ni_show | length) %}
+        {% for ni in _ni_show %}
+        <div class="fit-item-nested{% if item.qty_dropped > 0 and item.qty_destroyed == 0 %} dropped{% endif %}">
+          <div class="fit-icon" style="width:20px;height:20px;">
+            {% if ni.blueprint %}
+            <img src="https://images.newdoublex.space/types/{{ ni.item_id }}/bpc?size=32"
+                 style="width:20px;height:20px;"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+            {% else %}
+            <img src="https://images.newdoublex.space/types/{{ ni.item_id }}/icon?size=32"
+                 style="width:20px;height:20px;"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+            {% endif %}
+          </div>
+          <span class="fit-name">{{ ni.item_name }}</span>
+          {% if ni.item_number and ni.item_number > 1 %}<span class="fit-qty">×{{ ni.item_number }}</span>{% endif %}
+          {% if ni.item_price_total_str %}<span class="fit-price">{{ ni.item_price_total_str }}</span>{% endif %}
+        </div>
+        {% endfor %}
+        {% if _ni_hidden > 0 %}
+        <div class="fit-item-nested" style="color:var(--text-sec);font-size:10px;justify-content:center;">还有 {{ _ni_hidden }} 件未展示</div>
+        {% endif %}
+        {% endif %}
+        {% endfor %}
+        {% if _hidden > 0 %}
+        <div class="fit-item" style="color:var(--text-sec);font-size:11px;justify-content:center;">还有 {{ _hidden }} 件未展示（按价值显示前10）</div>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--text-sec);font-size:12px;padding:12px;">无装备记录</div>
+    {% endif %}
+
+  </div><!-- /col-mid -->
+
+  <!-- ═══════════════ RIGHT COLUMN — 攻击列表 ═══════════════ -->
+  <div class="col-right">
+
+    <!-- Highlight cards -->
+    {% if attackMember|length > 0 %}
+    {% set fb = attackMember[0] %}
+    {% if attackMember|length > 1 %}
+    {% set td = attackMember[1] if attackMember[0].damage_percent < attackMember[1].damage_percent else attackMember[0] %}
+    {% else %}
+    {% set td = attackMember[0] %}
+    {% endif %}
+    <div class="hl-grid">
+      <div class="hl-card">
+        <div class="hl-lbl">最后一击{% if attackMember|length > 1 and td == attackMember[0] %} / 最多伤害{% endif %}</div>
+        <div class="hl-top">
+          <div class="hl-portrait">
+            {% if fb.attacker_id %}
+            <img src="https://images.newdoublex.space/characters/{{ fb.attacker_id }}/portrait?size=128"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/corporations/{{ fb.attacker_corp_id }}/logo?size=64'" />
+            {% else %}
+            <img src="https://images.newdoublex.space/corporations/{{ fb.attacker_corp_id }}/logo?size=64"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+            {% endif %}
+          </div>
+          <div class="hl-icons">
+            <div class="hl-icon-row">
+              {% if fb.ship_type_id %}
+              <div class="hl-icon"><img src="https://images.newdoublex.space/types/{{ fb.ship_type_id }}/icon?size=32"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" /></div>
+              {% endif %}
+              {% if fb.attacker_alliance_id %}
+              <div class="hl-icon"><img src="https://images.newdoublex.space/alliances/{{ fb.attacker_alliance_id }}/logo?size=32"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" /></div>
+              {% endif %}
+            </div>
+            <div class="hl-icon-row">
+              {% if fb.weapon_type_id %}
+              <div class="hl-icon"><img src="https://images.newdoublex.space/types/{{ fb.weapon_type_id }}/icon?size=32"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" /></div>
+              {% endif %}
+              {% if fb.attacker_corp_id %}
+              <div class="hl-icon"><img src="https://images.newdoublex.space/corporations/{{ fb.attacker_corp_id }}/logo?size=32"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" /></div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="hl-txt">
+          <span class="hl-name">{{ fb.attacker_name if fb.attacker_name and fb.attacker_name != 'Unknown' else fb.ship_type_name }}</span>
+          <span class="hl-corp">{{ fb.attacker_corp }}</span>
+          {% if fb.attacker_alliance %}<span class="hl-ally">{{ fb.attacker_alliance }}</span>{% endif %}
+          <div class="hl-dmg"><span>{{ fb.damage_done }}</span><span class="pct">({{ fb.damage_percent }}%)</span></div>
+        </div>
+      </div>
+
+      {% if attackMember|length > 1 and td != attackMember[0] %}
+      <div class="hl-card">
+        <div class="hl-lbl">最多伤害</div>
+        <div class="hl-top">
+          <div class="hl-portrait">
+            {% if td.attacker_id %}
+            <img src="https://images.newdoublex.space/characters/{{ td.attacker_id }}/portrait?size=128"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/corporations/{{ td.attacker_corp_id }}/logo?size=64'" />
+            {% else %}
+            <img src="https://images.newdoublex.space/corporations/{{ td.attacker_corp_id }}/logo?size=64"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+            {% endif %}
+          </div>
+          <div class="hl-icons">
+            <div class="hl-icon-row">
+              {% if td.ship_type_id %}<div class="hl-icon"><img src="https://images.newdoublex.space/types/{{ td.ship_type_id }}/icon?size=32" onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" /></div>{% endif %}
+              {% if td.attacker_alliance_id %}<div class="hl-icon"><img src="https://images.newdoublex.space/alliances/{{ td.attacker_alliance_id }}/logo?size=32" onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" /></div>{% endif %}
+            </div>
+            <div class="hl-icon-row">
+              {% if td.weapon_type_id %}<div class="hl-icon"><img src="https://images.newdoublex.space/types/{{ td.weapon_type_id }}/icon?size=32" onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" /></div>{% endif %}
+              {% if td.attacker_corp_id %}<div class="hl-icon"><img src="https://images.newdoublex.space/corporations/{{ td.attacker_corp_id }}/logo?size=32" onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" /></div>{% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="hl-txt">
+          <span class="hl-name">{{ td.attacker_name if td.attacker_name and td.attacker_name != 'Unknown' else td.ship_type_name }}</span>
+          <span class="hl-corp">{{ td.attacker_corp }}</span>
+          {% if td.attacker_alliance %}<span class="hl-ally">{{ td.attacker_alliance }}</span>{% endif %}
+          <div class="hl-dmg"><span>{{ td.damage_done }}</span><span class="pct">({{ td.damage_percent }}%)</span></div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Participant list header -->
+    <div class="part-hdr">
+      <span><span class="part-count">{{ attacker_number }}</span> 参与者</span>
+      <span>总伤害 {{ victim.damage_taken }}</span>
+    </div>
+
+    <!-- Participant rows (max 20) -->
+    {% for attacker in attackMember %}
+    {% if loop.index <= 20 %}
+    <div class="prow{% if loop.first %} final-blow{% endif %}">
+      <div class="pav">
+        {% if attacker.attacker_id %}
+        <img src="https://images.newdoublex.space/characters/{{ attacker.attacker_id }}/portrait?size=64"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/corporations/{{ attacker.attacker_corp_id }}/logo?size=64'" />
+        {% else %}
+        <img src="https://images.newdoublex.space/corporations/{{ attacker.attacker_corp_id }}/logo?size=64"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+        {% endif %}
+      </div>
+      <div class="pship">
+        {% if attacker.ship_type_id %}
+        <img src="https://images.newdoublex.space/types/{{ attacker.ship_type_id }}/icon?size=32"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+        {% endif %}
+        {% if attacker.weapon_type_id %}
+        <img src="https://images.newdoublex.space/types/{{ attacker.weapon_type_id }}/icon?size=32"
+             onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+        {% endif %}
+      </div>
+      <div class="pinfo">
+        <span class="pname">
+          {% if attacker.attacker_name and attacker.attacker_name != 'Unknown' %}{{ attacker.attacker_name }}{% else %}{{ attacker.ship_type_name }}{% endif %}
+        </span>
+        {% if attacker.ship_type_name and attacker.ship_type_name not in ('Unknown Ship','Unknown') %}
+        <span class="pship-name">{{ attacker.ship_type_name }}</span>
+        {% endif %}
+        <span class="pcorp">
+          {{ attacker.attacker_corp }}{% if attacker.attacker_alliance %} · {{ attacker.attacker_alliance }}{% endif %}
+        </span>
+      </div>
+      <div class="pdmg-col">
+        <div class="pdmg">{{ attacker.damage_done }}</div>
+        <div class="ppct">{{ attacker.damage_percent }}%</div>
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% if attacker_number > 20 %}
+    <div class="part-more">还有 {{ attacker_number - 20 }} 名参与者未展示</div>
+    {% elif attacker_number > attackMember|length %}
+    <div class="part-more">还有 {{ attacker_number - attackMember|length }} 名参与者未展示</div>
+    {% endif %}
+
+  </div><!-- /col-right -->
+
+</div><!-- /km-body -->
+
+<!-- ===== Footer ===== -->
+<div class="km-footer">
+  Powered by <strong>小霸王机器人</strong><span>|</span>战报详情
+</div>
+
+<script>{% include 'killmail_v3.js' %}</script>
+</body>
+</html>
