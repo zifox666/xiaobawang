@@ -100,108 +100,91 @@
       flex-direction: column;
     }
 
-    /* Portrait banner */
+    /* Portrait banner — 参考图样式 */
     .portrait-banner {
-      position: relative;
       height: 120px;
       overflow: hidden;
       flex-shrink: 0;
     }
-    .portrait-bg {
-      position: absolute;
-      inset: 0;
-      width: 100%;
+
+    .pp-body {
+      display: flex;
+      align-items: center;
       height: 100%;
-      object-fit: cover;
-      filter: blur(10px) brightness(0.3);
-      transform: scale(1.15);
+      gap: 0;
     }
-    .portrait-fg {
-      position: absolute;
-      left: 12px;
-      bottom: 12px;
-      width: 96px;
-      height: 96px;
-      border-radius: 4px;
-      border: 2px solid rgba(255,255,255,0.18);
-      object-fit: cover;
-      background: #111;
+
+    /* 头像 — 最左边 */
+    .pp-portrait {
+      flex-shrink: 0;
+      line-height: 0;
     }
-    .portrait-orgs {
-      position: absolute;
-      left: 116px;
-      bottom: 12px;
+    .pp-portrait img {
+      width: 90px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 0;
+    }
+
+    /* 舰船渲染图 */
+    .pp-render {
+      flex-shrink: 0;
+      line-height: 0;
+    }
+    .pp-render img {
+      width: 90px;
+      height: 90px;
+      object-fit: contain;
+      border-radius: 0;
+    }
+
+    /* logo 堆叠 */
+    .pp-badges {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      flex-shrink: 0;
+      line-height: 0;
     }
-    .portrait-orgs img {
-      width: 44px;
-      height: 44px;
-      border-radius: 3px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: #1a1a1a;
+    .pp-badges img {
+      width: 45px;
+      height: 45px;
       object-fit: contain;
+      border-radius: 0;
+      background: #111;
     }
-    .portrait-info {
-      position: absolute;
-      left: 168px;
-      right: 10px;
-      bottom: 12px;
-      overflow: hidden;
+    .pp-badges .pp-placeholder {
+      width: 45px;
+      height: 45px;
     }
-    .p-name {
-      font-size: 14px;
-      font-weight: 700;
-      color: #fff;
+
+    /* 右侧文本 */
+    .pp-info {
+      flex: 1;
+      min-width: 0;
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+    }
+    .pp-info .pp-txt {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      line-height: 1.4;
     }
-    .p-title {
-      font-size: 10px;
-      color: rgba(255,255,255,0.5);
-      font-style: italic;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 1px;
-    }
-    .p-corp {
-      font-size: 11px;
-      color: rgba(255,255,255,0.6);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 3px;
-    }
-    .p-ally {
-      font-size: 11px;
-      color: rgba(255,255,255,0.4);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 1px;
-    }
+    .pp-name { font-size: 13px; font-weight: 700; color: #fff; }
+    .pp-title { font-size: 10px; color: rgba(255,255,255,0.5); font-style: italic; }
+    .pp-ship-line { font-size: 11px; color: #7eb8f7; }
+    .pp-corp { font-size: 11px; color: rgba(255,255,255,0.6); }
+    .pp-ally { font-size: 11px; color: rgba(255,255,255,0.4); }
 
     /* Ship section */
     .ship-section {
-      padding: 10px 12px 8px;
+      padding: 6px 12px;
       border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 10px;
     }
-    .ship-render {
-      width: 72px;
-      height: 72px;
-      border-radius: 4px;
-      background: #0a0a0c;
-      object-fit: contain;
-      flex-shrink: 0;
-      border: 1px solid var(--border);
-    }
-    .ship-meta { flex: 1; min-width: 0; }
+    .ship-meta { min-width: 0; }
     .ship-name {
       font-size: 16px;
       font-weight: 700;
@@ -417,7 +400,7 @@
       border-radius: 1px;
     }
 
-    /* ── High slots �?top arc ── */
+    /* ── High slots top arc ── */
     .h1 { top: 43px;  left: 88px;  }
     .h2 { top: 26px;  left: 116px; }
     .h3 { top: 15px;  left: 146px; }
@@ -426,7 +409,7 @@
     .h6 { top: 15px;  left: 242px; }
     .h7 { top: 26px;  left: 272px; }
     .h8 { top: 43px;  left: 300px; }
-    /* ── Mid slots �?right arc ── */
+    /* ── Mid slots right arc ── */
     .m1 { top: 88px;  left: 346px; }
     .m2 { top: 116px; left: 362px; }
     .m3 { top: 146px; left: 373px; }
@@ -435,7 +418,7 @@
     .m6 { top: 242px; left: 373px; }
     .m7 { top: 272px; left: 362px; }
     .m8 { top: 300px; left: 346px; }
-    /* ── Low slots �?bottom arc ── */
+    /* ── Low slots bottom arc ── */
     .l1 { top: 346px; left: 300px; }
     .l2 { top: 362px; left: 272px; }
     .l3 { top: 373px; left: 242px; }
@@ -444,11 +427,11 @@
     .l6 { top: 373px; left: 146px; }
     .l7 { top: 362px; left: 116px; }
     .l8 { top: 346px; left: 88px;  }
-    /* ── Rig slots �?left arc upper ── */
+    /* ── Rig slots left arc upper ── */
     .r1 { top: 88px;  left: 43px;  }
     .r2 { top: 116px; left: 26px;  }
     .r3 { top: 146px; left: 15px;  }
-    /* ── Subsystem slots �?left arc lower ── */
+    /* ── Subsystem slots left arc lower ── */
     .ss1 { top: 300px; left: 43px;  }
     .ss2 { top: 272px; left: 26px;  }
     .ss3 { top: 242px; left: 15px;  }
@@ -460,7 +443,7 @@
     .sv4 { top: 287px; left: 34px; }
     .sv5 { top: 313px; left: 52px; }
 
-    /* ── Ammo inner ring �?24×24 charges inside weapon/launcher slots ── */
+    /* ── Ammo inner ring 24×24 charges inside weapon/launcher slots ── */
     .slot.ammo {
       width: 24px;
       height: 24px;
@@ -501,7 +484,7 @@
     .slot.ammo.ss4 { top: 212px; left: 44px;  }
 
     /* ─────────────────────────────────────────────────
-       MIDDLE COLUMN �?fitting list  (flex-1)
+       MIDDLE COLUMN  (fitting list)  (flex-1)
     ───────────────────────────────────────────────── */
     .col-mid {
       flex: 1;
@@ -556,6 +539,7 @@
       color: var(--text-sec);
       background: rgba(255,255,255,0.015);
     }
+    .fit-item-nested.dropped { background: var(--bg-drop); }
 
     .fit-icon {
       width: 26px; height: 26px;
@@ -767,7 +751,7 @@
   <div class="km-header">
     <span class="km-title">击毁报告</span>
     <span class="km-id">#{{ killmail_id }}</span>
-    <span class="km-time">{{ time }}（{{ time_difference }}</span>w
+    <span class="km-time">{{ time }}({{ time_difference }})</span>
   </div>
 
   <!-- ── 3-column body ────────────────────────────────────────── -->
@@ -780,61 +764,58 @@
 
       <!-- Portrait banner -->
       <div class="portrait-banner">
-        <!-- foreground portrait -->
-        {% if victim.victim_id %}
-        <img class="portrait-fg"
-          src="https://images.newdoublex.space/characters/{{ victim.victim_id }}/portrait?size=256"
-          onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=128'" />
-        {% else %}
-        <img class="portrait-fg"
-          src="https://images.newdoublex.space/corporations/{{ victim.victim_corp_id }}/logo?size=128"
-          onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=128'" />
-        {% endif %}
-
-        <!-- corp / alliance logos -->
-        <div class="portrait-orgs">
-          <img src="https://images.newdoublex.space/corporations/{{ victim.victim_corp_id }}/logo?size=64"
-               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
-          {% if victim.victim_alliance_id %}
-          <img src="https://images.newdoublex.space/alliances/{{ victim.victim_alliance_id }}/logo?size=64"
-               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
-          {% endif %}
-        </div>
-
-        <!-- text info -->
-        <div class="portrait-info">
-          {% if victim.victim_name and victim.victim_name != 'Unknown' %}
-          <div class="p-name">{{ victim.victim_name }}</div>
-          {% if victim.victim_title %}
-          <div class="p-title">{{ victim.victim_title }}</div>
-          {% endif %}
-          {% else %}
-          <div class="p-name">{{ victim.ship_type_name }}</div>
-          {% endif %}
-          <div class="p-corp">{{ victim.victim_corp }}</div>
-          {% if victim.victim_alliance_name %}
-          <div class="p-ally">{{ victim.victim_alliance_name }}</div>
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- Ship section -->
-      <div class="ship-section">
-        <img class="ship-render"
-          src="https://images.newdoublex.space/types/{{ victim.ship_type_id }}/render?size=128"
-          onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/{{ victim.ship_type_id }}/icon?size=64'" />
-        <div class="ship-meta">
-          <div class="ship-name">{{ victim.ship_type_name }}</div>
-          <div class="ship-group">{{ victim.ship_group_name }}</div>
-          <div class="ship-btns">
-            {% if zkb and zkb.labels %}
-            {% for label in zkb.labels %}
-            <span class="ship-btn">{{ label }}</span>
-            {% endfor %}
+        <div class="pp-body">
+          <!-- 角色头像 -->
+          <div class="pp-portrait">
+            {% if victim.victim_id %}
+            <img src="https://images.newdoublex.space/characters/{{ victim.victim_id }}/portrait?size=256"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=128'" />
+            {% else %}
+            <img src="https://images.newdoublex.space/corporations/{{ victim.victim_corp_id }}/logo?size=128"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=128'" />
             {% endif %}
+          </div>
+
+          <!-- 军团/联盟logo -->
+          <div class="pp-badges">
+            <img src="https://images.newdoublex.space/corporations/{{ victim.victim_corp_id }}/logo?size=64"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+            {% if victim.victim_alliance_id %}
+            <img src="https://images.newdoublex.space/alliances/{{ victim.victim_alliance_id }}/logo?size=64"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+            {% else %}
+            <div class="pp-placeholder"></div>
+            {% endif %}
+          </div>
+
+          <!-- 右侧文本 -->
+          <div class="pp-info">
+            <div class="pp-txt pp-name">
+              {% if victim.victim_name and victim.victim_name != 'Unknown' %}{{ victim.victim_name }}{% else %}{{ victim.ship_type_name }}{% endif %}
+            </div>
+            <div class="pp-txt pp-title">{% if victim.victim_title %}{{ victim.victim_title }}{% else %}&nbsp;{% endif %}</div>
+            <div class="pp-txt pp-ship-line">{{ victim.ship_type_name }}（{{ victim.ship_group_name }}）</div>
+            <div class="pp-txt pp-corp">{{ victim.victim_corp }}</div>
+            <div class="pp-txt pp-ally">{% if victim.victim_alliance_name %}{{ victim.victim_alliance_name }}{% else %}&nbsp;{% endif %}</div>
           </div>
         </div>
       </div>
+
+       <!-- Ship section -->
+        <div class="ship-section">
+          <div class="ship-meta">
+            <div>
+              <div class="ship-name">{{ victim.ship_type_name }} <span class="ship-group">{{ victim.ship_group_name }}</span></div>
+            </div>
+            <div class="ship-btns">
+              {% if zkb and zkb.labels %}
+              {% for label in zkb.labels %}
+              <span class="ship-btn">{{ label }}</span>
+              {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+        </div>
 
       <!-- Location section -->
       <div class="loc-section">
@@ -974,8 +955,11 @@
             {% endif %}
           </div>
           {% if item.nested_items %}
-          {% for ni in item.nested_items %}
-          <div class="fit-item-nested{% if ni.drop == 'drop' %} dropped{% endif %}">
+          {% set _ni_all = item.nested_items %}
+          {% set _ni_show = _ni_all[:10] %}
+          {% set _ni_hidden = (_ni_all | length) - (_ni_show | length) %}
+          {% for ni in _ni_show %}
+          <div class="fit-item-nested{% if item.qty_dropped > 0 and item.qty_destroyed == 0 %} dropped{% endif %}">
             <div class="fit-icon" style="width:20px;height:20px;">
               {% if ni.blueprint %}
               <img src="https://images.newdoublex.space/types/{{ ni.item_id }}/bpc?size=32"
@@ -996,6 +980,9 @@
             {% endif %}
           </div>
           {% endfor %}
+          {% if _ni_hidden > 0 %}
+          <div class="fit-item-nested" style="color:var(--text-sec);font-size:10px;justify-content:center;">还有 {{ _ni_hidden }} 件未展示</div>
+          {% endif %}
           {% endif %}
           {% endfor %}
           {% if _hidden > 0 %}
@@ -1021,8 +1008,14 @@
         <!-- Final Blow (attackMember[0]) -->
         {% if attackMember|length > 0 %}
         {% set fb = attackMember[0] %}
+        {# Find top damage attacker #}
+        {% if attackMember|length > 1 %}
+        {% set td = attackMember[1] if attackMember[0].damage_percent < attackMember[1].damage_percent else attackMember[0] %}
+        {% else %}
+        {% set td = attackMember[0] %}
+        {% endif %}
         <div class="hl-card">
-          <div class="hl-lbl">最后一击</div>
+          <div class="hl-lbl">最后一击{% if attackMember|length > 1 and td == attackMember[0] %} / 最多伤害{% endif %}</div>
           <div class="hl-top">
             <div class="hl-portrait">
               {% if fb.attacker_id %}
@@ -1080,10 +1073,8 @@
         </div>
         {% endif %}
 
-        <!-- Top Damage (highest damage_percent, skip if same as final blow) -->
-        {% if attackMember|length > 1 %}
-        {% set td = attackMember[1] if attackMember[0].damage_percent < attackMember[1].damage_percent else attackMember[0] %}
-        {% if td != attackMember[0] %}
+        <!-- Top Damage -->
+        {% if attackMember|length > 1 and td != attackMember[0] %}
         <div class="hl-card">
           <div class="hl-lbl">最多伤害</div>
           <div class="hl-top">
@@ -1141,7 +1132,6 @@
             </div>
           </div>
         </div>
-        {% endif %}
         {% endif %}
 
       </div><!-- /hl-grid -->
