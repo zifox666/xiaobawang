@@ -168,7 +168,8 @@ class KillmailProcessor:
                 "sec": sec_formatted,
                 "victim": await self._format_victim(victim, entity_names, item_names),
                 "attacker_number": attacker_number,
-                "attackMember": self._format_attackers(attackers, entity_names, item_names),
+                "attackMember": (attack_members := self._format_attackers(attackers, entity_names, item_names)),
+                "faction_stats": self._compute_faction_stats(attack_members),
                 "slot_list": slot_list_raw,
                 "slot_list_merged": self._merge_slot_items(slot_list_raw),
                 "zkb": killmail_data.get("zkb", {}),
@@ -751,6 +752,24 @@ class KillmailProcessor:
 
         years = months // 12
         return f"{years}年前"
+
+    @classmethod
+    def _compute_faction_stats(cls, attack_members: list[dict]) -> list[dict]:
+        """按联盟/军团分组统计攻击者，无联盟时按军团统计"""
+        groups: dict[str, dict] = {}
+        for a in attack_members:
+            if a.get("attacker_alliance_id") and a["attacker_alliance_id"] != 0:
+                key = f"a_{a['attacker_alliance_id']}"
+                name = a.get("attacker_alliance", "未知联盟")
+                logo_url = f"https://images.newdoublex.space/alliances/{a['attacker_alliance_id']}/logo?size=64"
+            else:
+                key = f"c_{a.get('attacker_corp_id', 0)}"
+                name = a.get("attacker_corp", "未知军团")
+                logo_url = f"https://images.newdoublex.space/corporations/{a.get('attacker_corp_id', 0)}/logo?size=64"
+            if key not in groups:
+                groups[key] = {"name": name, "logo_url": logo_url, "count": 0}
+            groups[key]["count"] += 1
+        return sorted(groups.values(), key=lambda x: x["count"], reverse=True)
 
     @classmethod
     def generate_killmail_text(cls, html_data: dict, reason: str) -> str:

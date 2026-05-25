@@ -320,7 +320,7 @@
       align-items: center;
       justify-content: flex-start;
       padding: 14px 0;
-      background: #08090d;
+      background: var(--bg-card);
       border-top: 1px solid var(--border);
       min-height: 448px;
     }
@@ -742,6 +742,50 @@
       border-top: 1px solid var(--border);
       flex-shrink: 0;
     }
+
+    /* 势力统计 */
+    .faction-stats {
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card);
+      flex-shrink: 0;
+    }
+    .faction-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-sec);
+      margin-bottom: 5px;
+    }
+    .faction-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 0;
+    }
+    .faction-row img {
+      width: 24px;
+      height: 24px;
+      border-radius: 2px;
+      object-fit: contain;
+      background: #111;
+      flex-shrink: 0;
+    }
+    .faction-name {
+      flex: 1;
+      min-width: 0;
+      font-size: 11px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .faction-count {
+      font-size: 11px;
+      color: var(--text-sec);
+      min-width: 28px;
+      text-align: right;
+    }
   </style>
 </head>
 <body>
@@ -912,6 +956,21 @@
         <div style="color: var(--text-sec); font-size: 12px;">无装备记录</div>
         {% endif %}
       </div>
+
+      <!-- 势力统计 -->
+      {% if faction_stats %}
+      <div class="faction-stats">
+        <div class="faction-title">势力统计</div>
+        {% for fs in faction_stats %}
+        <div class="faction-row">
+          <img src="{{ fs.logo_url }}"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+          <span class="faction-name">{{ fs.name }}</span>
+          <span class="faction-count">{{ fs.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
 
     </div><!-- /col-left -->
 
