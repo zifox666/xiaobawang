@@ -40,9 +40,9 @@ async def handle_km(
     data["title"] = "击毁报告"
     pic = await render_template(
         template_path=templates_path / "killmail",
-        template_name="killmail.html.jinja2",
+        template_name="killmail_v2.html.jinja2",
         data=data,
-        width=665,
+        width=1060,
         height=100,
     )
     await save_msg_cache(

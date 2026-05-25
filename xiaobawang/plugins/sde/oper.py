@@ -5,7 +5,7 @@ from sqlalchemy import and_, or_, select
 from .cache import cache_result
 from .config import plugin_config
 from .db import get_session
-from .models import TC_GROUP_ID, TC_TYPES_ID, InvFlags, InvTypes, TrnTranslations
+from .models import TC_GROUP_ID, TC_TYPES_ID, InvFlags, InvGroups, InvTypes, TrnTranslations
 from .utils import text_processor
 
 
@@ -168,6 +168,25 @@ class SDESearch:
                     }
 
         return result
+
+    async def get_type_category_ids(self, type_ids: list[int]) -> dict[int, int]:
+        """
+        批量获取物品的 categoryID（通过 invTypes → invGroups 联查）
+
+        Returns:
+            {type_id: category_id} 映射
+        """
+        if not type_ids:
+            return {}
+        int_type_ids = [int(t) for t in type_ids]
+        async with await get_session() as session:
+            query = (
+                select(InvTypes.typeID, InvGroups.categoryID)
+                .join(InvGroups, InvTypes.groupID == InvGroups.groupID)
+                .where(InvTypes.typeID.in_(int_type_ids))
+            )
+            result = await session.execute(query)
+            return {row[0]: row[1] for row in result.all()}
 
     @cache_result(prefix="type_group_", exclude_args=[0])
     async def get_type_group(self, type_id: int | str, language: str = "zh", _id: bool = False) -> str | int | None:

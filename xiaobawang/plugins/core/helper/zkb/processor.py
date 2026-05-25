@@ -10,8 +10,23 @@ from nonebot import logger
 
 from xiaobawang.plugins.sde.oper import sde_search
 
+from ...api.esi.market import market
 from ...api.esi.universe import esi_client
 from ...utils.common import clean_colored_text, is_blueprint
+
+
+def _format_isk(value: float) -> str:
+    """将 ISK 数值格式化为易读的缩写字符串 (与 warbeacon 小写格式一致)"""
+    if not value:
+        return "-"
+    if value >= 1_000_000_000:
+        return f"{value / 1_000_000_000:.1f}b"
+    elif value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}m"
+    elif value >= 1_000:
+        return f"{value / 1_000:.1f}k"
+    else:
+        return f"{value:.0f}"
 
 
 class KillmailProcessor:
@@ -87,6 +102,7 @@ class KillmailProcessor:
             entity_names = {}
             system_info = {}
             item_names = {}
+            type_categories: dict[int, int] = {}
 
             # 批量查询名称
             if ids_to_query:
@@ -96,8 +112,14 @@ class KillmailProcessor:
                     for entity_id, name in items.items():
                         entity_names[int(entity_id)] = {"category": category, "name": name}
 
+            item_prices: dict[int, Any] = {}
             if type_ids_to_query:
                 item_names = await sde_search.get_type_names(list(type_ids_to_query))
+                type_categories = await sde_search.get_type_category_ids(list(type_ids_to_query))
+                try:
+                    item_prices = await market.get_price(list(type_ids_to_query))
+                except Exception as e:
+                    logger.warning(f"获取市场价格失败，物品价格将不显示: {e}")
 
             if solar_system_id:
                 system_info = await esi_client.get_system_info(solar_system_id)
@@ -123,7 +145,15 @@ class KillmailProcessor:
             formatted_drop_value = f"{drop_value:,.2f}"
 
             # 处理物品
-            slot_list = self._format_items(victim.get("items", []), item_names, await sde_search.get_flag_info())
+            slot_data = self._format_items(victim.get("items", []), item_names, await sde_search.get_flag_info(), item_prices, type_categories)
+            slot_list_raw = slot_data.get("slotList", [])
+
+            # 为每个物品添加市场价格
+            for slot in slot_list_raw:
+                for item in slot.get("slot_items", []):
+                    self._add_price_to_item(item, item_prices)
+                    for nested in (item.get("nested_items") or []):
+                        self._add_price_to_item(nested, item_prices)
 
             result = {
                 "killmail_id": killmail_data.get("killmail_id"),
@@ -139,10 +169,17 @@ class KillmailProcessor:
                 "victim": await self._format_victim(victim, entity_names, item_names),
                 "attacker_number": attacker_number,
                 "attackMember": self._format_attackers(attackers, entity_names, item_names),
-                "slot_list": slot_list.get("slotList", []),
+                "slot_list": slot_list_raw,
+                "slot_list_merged": self._merge_slot_items(slot_list_raw),
                 "zkb": killmail_data.get("zkb", {}),
                 "total_value": formatted_total_value,
                 "drop_value": formatted_drop_value,
+                "total_value_abbr": _format_isk(total_value),
+                "drop_value_abbr": _format_isk(drop_value),
+                "destroyed_value_abbr": _format_isk(total_value - drop_value),
+                "ship_value_str": _format_isk(
+                    ((item_prices.get(victim.get("ship_type_id", 0)) or {}).get("highest_buy") or {}).get("price") or 0
+                ),
                 "position": killmail_data.get("position", {}),
             }
 
@@ -243,18 +280,155 @@ class KillmailProcessor:
 
         return formatted_attackers
 
+    @classmethod
+    def _merge_slot_items(cls, slot_list: list[dict]) -> list[dict]:
+        """将同类物品合并为单行，使用 qty_dropped + qty_destroyed 格式。
+        带 nested_items 的条目（武器/弹药）与普通条目统一按 item_id 合并。
+        no_merge=True 的条目（货仓容器/快递包裹）保持独立行，不与同类型合并。"""
+        merged_slots = []
+        for slot in slot_list:
+            merged: dict = {}
+            standalone_items: list[dict] = []  # no_merge=True 的容器类物品
+
+            for item in slot["slot_items"]:
+                qty = item.get("item_number", 1) or 1
+
+                # 货仓容器/快递包裹：每个实例单独保留，不合并
+                if item.get("no_merge"):
+                    qty_dropped = qty if item.get("drop") == "drop" else 0
+                    qty_destroyed = qty if item.get("drop") != "drop" else 0
+                    unit_price = item.get("item_price", 0) or 0
+                    standalone_items.append({
+                        **item,
+                        "qty_dropped": qty_dropped,
+                        "qty_destroyed": qty_destroyed,
+                        "qty_total": qty,
+                        "item_price_total": unit_price * qty,
+                        "item_price_total_str": _format_isk(unit_price * qty),
+                    })
+                    continue
+
+                key = (item["item_id"], item.get("blueprint", False))
+
+                if key not in merged:
+                    merged[key] = {
+                        "item_id": item["item_id"],
+                        "item_name": item["item_name"],
+                        "blueprint": item.get("blueprint", False),
+                        "qty_dropped": 0,
+                        "qty_destroyed": 0,
+                        "nested_items": item.get("nested_items"),
+                        "unit_price": item.get("item_price", 0) or 0,
+                    }
+                elif item.get("nested_items") and not merged[key]["nested_items"]:
+                    # 补充弹药信息（首次出现时可能无 nested_items）
+                    merged[key]["nested_items"] = item["nested_items"]
+
+                if item.get("drop") == "drop":
+                    merged[key]["qty_dropped"] += qty
+                else:
+                    merged[key]["qty_destroyed"] += qty
+
+            merged_items = []
+            for item_data in merged.values():
+                qty_total = item_data["qty_dropped"] + item_data["qty_destroyed"]
+                unit_price = item_data["unit_price"]
+                total_price = unit_price * qty_total
+                merged_items.append({
+                    **item_data,
+                    "qty_total": qty_total,
+                    "item_price_total": total_price,
+                    "item_price_total_str": _format_isk(total_price),
+                })
+
+            merged_slots.append({
+                "slotName": slot["slotName"],
+                "slotPng": slot["slotPng"],
+                "slotType": slot.get("slotType", "other"),
+                "slot_items": merged_items + standalone_items,
+            })
+        return merged_slots
+
+    @classmethod
+    def _add_price_to_item(cls, item: dict, item_prices: dict[int, Any] | None) -> None:
+        """为物品字典原地添加市场价格字段 (Jita 最高买单价)"""
+        item_type_id = item.get("item_id", 0)
+        item_number = item.get("item_number", 1) or 1
+
+        unit_price = 0.0
+        if item_prices:
+            price_data = item_prices.get(item_type_id) or {}
+            highest_buy = price_data.get("highest_buy") or {}
+            unit_price = highest_buy.get("price") or 0.0
+
+        total_price = unit_price * item_number
+        item["item_price"] = unit_price
+        item["item_price_str"] = _format_isk(unit_price)
+        item["item_price_total"] = total_price
+        item["item_price_total_str"] = _format_isk(total_price)
+
     def _format_items(
-        self, items: list[dict], item_names: dict[int, dict], flag_info: dict[int, str]
+        self, items: list[dict], item_names: dict[int, dict], flag_info: dict[int, str],
+        item_prices: dict[int, Any] | None = None,
+        type_categories: dict[int, int] | None = None,
     ) -> dict[str, Any]:
         """
-        格式化物品信息，按槽位类型分类并处理嵌套物品
+        格式化物品信息，按槽位类型分类并处理嵌套物品。
+
+        弹药规则（category_id=8）：
+        - 高/中/低槽中的弹药：附加到同 flag 武器的 nested_items，不单独占槽位
+        - 其他槽（货舱、无人机等）中的弹药：按普通物品处理
         """
-        slot_type_groups = {}
+        if type_categories is None:
+            type_categories = {}
 
-        # 临时存储，用于按物品ID和状态(drop/destroyed)合并相同物品
-        # 结构: {slot_type: {item_id: {"drop": {}, "destroyed": {}}}}
-        item_tracking = {}
+        slot_type_groups: dict[str, dict] = {}
 
+        # ---- 第一遍：收集武器槽（high/med/low）中的 flat 弹药 ----
+        # ammo_by_flag: {flag: [ammo_item_dict, ...]}
+        # weapon_slot_ammo_keys: {(type_id, flag)} — 第二遍中跳过这些条目
+        ammo_by_flag: dict[int, list[dict]] = {}
+        weapon_slot_ammo_keys: set[tuple[int, int]] = set()
+
+        for item in items:
+            if "items" in item:
+                continue  # 已有嵌套弹药，不重复处理
+            item_type_id = item.get("item_type_id", 0)
+            if type_categories.get(item_type_id) != 8:
+                continue  # 不是弹药
+
+            flag = item.get("flag", 0)
+            flag_name = flag_info.get(flag, f"Flag: {flag}")
+            slot_type = self._get_slot_type(flag_name)
+
+            if slot_type not in ("high", "med", "low"):
+                continue  # 货舱等位置的弹药按普通物品处理
+
+            weapon_slot_ammo_keys.add((item_type_id, flag))
+
+            qty_dropped = item.get("quantity_dropped", 0)
+            qty_destroyed = item.get("quantity_destroyed", 0)
+            total_qty = qty_dropped + qty_destroyed
+            if total_qty <= 0:
+                continue
+
+            item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
+            singleton = item.get("singleton", 0)
+            drop_state = "drop" if qty_dropped >= qty_destroyed else "destroyed"
+
+            if flag not in ammo_by_flag:
+                ammo_by_flag[flag] = []
+            ammo_by_flag[flag].append({
+                "item_id": item_type_id,
+                "item_name": item_name,
+                "item_number": total_qty,
+                "drop": drop_state,
+                "nested_items": None,
+                "singleton": singleton,
+                "blueprint": False,
+            })
+
+        # ---- 第二遍：处理模块和非武器槽物品 ----
         for item in items:
             flag = item.get("flag", 0)
             item_type_id = item.get("item_type_id", 0)
@@ -262,8 +436,11 @@ class KillmailProcessor:
             quantity_destroyed = item.get("quantity_destroyed", 0)
             singleton = item.get("singleton", 0)
 
-            flag_name = flag_info.get(flag, f"Flag: {flag}")
+            # 武器槽弹药已处理为 nested_items，跳过
+            if "items" not in item and (item_type_id, flag) in weapon_slot_ammo_keys:
+                continue
 
+            flag_name = flag_info.get(flag, f"Flag: {flag}")
             slot_type = self._get_slot_type(flag_name)
             slot_image = self._get_slot_image_name(slot_type)
             slot_display_name = self._get_slot_display_name(slot_type)
@@ -275,7 +452,6 @@ class KillmailProcessor:
                     "slot_items": [],
                     "slotType": slot_type,
                 }
-                item_tracking[slot_type] = {}
 
             item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
 
@@ -285,90 +461,66 @@ class KillmailProcessor:
             else:
                 blueprint = False
 
-            nested_items = []
-            has_nested = "items" in item
-            if has_nested:
+            if "items" in item:
+                # 武器已有嵌套弹药（ESI 标准格式）
+                # 非武器槽（货仓/其他）里带子物品的是容器/快递包裹，不能合并
+                no_merge = slot_type not in ("high", "med", "low")
                 nested_items = self._process_nested_items(
                     item["items"], item_names, "drop" if quantity_dropped > 0 else "destroyed"
                 )
-
                 if quantity_dropped > 0:
-                    slot_type_groups[slot_type]["slot_items"].append(
-                        {
-                            "item_id": item_type_id,
-                            "item_name": item_name,
-                            "item_number": quantity_dropped,
-                            "drop": "drop",
-                            "nested_items": nested_items,
-                            "singleton": singleton,
-                            "blueprint": blueprint,
-                        }
-                    )
-
+                    slot_type_groups[slot_type]["slot_items"].append({
+                        "item_id": item_type_id,
+                        "item_name": item_name,
+                        "item_number": quantity_dropped,
+                        "drop": "drop",
+                        "nested_items": nested_items,
+                        "no_merge": no_merge,
+                        "singleton": singleton,
+                        "blueprint": blueprint,
+                    })
                 if quantity_destroyed > 0:
-                    slot_type_groups[slot_type]["slot_items"].append(
-                        {
-                            "item_id": item_type_id,
-                            "item_name": item_name,
-                            "item_number": quantity_destroyed,
-                            "drop": "destroyed",
-                            "nested_items": nested_items,
-                            "singleton": singleton,
-                            "blueprint": blueprint,
-                        }
-                    )
+                    slot_type_groups[slot_type]["slot_items"].append({
+                        "item_id": item_type_id,
+                        "item_name": item_name,
+                        "item_number": quantity_destroyed,
+                        "drop": "destroyed",
+                        "nested_items": nested_items,
+                        "no_merge": no_merge,
+                        "singleton": singleton,
+                        "blueprint": blueprint,
+                    })
             else:
-                item_key = (item_type_id, singleton)
-                if item_key not in item_tracking[slot_type]:
-                    item_tracking[slot_type][item_key] = {
-                        "drop": {"count": 0, "name": item_name, "singleton": singleton, "blueprint": blueprint},
-                        "destroyed": {"count": 0, "name": item_name, "singleton": singleton, "blueprint": blueprint},
-                    }
-
+                # 普通模块（非武器槽弹药）
+                # 取同 flag 的弹药作为 nested_items（如有）
+                nested_ammo = ammo_by_flag.get(flag) or None
                 if quantity_dropped > 0:
-                    item_tracking[slot_type][item_key]["drop"]["count"] += quantity_dropped
-
+                    slot_type_groups[slot_type]["slot_items"].append({
+                        "item_id": item_type_id,
+                        "item_name": item_name,
+                        "item_number": quantity_dropped,
+                        "drop": "drop",
+                        "nested_items": nested_ammo,
+                        "singleton": singleton,
+                        "blueprint": blueprint,
+                    })
                 if quantity_destroyed > 0:
-                    item_tracking[slot_type][item_key]["destroyed"]["count"] += quantity_destroyed
-
-        for slot_type, items_map in item_tracking.items():
-            for item_key, states in items_map.items():
-                item_id, singleton = item_key
-                if states["drop"]["count"] > 0:
-                    slot_type_groups[slot_type]["slot_items"].append(
-                        {
-                            "item_id": item_id,
-                            "item_name": states["drop"]["name"],
-                            "item_number": states["drop"]["count"],
-                            "drop": "drop",
-                            "nested_items": None,
-                            "singleton": states["drop"]["singleton"],
-                            "blueprint": states["drop"]["blueprint"],
-                        }
-                    )
-
-                if states["destroyed"]["count"] > 0:
-                    slot_type_groups[slot_type]["slot_items"].append(
-                        {
-                            "item_id": item_id,
-                            "item_name": states["destroyed"]["name"],
-                            "item_number": states["destroyed"]["count"],
-                            "drop": "destroyed",
-                            "nested_items": None,
-                            "singleton": states["destroyed"]["singleton"],
-                            "blueprint": states["destroyed"]["blueprint"],
-                        }
-                    )
+                    slot_type_groups[slot_type]["slot_items"].append({
+                        "item_id": item_type_id,
+                        "item_name": item_name,
+                        "item_number": quantity_destroyed,
+                        "drop": "destroyed",
+                        "nested_items": nested_ammo,
+                        "singleton": singleton,
+                        "blueprint": blueprint,
+                    })
 
         # 按优先级排序槽位组
         slot_order = {"high": 1, "med": 2, "low": 3, "rig": 4, "subsystem": 5, "drone": 6, "fighter": 7, "cargo": 8}
-
         slot_list = list(slot_type_groups.values())
         slot_list.sort(key=lambda x: slot_order.get(x["slotType"], 999))
 
-        return {
-            "slotList": slot_list,
-        }
+        return {"slotList": slot_list}
 
     def _process_nested_items(self, nested_items: list[dict], item_names: dict, drop: str = "destroyed") -> list[dict]:
         """

@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1100">
+  <title>击毁报告{% if killmail_id is defined %} #{{ killmail_id }}{% endif %}</title>
+  <style>
+    :root {
+      --bg-main:      #0f1012;
+      --bg-card:      #16181c;
+      --bg-row-alt:   rgba(255,255,255,0.025);
+      --bg-drop:      rgba(28, 75, 38, 0.55);
+      --border:       rgba(255,255,255,0.08);
+      --border-light: rgba(255,255,255,0.04);
+      --text-primary: #d0d5df;
+      --text-sec:     rgba(200,208,220,0.5);
+      --text-link:    #7eacdc;
+      --red:    #d95555;
+      --green:  #4ec46e;
+      --blue:   #5590e8;
+      --gold:   #d9a840;
+
+      /* EVE security-status colours */
+      --01sec-color: #ee3a3a;
+      --02sec-color: #933131;
+      --03sec-color: #ce440f;
+      --04sec-color: #DC6D07;
+      --05sec-color: #dede34;
+      --06sec-color: #71e554;
+      --07sec-color: #60d9a3;
+      --08sec-color: #4ecef8;
+      --09sec-color: #3a9aeb;
+      --10sec-color: #3a75eb;
+      --00sec-color: #8d3264;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-main);
+      color: var(--text-primary);
+      font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif;
+      font-size: 13px;
+      width: 1100px;
+    }
+
+    img { display: block; }
+    a   { color: inherit; text-decoration: none; }
+
+    /* ════════════════════════════════════════════════════
+       Outer wrapper
+    ════════════════════════════════════════════════════ */
+    .km-wrap {
+      width: 1100px;
+      background: var(--bg-main);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ════════════════════════════════════════════════════
+       Header bar
+    ════════════════════════════════════════════════════ */
+    .km-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px 6px 0 0;
+      font-size: 12px;
+      color: var(--text-sec);
+    }
+    .km-header .km-title { font-weight: 600; color: var(--text-primary); }
+    .km-header .km-id    { color: var(--text-link); }
+    .km-header .km-time  { margin-left: auto; }
+
+    /* ════════════════════════════════════════════════════
+       3-column body
+    ════════════════════════════════════════════════════ */
+    .km-body {
+      display: flex;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      overflow: hidden;
+      min-height: 500px;
+    }
+
+    /* ─────────────────────────────────────────────────
+       LEFT COLUMN  (460 px �?victim info + HUD)
+    ───────────────────────────────────────────────── */
+    .col-left {
+      width: 460px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--bg-card);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Portrait banner */
+    .portrait-banner {
+      position: relative;
+      height: 120px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .portrait-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: blur(10px) brightness(0.3);
+      transform: scale(1.15);
+    }
+    .portrait-fg {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      width: 96px;
+      height: 96px;
+      border-radius: 4px;
+      border: 2px solid rgba(255,255,255,0.18);
+      object-fit: cover;
+      background: #111;
+    }
+    .portrait-orgs {
+      position: absolute;
+      left: 116px;
+      bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .portrait-orgs img {
+      width: 44px;
+      height: 44px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #1a1a1a;
+      object-fit: contain;
+    }
+    .portrait-info {
+      position: absolute;
+      left: 168px;
+      right: 10px;
+      bottom: 12px;
+      overflow: hidden;
+    }
+    .p-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .p-title {
+      font-size: 10px;
+      color: rgba(255,255,255,0.5);
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+    .p-corp {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 3px;
+    }
+    .p-ally {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    /* Ship section */
+    .ship-section {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ship-render {
+      width: 72px;
+      height: 72px;
+      border-radius: 4px;
+      background: #0a0a0c;
+      object-fit: contain;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+    .ship-meta { flex: 1; min-width: 0; }
+    .ship-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ship-group {
+      font-size: 11px;
+      color: var(--text-sec);
+      margin-top: 2px;
+    }
+    .ship-btns {
+      display: flex;
+      gap: 4px;
+      margin-top: 7px;
+    }
+    .ship-btn {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-sec);
+    }
+
+    /* Location section */
+    .loc-section {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .loc-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+    .loc-system {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-link);
+      white-space: nowrap;
+    }
+    .loc-sec {
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .loc-dot {
+      font-size: 11px;
+      color: var(--text-sec);
+      flex-shrink: 0;
+    }
+    .loc-sub {
+      font-size: 11px;
+      color: var(--text-sec);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .loc-time {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-sec);
+      margin-top: 4px;
+    }
+    .loc-celestial {
+      font-size: 11px;
+      color: var(--text-sec);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Stats section */
+    .stats-section {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-cell {
+      flex: 1;
+      text-align: center;
+      padding: 7px 4px;
+    }
+    .stat-cell + .stat-cell { border-left: 1px solid var(--border); }
+    .stat-lbl {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-sec);
+    }
+    .stat-val {
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .stat-sub {
+      font-size: 9px;
+      color: var(--text-sec);
+      margin-top: 1px;
+    }
+    .c-red   { color: var(--red); }
+    .c-green { color: var(--green); }
+    .c-blue  { color: var(--blue); }
+    .c-gold  { color: var(--gold); }
+
+    /* ZKB row */
+    .zkb-row {
+      padding: 5px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-sec);
+    }
+    .zkb-esi {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--text-sec);
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ─────────────────────────────────────────────────
+       HUD section  (inside left column, below victim info)
+    ───────────────────────────────────────────────── */
+    .hud-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 14px 0;
+      background: #08090d;
+      border-top: 1px solid var(--border);
+      min-height: 448px;
+    }
+
+    .hud-wrap {
+      position: relative;
+      width: 420px;
+      height: 420px;
+      flex-shrink: 0;
+    }
+
+    .hud-orbit-outer {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(80, 130, 220, 0.14);
+      pointer-events: none;
+    }
+
+    .hud-orbit-inner {
+      position: absolute;
+      top: 55px; left: 55px; right: 55px; bottom: 55px;
+      border-radius: 50%;
+      border: 1px solid rgba(80, 130, 220, 0.07);
+      pointer-events: none;
+    }
+
+    /* Ship render circle �?left:72 top:72 w:276 h:276 (from Vue source) */
+    .hud-circle {
+      position: absolute;
+      left: 72px;
+      top: 72px;
+      width: 276px;
+      height: 276px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid rgba(80, 150, 255, 0.4);
+      background: radial-gradient(circle at center, #1a2235 0%, #070a12 100%);
+      box-shadow: 0 0 50px rgba(30,80,200,0.22), inset 0 0 40px rgba(0,0,20,0.7);
+    }
+    .hud-circle img {
+      width: 276px;
+      height: 276px;
+      object-fit: cover;
+    }
+
+    /* Module slot �?32×32 icon, positioned by slot class */
+    .slot {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      background: rgba(14, 18, 28, 0.93);
+      border-radius: 3px;
+      border: 1px solid rgba(80, 120, 200, 0.22);
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    }
+    .slot img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      display: block;
+    }
+    .slot.drop {
+      border-color: rgba(70, 190, 110, 0.55);
+      background: rgba(15, 38, 22, 0.93);
+      box-shadow: 0 0 6px rgba(70, 190, 110, 0.25);
+    }
+    .slot-qty {
+      position: absolute;
+      bottom: 0; right: 1px;
+      font-size: 9px; font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      background: rgba(0,0,0,0.72);
+      padding: 0 2px;
+      line-height: 1.5;
+      border-radius: 1px;
+    }
+
+    /* ── High slots �?top arc ── */
+    .h1 { top: 43px;  left: 88px;  }
+    .h2 { top: 26px;  left: 116px; }
+    .h3 { top: 15px;  left: 146px; }
+    .h4 { top: 10px;  left: 178px; }
+    .h5 { top: 10px;  left: 210px; }
+    .h6 { top: 15px;  left: 242px; }
+    .h7 { top: 26px;  left: 272px; }
+    .h8 { top: 43px;  left: 300px; }
+    /* ── Mid slots �?right arc ── */
+    .m1 { top: 88px;  left: 346px; }
+    .m2 { top: 116px; left: 362px; }
+    .m3 { top: 146px; left: 373px; }
+    .m4 { top: 178px; left: 378px; }
+    .m5 { top: 210px; left: 378px; }
+    .m6 { top: 242px; left: 373px; }
+    .m7 { top: 272px; left: 362px; }
+    .m8 { top: 300px; left: 346px; }
+    /* ── Low slots �?bottom arc ── */
+    .l1 { top: 346px; left: 300px; }
+    .l2 { top: 362px; left: 272px; }
+    .l3 { top: 373px; left: 242px; }
+    .l4 { top: 378px; left: 210px; }
+    .l5 { top: 378px; left: 178px; }
+    .l6 { top: 373px; left: 146px; }
+    .l7 { top: 362px; left: 116px; }
+    .l8 { top: 346px; left: 88px;  }
+    /* ── Rig slots �?left arc upper ── */
+    .r1 { top: 88px;  left: 43px;  }
+    .r2 { top: 116px; left: 26px;  }
+    .r3 { top: 146px; left: 15px;  }
+    /* ── Subsystem slots �?left arc lower ── */
+    .ss1 { top: 300px; left: 43px;  }
+    .ss2 { top: 272px; left: 26px;  }
+    .ss3 { top: 242px; left: 15px;  }
+    .ss4 { top: 210px; left: 10px;  }
+    /* ── Service slots (structures) ── */
+    .sv1 { top: 194px; left: 9px;  }
+    .sv2 { top: 226px; left: 12px; }
+    .sv3 { top: 257px; left: 20px; }
+    .sv4 { top: 287px; left: 34px; }
+    .sv5 { top: 313px; left: 52px; }
+
+    /* ── Ammo inner ring �?24×24 charges inside weapon/launcher slots ── */
+    .slot.ammo {
+      width: 24px;
+      height: 24px;
+      border: 1px solid rgba(80, 120, 200, 0.18);
+      background: rgba(10, 12, 20, 0.9);
+    }
+    .slot.ammo img { width: 24px; height: 24px; }
+    .slot.ammo.h1  { top: 71px;  left: 109px; }
+    .slot.ammo.h2  { top: 58px;  left: 133px; }
+    .slot.ammo.h3  { top: 48px;  left: 158px; }
+    .slot.ammo.h4  { top: 44px;  left: 184px; }
+    .slot.ammo.h5  { top: 44px;  left: 212px; }
+    .slot.ammo.h6  { top: 48px;  left: 238px; }
+    .slot.ammo.h7  { top: 58px;  left: 264px; }
+    .slot.ammo.h8  { top: 71px;  left: 287px; }
+    .slot.ammo.m1  { top: 109px; left: 325px; }
+    .slot.ammo.m2  { top: 133px; left: 338px; }
+    .slot.ammo.m3  { top: 158px; left: 348px; }
+    .slot.ammo.m4  { top: 184px; left: 352px; }
+    .slot.ammo.m5  { top: 212px; left: 352px; }
+    .slot.ammo.m6  { top: 238px; left: 348px; }
+    .slot.ammo.m7  { top: 264px; left: 338px; }
+    .slot.ammo.m8  { top: 287px; left: 325px; }
+    .slot.ammo.l1  { top: 325px; left: 287px; }
+    .slot.ammo.l2  { top: 338px; left: 264px; }
+    .slot.ammo.l3  { top: 348px; left: 238px; }
+    .slot.ammo.l4  { top: 352px; left: 212px; }
+    .slot.ammo.l5  { top: 352px; left: 184px; }
+    .slot.ammo.l6  { top: 348px; left: 158px; }
+    .slot.ammo.l7  { top: 338px; left: 133px; }
+    .slot.ammo.l8  { top: 325px; left: 109px; }
+    .slot.ammo.r1  { top: 109px; left: 71px;  }
+    .slot.ammo.r2  { top: 133px; left: 58px;  }
+    .slot.ammo.r3  { top: 158px; left: 48px;  }
+    .slot.ammo.ss1 { top: 287px; left: 71px;  }
+    .slot.ammo.ss2 { top: 264px; left: 58px;  }
+    .slot.ammo.ss3 { top: 238px; left: 48px;  }
+    .slot.ammo.ss4 { top: 212px; left: 44px;  }
+
+    /* ─────────────────────────────────────────────────
+       MIDDLE COLUMN �?fitting list  (flex-1)
+    ───────────────────────────────────────────────── */
+    .col-mid {
+      flex: 1;
+      min-width: 0;
+      border-right: 1px solid var(--border);
+      background: var(--bg-card);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .fit-section {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .fit-group {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .fit-group-hdr {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      background: rgba(255,255,255,0.03);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-sec);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .fit-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 11px;
+    }
+    .fit-item:nth-child(even) { background: var(--bg-row-alt); }
+    .fit-item.dropped         { background: var(--bg-drop); }
+    .fit-item-nested {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 1px 7px 1px 22px;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 10px;
+      color: var(--text-sec);
+      background: rgba(255,255,255,0.015);
+    }
+
+    .fit-icon {
+      width: 26px; height: 26px;
+      flex-shrink: 0;
+      border-radius: 3px;
+      background: #111;
+      overflow: hidden;
+    }
+    .fit-icon img { width: 26px; height: 26px; object-fit: contain; }
+
+    .fit-name {
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .fit-qty {
+      flex-shrink: 0;
+      color: var(--text-sec);
+      font-size: 10px;
+      min-width: 26px;
+      text-align: right;
+    }
+
+    .fit-price {
+      flex-shrink: 0;
+      color: var(--text-sec);
+      font-size: 10px;
+      min-width: 64px;
+      text-align: right;
+    }
+
+    /* ─────────────────────────────────────────────────
+       RIGHT COLUMN  (280 px)
+    ───────────────────────────────────────────────── */
+    .col-right {
+      width: 280px;
+      flex-shrink: 0;
+      background: var(--bg-card);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Highlight cards */
+    .hl-grid {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .hl-card {
+      flex: 1;
+      padding: 8px 9px;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .hl-card:last-child { border-right: none; }
+    .hl-lbl {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-sec);
+      margin-bottom: 5px;
+    }
+    .hl-top {
+      display: flex;
+      gap: 5px;
+    }
+    .hl-portrait {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+    }
+    .hl-portrait img {
+      width: 48px;
+      height: 48px;
+      border-radius: 3px;
+      background: #111;
+      object-fit: cover;
+    }
+    .hl-icons {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .hl-icon-row { display: flex; gap: 3px; }
+    .hl-icon img {
+      width: 22px;
+      height: 22px;
+      border-radius: 2px;
+      background: #111;
+      object-fit: contain;
+    }
+    .hl-txt { margin-top: 4px; }
+    .hl-name {
+      font-size: 11px;
+      font-weight: 600;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hl-corp, .hl-ally {
+      font-size: 10px;
+      color: var(--text-sec);
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hl-dmg {
+      font-size: 11px;
+      color: var(--red);
+      display: flex;
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .hl-dmg .pct { color: var(--text-sec); }
+
+    /* Participant header */
+    .part-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 10px;
+      font-size: 11px;
+      color: var(--text-sec);
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.025);
+      flex-shrink: 0;
+    }
+    .part-hdr .part-count { color: var(--text-primary); font-weight: 600; }
+
+    /* Participant rows */
+    .prow {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-bottom: 1px solid var(--border-light);
+      flex-shrink: 0;
+    }
+    .prow:nth-child(even) { background: var(--bg-row-alt); }
+    .prow.final-blow .pname { color: #ffd060; }
+    .pav img {
+      width: 34px;
+      height: 34px;
+      border-radius: 2px;
+      background: #111;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .pship {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .pship img {
+      width: 20px;
+      height: 20px;
+      border-radius: 2px;
+      background: #111;
+      object-fit: contain;
+    }
+    .pinfo { flex: 1; min-width: 0; }
+    .pname {
+      font-size: 11px;
+      font-weight: 600;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pship-name {
+      font-size: 10px;
+      color: #7eb8f7;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pcorp {
+      font-size: 9px;
+      color: var(--text-sec);
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pdmg-col { text-align: right; flex-shrink: 0; min-width: 52px; }
+    .pdmg { font-size: 11px; color: var(--red); }
+    .ppct  { font-size: 9px;  color: var(--text-sec); }
+
+    .part-more {
+      padding: 5px 10px;
+      font-size: 10px;
+      color: var(--text-sec);
+      text-align: center;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+<div class="km-wrap">
+
+  <!-- ── Header ───────────────────────────────────────────────── -->
+  <div class="km-header">
+    <span class="km-title">击毁报告</span>
+    <span class="km-id">#{{ killmail_id }}</span>
+    <span class="km-time">{{ time }}（{{ time_difference }}</span>w
+  </div>
+
+  <!-- ── 3-column body ────────────────────────────────────────── -->
+  <div class="km-body">
+
+    <!-- ══════════════════════════════════════════════════════════
+         LEFT COLUMN
+    ══════════════════════════════════════════════════════════ -->
+    <div class="col-left">
+
+      <!-- Portrait banner -->
+      <div class="portrait-banner">
+        <!-- foreground portrait -->
+        {% if victim.victim_id %}
+        <img class="portrait-fg"
+          src="https://images.newdoublex.space/characters/{{ victim.victim_id }}/portrait?size=256"
+          onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=128'" />
+        {% else %}
+        <img class="portrait-fg"
+          src="https://images.newdoublex.space/corporations/{{ victim.victim_corp_id }}/logo?size=128"
+          onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=128'" />
+        {% endif %}
+
+        <!-- corp / alliance logos -->
+        <div class="portrait-orgs">
+          <img src="https://images.newdoublex.space/corporations/{{ victim.victim_corp_id }}/logo?size=64"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+          {% if victim.victim_alliance_id %}
+          <img src="https://images.newdoublex.space/alliances/{{ victim.victim_alliance_id }}/logo?size=64"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+          {% endif %}
+        </div>
+
+        <!-- text info -->
+        <div class="portrait-info">
+          {% if victim.victim_name and victim.victim_name != 'Unknown' %}
+          <div class="p-name">{{ victim.victim_name }}</div>
+          {% if victim.victim_title %}
+          <div class="p-title">{{ victim.victim_title }}</div>
+          {% endif %}
+          {% else %}
+          <div class="p-name">{{ victim.ship_type_name }}</div>
+          {% endif %}
+          <div class="p-corp">{{ victim.victim_corp }}</div>
+          {% if victim.victim_alliance_name %}
+          <div class="p-ally">{{ victim.victim_alliance_name }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Ship section -->
+      <div class="ship-section">
+        <img class="ship-render"
+          src="https://images.newdoublex.space/types/{{ victim.ship_type_id }}/render?size=128"
+          onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/{{ victim.ship_type_id }}/icon?size=64'" />
+        <div class="ship-meta">
+          <div class="ship-name">{{ victim.ship_type_name }}</div>
+          <div class="ship-group">{{ victim.ship_group_name }}</div>
+          <div class="ship-btns">
+            {% if zkb and zkb.labels %}
+            {% for label in zkb.labels %}
+            <span class="ship-btn">{{ label }}</span>
+            {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Location section -->
+      <div class="loc-section">
+        <div class="loc-row">
+          <span class="loc-system">{{ solar_system }}</span>
+          <span class="loc-sec" style="color: var({{ sec_color }})">{{ sec }}</span>
+          {% if constellation %}
+          <span class="loc-dot">&lt;</span>
+          <span class="loc-sub">{{ constellation }}</span>
+          {% endif %}
+          {% if region %}
+          <span class="loc-dot">&lt;</span>
+          <span class="loc-sub">{{ region }}</span>
+          {% endif %}
+        </div>
+        <div class="loc-time">
+          <span>{{ time }}</span>
+          <span>{{ time_difference }}</span>
+        </div>
+        {% if location_name is defined and location_name %}
+        <div class="loc-celestial">
+          {{ location_name }}{% if distance_str is defined and distance_str %}　{{ distance_str }}{% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Stats section -->
+      <div class="stats-section">
+        <div class="stat-cell">
+          <div class="stat-lbl">总价值</div>
+          <div class="stat-val c-red">{{ total_value_abbr }}</div>
+          <div class="stat-sub">ISK</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-lbl">掉落</div>
+          <div class="stat-val c-green">{{ drop_value_abbr }}</div>
+          <div class="stat-sub">ISK</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-lbl">伤害</div>
+          <div class="stat-val c-blue">{{ victim.damage_taken }}</div>
+          <div class="stat-sub">&nbsp;</div>
+        </div>
+      </div>
+
+      <!-- ── HUD fitting display ────────────────────────── -->
+      <div class="hud-section">
+        {% if slot_list %}
+        <div class="hud-wrap">
+          <div class="hud-orbit-outer"></div>
+          <div class="hud-orbit-inner"></div>
+          <div class="hud-circle">
+            <img src="https://images.newdoublex.space/types/{{ victim.ship_type_id }}/render?size=512"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/{{ victim.ship_type_id }}/render?size=256'" />
+          </div>
+          {# slotType to HUD arc prefix mapping (matches Vue source slot classes) #}
+          {% set pfx_map = {'high': 'h', 'med': 'm', 'low': 'l', 'rig': 'r', 'subsystem': 'ss', 'service': 'sv'} %}
+          {# Max physical slots per type - items with item_number > max are charge stacks, not modules #}
+          {% set max_slots_map = {'h': 8, 'm': 8, 'l': 8, 'r': 3, 'ss': 4, 'sv': 5} %}
+          {% for slot in slot_list %}
+          {% if slot.slotType in pfx_map %}
+          {% set pfx = pfx_map[slot.slotType] %}
+          {% set max_slots = max_slots_map[pfx] if pfx in max_slots_map else 8 %}
+          {% set ns = namespace(pos=1) %}
+          {% for item in slot.slot_items %}
+          {% set count = item.item_number if item.item_number is defined else 1 %}
+          {# Skip charge/ammo stacks that appear as standalone items (item_number > max slots = not a module) #}
+          {% if count <= max_slots %}
+          {% for _ in range(count) %}
+          {% set slot_cls = pfx ~ ns.pos %}
+          <div class="slot {{ slot_cls }}" title="{{ item.item_name }}">
+            {% if item.blueprint %}
+            <img src="https://images.newdoublex.space/types/{{ item.item_id }}/bpc?size=32"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/{{ item.item_id }}/icon?size=32'" />
+            {% else %}
+            <img src="https://images.newdoublex.space/types/{{ item.item_id }}/icon?size=32"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+            {% endif %}
+          </div>
+          {% if item.nested_items and item.nested_items|length > 0 %}
+          <div class="slot ammo {{ slot_cls }}" title="{{ item.nested_items[0].item_name }}">
+            <img src="https://images.newdoublex.space/types/{{ item.nested_items[0].item_id }}/icon?size=32"
+                 onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+          </div>
+          {% endif %}
+          {% set ns.pos = ns.pos + 1 %}
+          {% endfor %}
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="color: var(--text-sec); font-size: 12px;">无装备记录</div>
+        {% endif %}
+      </div>
+
+    </div><!-- /col-left -->
+
+    <!-- ══════════════════════════════════════════════════════════
+         MIDDLE COLUMN - fitting list
+    ══════════════════════════════════════════════════════════ -->
+    <div class="col-mid">
+      {% if slot_list_merged %}
+      <div class="fit-section">
+        {% for slot in slot_list_merged %}
+        {% if slot.slot_items %}
+        {% if slot.slotType in ('cargo', 'drone', 'fighter', 'other') %}
+          {% set _all = slot.slot_items | sort(attribute='item_price_total', reverse=True) %}
+          {% set _show = _all[:10] %}
+          {% set _hidden = (_all | length) - (_show | length) %}
+        {% else %}
+          {% set _show = slot.slot_items %}
+          {% set _hidden = 0 %}
+        {% endif %}
+        <div class="fit-group">
+          <div class="fit-group-hdr">{{ slot.slotName }}
+            <span style="margin-left:auto; font-weight:400;">{{ slot.slot_items | length }}</span>
+          </div>
+          {% for item in _show %}
+          <div class="fit-item{% if item.qty_dropped > 0 and item.qty_destroyed == 0 %} dropped{% endif %}">
+            <div class="fit-icon">
+              {% if item.blueprint %}
+              <img src="https://images.newdoublex.space/types/{{ item.item_id }}/bpc?size=32"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/{{ item.item_id }}/icon?size=32'" />
+              {% else %}
+              <img src="https://images.newdoublex.space/types/{{ item.item_id }}/icon?size=32"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+              {% endif %}
+            </div>
+            <span class="fit-name">{{ item.item_name }}</span>
+            {% if item.qty_total > 1 %}
+            <span class="fit-qty">×{{ item.qty_total }}</span>
+            {% endif %}
+            {% if item.item_price_total_str %}
+            <span class="fit-price">{{ item.item_price_total_str }}</span>
+            {% endif %}
+          </div>
+          {% if item.nested_items %}
+          {% for ni in item.nested_items %}
+          <div class="fit-item-nested{% if ni.drop == 'drop' %} dropped{% endif %}">
+            <div class="fit-icon" style="width:20px;height:20px;">
+              {% if ni.blueprint %}
+              <img src="https://images.newdoublex.space/types/{{ ni.item_id }}/bpc?size=32"
+                   style="width:20px;height:20px;"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+              {% else %}
+              <img src="https://images.newdoublex.space/types/{{ ni.item_id }}/icon?size=32"
+                   style="width:20px;height:20px;"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+              {% endif %}
+            </div>
+            <span class="fit-name">{{ ni.item_name }}</span>
+            {% if ni.item_number and ni.item_number > 1 %}
+            <span class="fit-qty">×{{ ni.item_number }}</span>
+            {% endif %}
+            {% if ni.item_price_total_str %}
+            <span class="fit-price">{{ ni.item_price_total_str }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% endif %}
+          {% endfor %}
+          {% if _hidden > 0 %}
+          <div class="fit-item" style="color:var(--text-sec);font-size:11px;justify-content:center;">还有 {{ _hidden }} 件未展示（按价值显示前10）</div>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="color: var(--text-sec); font-size: 12px; padding: 12px;">无装备记录</div>
+      {% endif %}
+    </div><!-- /col-mid -->
+
+    <!-- ══════════════════════════════════════════════════════════
+         RIGHT COLUMN — highlight cards + participant list
+    ══════════════════════════════════════════════════════════ -->
+    <div class="col-right">
+
+      <!-- Highlight: Final Blow + Top Damage -->
+      <div class="hl-grid">
+
+        <!-- Final Blow (attackMember[0]) -->
+        {% if attackMember|length > 0 %}
+        {% set fb = attackMember[0] %}
+        <div class="hl-card">
+          <div class="hl-lbl">最后一击</div>
+          <div class="hl-top">
+            <div class="hl-portrait">
+              {% if fb.attacker_id %}
+              <img src="https://images.newdoublex.space/characters/{{ fb.attacker_id }}/portrait?size=128"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/corporations/{{ fb.attacker_corp_id }}/logo?size=64'" />
+              {% else %}
+              <img src="https://images.newdoublex.space/corporations/{{ fb.attacker_corp_id }}/logo?size=64"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+              {% endif %}
+            </div>
+            <div class="hl-icons">
+              <div class="hl-icon-row">
+                {% if fb.ship_type_id %}
+                <div class="hl-icon">
+                  <img src="https://images.newdoublex.space/types/{{ fb.ship_type_id }}/icon?size=32"
+                       onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+                </div>
+                {% endif %}
+                {% if fb.attacker_alliance_id %}
+                <div class="hl-icon">
+                  <img src="https://images.newdoublex.space/alliances/{{ fb.attacker_alliance_id }}/logo?size=32"
+                       onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+                </div>
+                {% endif %}
+              </div>
+              <div class="hl-icon-row">
+                {% if fb.weapon_type_id %}
+                <div class="hl-icon">
+                  <img src="https://images.newdoublex.space/types/{{ fb.weapon_type_id }}/icon?size=32"
+                       onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+                </div>
+                {% endif %}
+                {% if fb.attacker_corp_id %}
+                <div class="hl-icon">
+                  <img src="https://images.newdoublex.space/corporations/{{ fb.attacker_corp_id }}/logo?size=32"
+                       onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="hl-txt">
+            {% if fb.attacker_name and fb.attacker_name != 'Unknown' %}
+            <span class="hl-name">{{ fb.attacker_name }}</span>
+            {% else %}
+            <span class="hl-name">{{ fb.ship_type_name }}</span>
+            {% endif %}
+            <span class="hl-corp">{{ fb.attacker_corp }}</span>
+            {% if fb.attacker_alliance %}<span class="hl-ally">{{ fb.attacker_alliance }}</span>{% endif %}
+            <div class="hl-dmg">
+              <span>{{ fb.damage_done }}</span>
+              <span class="pct">({{ fb.damage_percent }}%)</span>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Top Damage (highest damage_percent, skip if same as final blow) -->
+        {% if attackMember|length > 1 %}
+        {% set td = attackMember[1] if attackMember[0].damage_percent < attackMember[1].damage_percent else attackMember[0] %}
+        {% if td != attackMember[0] %}
+        <div class="hl-card">
+          <div class="hl-lbl">最多伤害</div>
+          <div class="hl-top">
+            <div class="hl-portrait">
+              {% if td.attacker_id %}
+              <img src="https://images.newdoublex.space/characters/{{ td.attacker_id }}/portrait?size=128"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/corporations/{{ td.attacker_corp_id }}/logo?size=64'" />
+              {% else %}
+              <img src="https://images.newdoublex.space/corporations/{{ td.attacker_corp_id }}/logo?size=64"
+                   onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+              {% endif %}
+            </div>
+            <div class="hl-icons">
+              <div class="hl-icon-row">
+                {% if td.ship_type_id %}
+                <div class="hl-icon">
+                  <img src="https://images.newdoublex.space/types/{{ td.ship_type_id }}/icon?size=32"
+                       onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+                </div>
+                {% endif %}
+                {% if td.attacker_alliance_id %}
+                <div class="hl-icon">
+                  <img src="https://images.newdoublex.space/alliances/{{ td.attacker_alliance_id }}/logo?size=32"
+                       onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+                </div>
+                {% endif %}
+              </div>
+              <div class="hl-icon-row">
+                {% if td.weapon_type_id %}
+                <div class="hl-icon">
+                  <img src="https://images.newdoublex.space/types/{{ td.weapon_type_id }}/icon?size=32"
+                       onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+                </div>
+                {% endif %}
+                {% if td.attacker_corp_id %}
+                <div class="hl-icon">
+                  <img src="https://images.newdoublex.space/corporations/{{ td.attacker_corp_id }}/logo?size=32"
+                       onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="hl-txt">
+            {% if td.attacker_name and td.attacker_name != 'Unknown' %}
+            <span class="hl-name">{{ td.attacker_name }}</span>
+            {% else %}
+            <span class="hl-name">{{ td.ship_type_name }}</span>
+            {% endif %}
+            <span class="hl-corp">{{ td.attacker_corp }}</span>
+            {% if td.attacker_alliance %}<span class="hl-ally">{{ td.attacker_alliance }}</span>{% endif %}
+            <div class="hl-dmg">
+              <span>{{ td.damage_done }}</span>
+              <span class="pct">({{ td.damage_percent }}%)</span>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+      </div><!-- /hl-grid -->
+
+      <!-- Participant list header -->
+      <div class="part-hdr">
+        <span><span class="part-count">{{ attacker_number }}</span> 参与者</span>
+        <span>总伤害{{ victim.damage_taken }}</span>
+      </div>
+
+      <!-- Participant rows (max 20) -->
+      {% for attacker in attackMember %}
+      {% if loop.index <= 20 %}
+      <div class="prow{% if loop.first %} final-blow{% endif %}">
+        <div class="pav">
+          {% if attacker.attacker_id %}
+          <img src="https://images.newdoublex.space/characters/{{ attacker.attacker_id }}/portrait?size=64"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/corporations/{{ attacker.attacker_corp_id }}/logo?size=64'" />
+          {% else %}
+          <img src="https://images.newdoublex.space/corporations/{{ attacker.attacker_corp_id }}/logo?size=64"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
+          {% endif %}
+        </div>
+        <div class="pship">
+          {% if attacker.ship_type_id %}
+          <img src="https://images.newdoublex.space/types/{{ attacker.ship_type_id }}/icon?size=32"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+          {% endif %}
+          {% if attacker.weapon_type_id %}
+          <img src="https://images.newdoublex.space/types/{{ attacker.weapon_type_id }}/icon?size=32"
+               onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
+          {% endif %}
+        </div>
+        <div class="pinfo">
+          {% if attacker.attacker_name and attacker.attacker_name != 'Unknown' %}
+          <span class="pname">{{ attacker.attacker_name }}</span>
+          {% else %}
+          <span class="pname">{{ attacker.ship_type_name }}</span>
+          {% endif %}
+          {% if attacker.ship_type_name and attacker.ship_type_name not in ('Unknown Ship', 'Unknown') %}
+          <span class="pship-name">{{ attacker.ship_type_name }}</span>
+          {% endif %}
+          <span class="pcorp">
+            {{ attacker.attacker_corp }}
+            {% if attacker.attacker_alliance %} · {{ attacker.attacker_alliance }}{% endif %}
+          </span>
+        </div>
+        <div class="pdmg-col">
+          <div class="pdmg">{{ attacker.damage_done }}</div>
+          <div class="ppct">{{ attacker.damage_percent }}%</div>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+
+      {% if attacker_number > 20 %}
+      <div class="part-more">还有 {{ attacker_number - 20 }} 名参与者未展示</div>
+      {% elif attacker_number > attackMember|length %}
+      <div class="part-more">还有 {{ attacker_number - attackMember|length }} 名参与者未展示</div>
+      {% endif %}
+
+    </div><!-- /col-right -->
+
+  </div><!-- /km-body -->
+</div><!-- /km-wrap -->
+</body>
+</html>
