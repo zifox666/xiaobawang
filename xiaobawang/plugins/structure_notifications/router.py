@@ -58,6 +58,15 @@ LOGIN_STATE_PREFIX = "struct_login_state:"
 LOGIN_CODE_EXPIRE = 300  # 5 分钟
 
 
+# ── 根路由 ────────────────────────────────────────────────
+
+@router.get("")
+@router.get("/")
+async def struct_notify_root():
+    """重定向到管理页面"""
+    return RedirectResponse(url="/struct_notify/page", status_code=302)
+
+
 # ── 响应模型 ──────────────────────────────────────────────
 
 class APIResponse(BaseModel):
@@ -102,6 +111,10 @@ class UpdateSubRequest(BaseModel):
 
 
 class CreateSubRequest(BaseModel):
+    categories: list[str] = Field(default_factory=lambda: ["structure"])
+
+
+class VerifyCodeRequest(BaseModel):
     categories: list[str] = Field(default_factory=lambda: ["structure"])
 
 
@@ -225,16 +238,21 @@ async def get_me(token: str = Query(None)):
 
 @router.get("/api/characters", response_model=APIResponse)
 async def list_characters(token: str = Query(None)):
-    """返回所有已通过 EVE OAuth 授权的角色列表"""
-    await require_login(token)
+    """返回当前会话已授权的角色"""
+    user = await require_login(token)
+    character_id = user.get("character_id")
+    if not character_id:
+        return success([])
     async with get_orm_session() as db:
-        result = await db.execute(select(EsiOAuthAuthorization))
-        chars = result.scalars().all()
-    data = [
-        {"character_id": c.character_id, "character_name": c.character_name}
-        for c in chars
-    ]
-    return success(data)
+        result = await db.execute(
+            select(EsiOAuthAuthorization).where(
+                EsiOAuthAuthorization.character_id == character_id
+            )
+        )
+        char = result.scalar_one_or_none()
+    if char is None:
+        return success([])
+    return success([{"character_id": char.character_id, "character_name": char.character_name}])
 
 
 @router.post("/api/session/character", response_model=APIResponse)
@@ -259,6 +277,33 @@ async def select_character(req: SelectCharacterRequest, token: str = Query(None)
     await cache.set(f"{SESSION_PREFIX}{token}", session_data, expire=SESSION_EXPIRE)
 
     return success({"character_id": char.character_id, "character_name": char.character_name})
+
+
+@router.post("/api/verify_code", response_model=APIResponse)
+async def gen_verify_code(req: VerifyCodeRequest, token: str = Query(None)):
+    """生成用于绑定 bot 会话的验证码（需已完成 EVE OAuth 登录）"""
+    user = await require_user(token)
+
+    if not req.categories:
+        return failure("请至少选择一种通知类别", code=400)
+
+    from ..verify_code import generate_verify_code
+
+    code = secrets.token_hex(4)
+    ok = await generate_verify_code(
+        code,
+        module="structure_notify_bind",
+        payload={
+            "character_id": user["character_id"],
+            "character_name": user.get("character_name", ""),
+            "categories": req.categories,
+        },
+        expire=600,
+    )
+    if not ok:
+        return failure("生成验证码失败")
+
+    return success({"code": code, "expires_in": 600})
 
 
 @router.get("/api/categories", response_model=APIResponse)

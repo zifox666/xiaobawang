@@ -72,18 +72,35 @@ async def _on_page_login(payload: dict, user_info: Uninfo) -> str:
 register_handler("structure_notify_login", _on_page_login)
 
 
-# ── 定时任务: 拉取并推送建筑通知 ──────────────────────────
+async def _on_bind_session(payload: dict, user_info: Uninfo) -> str:
+    """
+    /verify 命令触发时由 verify_code 插件回调。
+    将 bot 会话信息与已授权角色创建订阅。
+    """
+    character_id = payload.get("character_id")
+    character_name = payload.get("character_name", "")
+    categories = payload.get("categories") or ["structure"]
 
-@scheduler.scheduled_job(
-    "interval",
-    minutes=plugin_config.structure_notify_interval,
-    id="structure_notification_poll",
-)
-async def _poll_job():
-    try:
-        await poll_and_push()
-    except Exception as e:
-        logger.error(f"建筑通知定时任务异常: {e}")
+    if not character_id:
+        raise ValueError("验证码数据异常，请重新生成")
+
+    from .service import create_subscription
+
+    await create_subscription(
+        character_id=character_id,
+        character_name=character_name,
+        platform=user_info.scope,
+        bot_id=user_info.self_id,
+        session_id=user_info.scene.id,
+        session_type=user_info.scene.type.name,
+        categories=categories,
+    )
+
+    cats_str = "、".join(categories)
+    return f"✅ 建筑通知绑定成功！\n角色: {character_name}\n类别: {cats_str}"
+
+
+register_handler("structure_notify_bind", _on_bind_session)
 
 
 # ── 定时任务: 拉取并推送建筑通知 ──────────────────────────

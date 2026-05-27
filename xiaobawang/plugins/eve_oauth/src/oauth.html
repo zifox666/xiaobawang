@@ -230,8 +230,16 @@
 
     document.getElementById('theme_btn').addEventListener('click', toggleTheme);
     document.getElementById('create_btn').addEventListener('click', createAuthUrl);
+
+    // 若是 EVE SSO 回调（带 code+state），立即处理跳转，不加载全部角色列表
+    const _isCallback = new URLSearchParams(window.location.search).get('code');
     loadScopes();
-    loadRegisteredPlugins().then(() => loadAuthorizations());
+    if (_isCallback) {
+      // 回调模式：只加载插件信息，跳过 list_authorizations（避免泄露所有角色）
+      loadRegisteredPlugins();
+    } else {
+      loadRegisteredPlugins().then(() => loadAuthorizations());
+    }
     handleCallbackIfNeeded();
   </script>
 </body>
