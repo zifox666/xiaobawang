@@ -71,7 +71,7 @@ help_data = {
                     "title": "订阅指定条件KM",
                     "new": False,
                     "hot": False,
-                    "commands": ["/get_sub_token"],
+                    "commands": ["访问下面网址"],
                     "desc": "访问 https://xbw.newdoublex.space/subcribtion",
                 },
             ],
@@ -101,6 +101,12 @@ help_data = {
                     "hot": False,
                     "commands": ["/eve_status", "/dt"],
                 },
+                {
+                    "title": "订阅服务器状态",
+                    "new": False,
+                    "hot": False,
+                    "commands": ["/dt订阅"],
+                }
             ],
         },
     ],

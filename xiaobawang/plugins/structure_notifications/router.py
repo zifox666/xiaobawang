@@ -1,38 +1,46 @@
 """
 建筑通知 FastAPI 路由
 
-OAuth 认证流程:
-  POST /struct_notify/api/auth/url            - 获取 EVE OAuth 授权 URL
-  GET  /struct_notify/auth/callback            - OAuth 回调
-  GET  /struct_notify/api/auth/me              - 获取当前认证角色信息
+登录流程 (Bot 验证码):
+  GET  /struct_notify/api/login-code              - 生成页面登录验证码
+  GET  /struct_notify/api/login-code/{code}/status - 轮询登录结果
+
+EVE 角色授权 (用于绑定 ESI 令牌):
+  POST /struct_notify/api/auth/url               - 获取 EVE OAuth 授权 URL
+  GET  /struct_notify/auth/complete              - OAuth 回调
 
 页面:
-  GET  /struct_notify/page                     - 管理页
+  GET  /struct_notify/page                       - 管理页
 
 API (需要 session 认证):
-  GET  /struct_notify/api/categories           - 获取可订阅类别
-  GET  /struct_notify/api/subscriptions        - 当前角色的订阅列表
-  PUT  /struct_notify/api/subscriptions/{id}   - 更新订阅
-  DELETE /struct_notify/api/subscriptions/{id} - 删除订阅
-  POST /struct_notify/api/verify_code          - 生成 verify 验证码
+  GET  /struct_notify/api/characters             - 已授权角色列表
+  POST /struct_notify/api/session/character      - 选择当前会话角色
+  GET  /struct_notify/api/categories             - 获取可订阅类别
+  GET  /struct_notify/api/subscriptions          - 当前角色的订阅列表
+  POST /struct_notify/api/subscriptions          - 创建订阅
+  PUT  /struct_notify/api/subscriptions/{id}     - 更新订阅
+  DELETE /struct_notify/api/subscriptions/{id}   - 删除订阅
 """
 
 import json
 import secrets
 from pathlib import Path
-from uuid import uuid4
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from nonebot import logger
+from nonebot_plugin_orm import get_session as get_orm_session
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from starlette.responses import FileResponse
 
 from ..cache import get_cache
+from ..eve_oauth.models import EsiOAuthAuthorization
 from ..eve_oauth.service import oauth_service
-from ..verify_code import generate_verify_code as _generate_verify_code
 from .categories import CATEGORY_LABELS, NOTIFICATION_CATEGORIES
 from .service import (
+    create_subscription,
     delete_subscription,
     get_subscriptions_by_character,
     update_subscription,
@@ -45,6 +53,9 @@ cache = get_cache("structure_notifications")
 
 SESSION_PREFIX = "page_session:"
 SESSION_EXPIRE = 3600  # 1 小时
+
+LOGIN_STATE_PREFIX = "struct_login_state:"
+LOGIN_CODE_EXPIRE = 300  # 5 分钟
 
 
 # ── 响应模型 ──────────────────────────────────────────────
@@ -65,13 +76,21 @@ def failure(msg: str, code: int = 500):
 
 # ── Session 认证 ─────────────────────────────────────────
 
-async def require_user(token: str | None) -> dict:
-    """校验 session token, 返回 {character_id, character_name}"""
+async def require_login(token: str | None) -> dict:
+    """校验 session token，仅要求 bot 验证码登录完成（允许尚未选择角色）"""
     if not token:
-        raise HTTPException(status_code=401, detail="未认证，请先授权角色")
+        raise HTTPException(status_code=401, detail="未登录，请先完成验证")
     data = await cache.get(f"{SESSION_PREFIX}{token}")
     if not data:
-        raise HTTPException(status_code=401, detail="会话已过期，请重新授权")
+        raise HTTPException(status_code=401, detail="会话已过期，请重新验证")
+    return data
+
+
+async def require_user(token: str | None) -> dict:
+    """校验 session token，要求已登录且已选择 EVE 角色"""
+    data = await require_login(token)
+    if not data.get("character_id"):
+        raise HTTPException(status_code=401, detail="请先在网页选择要管理的 EVE 角色")
     return data
 
 
@@ -82,8 +101,12 @@ class UpdateSubRequest(BaseModel):
     is_enabled: bool | None = None
 
 
-class VerifyCodeRequest(BaseModel):
+class CreateSubRequest(BaseModel):
     categories: list[str] = Field(default_factory=lambda: ["structure"])
+
+
+class SelectCharacterRequest(BaseModel):
+    character_id: int
 
 
 # ── 页面 ──────────────────────────────────────────────────
@@ -93,13 +116,59 @@ async def struct_notify_page():
     return FileResponse(html_dir / "index.html", media_type="text/html; charset=utf-8")
 
 
-# ── OAuth 认证 ────────────────────────────────────────────
+# ── 登录验证码 ────────────────────────────────────────────
+
+@router.get("/api/login-code", response_model=APIResponse)
+async def get_login_code():
+    """生成用于页面登录的 bot 验证码，前端展示后由用户在聊天中发送 /verify <code>"""
+    from ..verify_code import generate_verify_code
+
+    code = secrets.token_hex(4)  # 8 字符 hex
+    ok = await generate_verify_code(
+        code,
+        module="structure_notify_login",
+        payload={"code": code},
+        expire=LOGIN_CODE_EXPIRE,
+    )
+    if not ok:
+        return failure("生成验证码失败")
+
+    await cache.set(f"{LOGIN_STATE_PREFIX}{code}", {"status": "pending"}, expire=LOGIN_CODE_EXPIRE + 30)
+    return success({"code": code, "expires_in": LOGIN_CODE_EXPIRE})
+
+
+@router.get("/api/login-code/{code}/status", response_model=APIResponse)
+async def poll_login_code_status(code: str):
+    """轮询登录验证码状态。status: pending | done | expired"""
+    if len(code) != 8 or not code.isalnum():
+        return failure("无效验证码", code=400)
+
+    state = await cache.get(f"{LOGIN_STATE_PREFIX}{code}")
+    if not state:
+        return success({"status": "expired"})
+
+    if state.get("status") == "done":
+        token = state.get("token")
+        # 一次性读取，删除 login_state（token 本身仍有效）
+        await cache.delete(f"{LOGIN_STATE_PREFIX}{code}")
+        return success({"status": "done", "token": token})
+
+    return success({"status": "pending"})
+
+
+# ── EVE OAuth（用于绑定 ESI 令牌，不再用于页面登录） ──────
 
 @router.post("/api/auth/url", response_model=APIResponse)
-async def get_auth_url(request: Request):
-    """生成 EVE OAuth 授权 URL, 复用已注册的 eve_oauth 回调地址"""
+async def get_auth_url(request: Request, token: str = Query(None)):
+    """生成 EVE OAuth 授权 URL。token 为当前页面 session token，授权完成后自动回跳"""
+    # 鉴权要求：至少已完成 bot 验证码登录
+    if token:
+        await require_login(token)
+
     base_url = str(request.base_url).rstrip("/")
     redirect_after = f"{base_url}/struct_notify/auth/complete"
+    if token:
+        redirect_after += f"?page_token={token}"
 
     try:
         data = await oauth_service.create_authorization_url(
@@ -113,31 +182,84 @@ async def get_auth_url(request: Request):
 
 
 @router.get("/auth/complete")
-async def auth_complete(character_id: int, character_name: str = ""):
-    """从 eve_oauth 页面重定向而来, 携带角色信息, 创建页面 session"""
-    try:
-        session_token = uuid4().hex
-        await cache.set(
-            f"{SESSION_PREFIX}{session_token}",
-            {"character_id": character_id, "character_name": character_name},
-            expire=SESSION_EXPIRE,
-        )
-        return RedirectResponse(url=f"/struct_notify/page?token={session_token}")
-    except Exception as e:
-        logger.error(f"创建页面会话失败: {e}")
-        from urllib.parse import quote
-        return RedirectResponse(url=f"/struct_notify/page?error={quote(str(e))}")
+async def auth_complete(
+    character_id: int,
+    character_name: str = "",
+    page_token: str = "",
+    error: str = "",
+):
+    """EVE OAuth 回调。若携带 page_token，则将角色写入该 session 并回跳页面"""
+    if error:
+        return RedirectResponse(url=f"/struct_notify/page?error={quote(error)}")
 
+    # 如果有 page_token，把角色写进 session，无需新建 session
+    if page_token:
+        session_data = await cache.get(f"{SESSION_PREFIX}{page_token}")
+        if session_data:
+            session_data["character_id"] = character_id
+            session_data["character_name"] = character_name
+            await cache.set(f"{SESSION_PREFIX}{page_token}", session_data, expire=SESSION_EXPIRE)
+        return RedirectResponse(url=f"/struct_notify/page?token={page_token}&char_added=1")
 
-
-@router.get("/api/auth/me", response_model=APIResponse)
-async def get_me(token: str = Query(None)):
-    """获取当前认证角色信息"""
-    user = await require_user(token)
-    return success(user)
+    # 兼容：无 page_token 时创建新 session（旧流程兼容，仅含角色信息）
+    from uuid import uuid4
+    session_token = uuid4().hex
+    await cache.set(
+        f"{SESSION_PREFIX}{session_token}",
+        {"character_id": character_id, "character_name": character_name,
+         "session_id": None, "session_type": None, "platform": None,
+         "bot_id": None, "qq": None},
+        expire=SESSION_EXPIRE,
+    )
+    return RedirectResponse(url=f"/struct_notify/page?token={session_token}")
 
 
 # ── API ───────────────────────────────────────────────────
+
+@router.get("/api/auth/me", response_model=APIResponse)
+async def get_me(token: str = Query(None)):
+    """获取当前会话信息（兼容旧接口）"""
+    user = await require_login(token)
+    return success(user)
+
+
+@router.get("/api/characters", response_model=APIResponse)
+async def list_characters(token: str = Query(None)):
+    """返回所有已通过 EVE OAuth 授权的角色列表"""
+    await require_login(token)
+    async with get_orm_session() as db:
+        result = await db.execute(select(EsiOAuthAuthorization))
+        chars = result.scalars().all()
+    data = [
+        {"character_id": c.character_id, "character_name": c.character_name}
+        for c in chars
+    ]
+    return success(data)
+
+
+@router.post("/api/session/character", response_model=APIResponse)
+async def select_character(req: SelectCharacterRequest, token: str = Query(None)):
+    """将选中角色写入当前 session"""
+    session_data = await require_login(token)
+
+    # 确认角色已授权 ESI
+    async with get_orm_session() as db:
+        result = await db.execute(
+            select(EsiOAuthAuthorization).where(
+                EsiOAuthAuthorization.character_id == req.character_id
+            )
+        )
+        char = result.scalar_one_or_none()
+
+    if char is None:
+        return failure("该角色未授权 ESI，请先完成 EVE OAuth 授权", code=404)
+
+    session_data["character_id"] = char.character_id
+    session_data["character_name"] = char.character_name
+    await cache.set(f"{SESSION_PREFIX}{token}", session_data, expire=SESSION_EXPIRE)
+
+    return success({"character_id": char.character_id, "character_name": char.character_name})
+
 
 @router.get("/api/categories", response_model=APIResponse)
 async def list_categories():
@@ -173,26 +295,27 @@ async def list_subscriptions(token: str = Query(None)):
     return success(data)
 
 
-@router.post("/api/verify_code", response_model=APIResponse)
-async def create_verify_code(
-    req: VerifyCodeRequest,
-    token: str = Query(None),
-):
-    """生成验证码, 用户在聊天中发送 /verify <code> 绑定会话"""
+@router.post("/api/subscriptions", response_model=APIResponse)
+async def create_sub(req: CreateSubRequest, token: str = Query(None)):
+    """直接创建订阅（需已登录且已选择角色，使用 session 中的 bot 会话信息）"""
     user = await require_user(token)
-    code = secrets.token_hex(4)  # 8 字符 hex
-    ok = await _generate_verify_code(
-        code,
-        module="structure_notifications",
-        payload={
-            "character_id": user["character_id"],
-            "character_name": user.get("character_name", ""),
-            "categories": req.categories,
-        },
+
+    if not user.get("session_id"):
+        return failure("当前会话缺少 bot 信息，请重新通过验证码登录", code=400)
+
+    if not req.categories:
+        return failure("请至少选择一种通知类别", code=400)
+
+    sub = await create_subscription(
+        character_id=user["character_id"],
+        character_name=user.get("character_name", str(user["character_id"])),
+        platform=user["platform"],
+        bot_id=user["bot_id"],
+        session_id=user["session_id"],
+        session_type=user["session_type"],
+        categories=req.categories,
     )
-    if not ok:
-        return failure("生成验证码失败")
-    return success({"code": code, "expire_seconds": 600})
+    return success({"id": sub.id})
 
 
 @router.put("/api/subscriptions/{sub_id}", response_model=APIResponse)

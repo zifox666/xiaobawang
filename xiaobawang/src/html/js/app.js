@@ -13,9 +13,76 @@ createApp({
         const searchText = ref('');
         const filterEnabled = ref(null);
         
-        const form = reactive({
-            token: '',
-        });
+        // ── 验证码登录状态 ─────────────────────────────────────────
+        const verifyCode = ref('');
+        const verifyCodeExpiry = ref(300);
+        const verifyCodeStatus = ref('loading'); // loading | pending | expired
+        let _pollTimer = null;
+        let _countdownTimer = null;
+
+        const _stopPolling = () => { if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; } };
+        const _stopCountdown = () => { if (_countdownTimer) { clearInterval(_countdownTimer); _countdownTimer = null; } };
+
+        const fetchVerifyCode = async () => {
+            _stopPolling();
+            _stopCountdown();
+            verifyCodeStatus.value = 'loading';
+            try {
+                const res = await axios.get(`${apiUrl}/auth/verify-code`);
+                verifyCode.value = res.data.code;
+                verifyCodeExpiry.value = res.data.expires_in;
+                verifyCodeStatus.value = 'pending';
+
+                // 倒计时
+                _countdownTimer = setInterval(() => {
+                    verifyCodeExpiry.value--;
+                    if (verifyCodeExpiry.value <= 0) {
+                        _stopCountdown();
+                        _stopPolling();
+                        verifyCodeStatus.value = 'expired';
+                    }
+                }, 1000);
+
+                // 轮询状态
+                _pollTimer = setInterval(async () => {
+                    try {
+                        const r = await axios.get(`${apiUrl}/auth/verify-code/${verifyCode.value}/status`);
+                        if (r.data.status === 'done') {
+                            _stopPolling();
+                            _stopCountdown();
+                            const { token, user: u } = r.data;
+                            axios.defaults.headers.common['Authorization'] = token;
+                            user.userId = u.qq;
+                            user.sessionId = u.session_id;
+                            user.sessionType = u.session_type;
+                            user.platform = u.platform;
+                            user.bot_id = u.bot_id;
+                            isLoggedIn.value = true;
+                            await loadScoreRules();
+                            await loadTemplates();
+                            await refreshList();
+                            ElMessage.success('验证成功，已自动登录');
+                        } else if (r.data.status === 'expired') {
+                            _stopPolling();
+                            _stopCountdown();
+                            verifyCodeStatus.value = 'expired';
+                        }
+                    } catch (_) { /* ignore poll errors */ }
+                }, 2000);
+            } catch (e) {
+                ElMessage.error('获取验证码失败: ' + e.message);
+                verifyCodeStatus.value = 'expired';
+            }
+        };
+
+        const refreshVerifyCode = () => fetchVerifyCode();
+
+        const copyVerifyCode = () => {
+            navigator.clipboard.writeText(`/verify ${verifyCode.value}`).then(
+                () => ElMessage.success('已复制'),
+                () => ElMessage.warning('复制失败，请手动复制')
+            );
+        };
         
         const user = reactive({
             sessionType: '',
@@ -99,43 +166,11 @@ createApp({
             }
         };
         
-        const login = async () => {
-            if (!form.token) {
-                ElMessage.error('请填写所有字段');
-                return;
-            }
-            
-            loginLoading.value = true;
-            try {
-                const res = await axios.post(`${apiUrl}/auth/login`, {
-                    token: form.token
-                });
-
-                const data = res.data.data;
-                const t = data.token;
-                axios.defaults.headers.common['Authorization'] = `${t}`;
-
-                user.userId = data.user.create_id || data.user.user_id;
-                user.sessionId = data.user.sessionId || data.user.session_id;
-                user.sessionType = data.user.sessionType || data.user.session_type;
-                user.platform = data.user.platform;
-                user.bot_id = data.user.botId || data.user.bot_id;
-
-                isLoggedIn.value = true;
-                await loadScoreRules();  // 加载积分规则
-                await loadTemplates();   // 加载模板
-                await refreshList();
-                ElMessage.success('登录成功');
-            } catch (e) {
-                ElMessage.error('登录失败: ' + (e.response?.data?.detail || e.message));
-            } finally {
-                loginLoading.value = false;
-            }
-        };
-        
         const logout = () => {
             isLoggedIn.value = false;
             subs.value = [];
+            delete axios.defaults.headers.common['Authorization'];
+            fetchVerifyCode();
         };
         
         // 加载积分规则
@@ -325,18 +360,19 @@ createApp({
             return calcRuleMultiplier(condGroups, scoreRules);
         };
 
-        onMounted(() => {
-            loadTemplates();
+        onMounted(async () => {
+            await fetchVerifyCode();
         });
         
         return {
             isLoggedIn, loginLoading, loading, saving, showCreate, showConditionSelector, editingId,
-            form, user, subs, templates, stats, subForm, searchText, filterEnabled, filteredSubs,
+            user, subs, templates, stats, subForm, searchText, filterEnabled, filteredSubs,
             CONDITION_TYPES, ENTITY_TYPES, ENTITY_ROLES, SHIP_ROLES, scoreRules,
-            login, logout, refreshList, resetSubForm, editSub, applyTemplate, addCondition, delCondition, 
+            verifyCode, verifyCodeExpiry, verifyCodeStatus, fetchVerifyCode, refreshVerifyCode, copyVerifyCode,
+            logout, refreshList, resetSubForm, editSub, applyTemplate, addCondition, delCondition,
             getCondTypeLabel, getConditionCount, summarizeConditionWrapper, calcRuleMultiplierWrapper,
             saveSub, delSub, queryEntityWrapper, handleEntitySelect, loadScoreRules, loadTemplates,
-            formatNumberWithComma, parseNumberWithComma, 
+            formatNumberWithComma, parseNumberWithComma,
             minValueInput, minValueHandler, createNumberInputHandler
         };
     }

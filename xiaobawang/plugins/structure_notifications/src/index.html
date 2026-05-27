@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EVE 建筑通知管理</title>
+    <title>EVE 寤虹瓚閫氱煡绠＄悊</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' };</script>
 </head>
@@ -18,25 +18,65 @@
     </script>
 
     <div class="max-w-3xl mx-auto px-4 py-8">
-        <h1 class="text-2xl font-bold mb-6 text-center">🏗️ EVE 建筑通知管理</h1>
+        <h1 class="text-2xl font-bold mb-6 text-center">馃彈锔?EVE 寤虹瓚閫氱煡绠＄悊</h1>
 
-        <!-- ── 未登录: 显示授权按钮 ── -->
-        <div id="login-section" class="text-center py-16">
-            <p class="text-gray-500 dark:text-gray-400 mb-6">使用 EVE Online 账号授权以管理建筑通知推送</p>
-            <button id="login-btn"
-                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition inline-flex items-center gap-2 text-base">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/>
-                </svg>
-                使用 EVE Online 授权
-            </button>
-            <p class="mt-3 text-xs text-gray-400">授权后仅对您本人可见</p>
+        <!-- 鈹€鈹€ 绗竴姝? Bot 楠岃瘉鐮佺櫥褰?鈹€鈹€ -->
+        <div id="login-section" class="text-center py-16 hidden">
+            <p class="text-gray-500 dark:text-gray-400 mb-6">鍦ㄦ満鍣ㄤ汉浼氳瘽涓彂閫佷互涓嬪懡浠や互鐧诲綍</p>
+
+            <!-- 鍔犺浇涓?-->
+            <div id="vc-loading" class="hidden">
+                <p class="text-gray-400 text-sm">姝ｅ湪鐢熸垚楠岃瘉鐮佲€?/p>
+            </div>
+
+            <!-- 寰呴獙璇?-->
+            <div id="vc-pending" class="hidden">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">璇峰湪鐩爣鑱婂ぉ浼氳瘽涓彂閫侊細</p>
+                <div class="inline-flex items-center gap-3 border-2 border-dashed border-green-400 dark:border-green-500 rounded-lg px-6 py-4 cursor-pointer hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                     id="vc-copy-area" title="鐐瑰嚮澶嶅埗">
+                    <code id="vc-code" class="text-2xl font-mono font-bold text-green-600 dark:text-green-400 tracking-widest select-all"></code>
+                    <span id="vc-copy-hint" class="text-xs text-gray-400">鐐瑰嚮澶嶅埗</span>
+                </div>
+                <p class="mt-3 text-xs text-gray-400">楠岃瘉鐮?<span id="vc-countdown"></span> 绉掑悗杩囨湡</p>
+            </div>
+
+            <!-- 宸茶繃鏈?-->
+            <div id="vc-expired" class="hidden">
+                <p class="text-gray-500 dark:text-gray-400 mb-4">楠岃瘉鐮佸凡杩囨湡</p>
+                <button id="vc-refresh-btn"
+                        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm">
+                    閲嶆柊鑾峰彇楠岃瘉鐮?
+                </button>
+            </div>
+
             <div id="login-error" class="mt-4 text-red-500 text-sm hidden"></div>
         </div>
 
-        <!-- ── 已登录: 管理面板 ── -->
+        <!-- 鈹€鈹€ 绗簩姝? 閫夋嫨 EVE 瑙掕壊 鈹€鈹€ -->
+        <div id="char-section" class="hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
+                <h2 class="text-lg font-semibold mb-4">閫夋嫨瑕佺鐞嗙殑 EVE 瑙掕壊</h2>
+                <div id="char-list" class="space-y-2 mb-4">
+                    <p class="text-gray-400 text-sm">鍔犺浇涓€?/p>
+                </div>
+                <button id="add-char-btn"
+                        class="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                    鎺堟潈鏂拌鑹?(EVE OAuth)
+                </button>
+                <p class="mt-2 text-xs text-gray-400">鎺堟潈鍚庤鑹插皢鍑虹幇鍦ㄥ垪琛ㄤ腑锛岀偣鍑诲嵆鍙€夋嫨</p>
+                <div id="char-error" class="mt-3 text-red-500 text-sm hidden"></div>
+            </div>
+            <button id="char-logout-btn" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                閲嶆柊楠岃瘉鐧诲綍
+            </button>
+        </div>
+
+        <!-- 鈹€鈹€ 绗笁姝? 绠＄悊闈㈡澘 鈹€鈹€ -->
         <div id="main-section" class="hidden">
-            <!-- 角色信息 -->
+            <!-- 瑙掕壊淇℃伅 -->
             <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <img id="char-portrait" class="w-10 h-10 rounded-full" src="" alt="" />
@@ -47,52 +87,40 @@
                 </div>
                 <button id="logout-btn"
                         class="text-sm px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition">
-                    切换角色
+                    鍒囨崲瑙掕壊
                 </button>
             </div>
 
-            <!-- 流程说明 -->
+            <!-- 娴佺▼璇存槑 -->
             <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-sm">
-                <p class="font-semibold mb-2">使用流程:</p>
-                <ol class="list-decimal list-inside space-y-1">
-                    <li>勾选需要接收的通知类别</li>
-                    <li>点击「生成验证码」获取验证码</li>
-                    <li>在目标聊天中发送 <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">/verify 验证码</code> 绑定会话</li>
+                <p class="font-semibold mb-1">濡備綍娣诲姞璁㈤槄:</p>
+                <ol class="list-decimal list-inside space-y-1 text-gray-600 dark:text-gray-300">
+                    <li>鍕鹃€夐渶瑕佹帴鏀剁殑閫氱煡绫诲埆</li>
+                    <li>鐐瑰嚮銆屽垱寤鸿闃呫€嶏紝閫氱煡灏嗘帹閫佸埌浣犲彂閫侀獙璇佺爜鐨勪細璇?/li>
                 </ol>
             </div>
 
-            <!-- 选择类别 -->
+            <!-- 閫夋嫨绫诲埆 -->
             <section class="mb-6">
-                <h2 class="text-lg font-semibold mb-3">选择通知类别</h2>
+                <h2 class="text-lg font-semibold mb-3">閫夋嫨閫氱煡绫诲埆</h2>
                 <div id="categories-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
             </section>
 
-            <!-- 生成验证码 -->
+            <!-- 鍒涘缓璁㈤槄 -->
             <section class="mb-6">
-                <button id="gen-code-btn"
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition">
-                    生成验证码
+                <button id="create-sub-btn"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition">
+                    鍒涘缓璁㈤槄
                 </button>
-                <div id="verify-code-display" class="mt-3 hidden">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">请在目标聊天中发送以下命令:</p>
-                    <div class="mt-1 flex items-center gap-2">
-                        <code id="verify-code-text"
-                              class="text-lg font-mono bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded select-all"></code>
-                        <button id="copy-btn"
-                                class="text-sm px-2 py-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 rounded transition">
-                            复制
-                        </button>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1">验证码 10 分钟内有效</p>
-                </div>
+                <span id="create-sub-msg" class="ml-3 text-sm hidden"></span>
             </section>
 
             <hr class="border-gray-200 dark:border-gray-700 my-8" />
 
-            <!-- 已有订阅 -->
+            <!-- 宸叉湁璁㈤槄 -->
             <section>
                 <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-lg font-semibold">已有订阅</h2>
+                    <h2 class="text-lg font-semibold">宸叉湁璁㈤槄</h2>
                     <div class="flex items-center gap-3">
                         <span id="subs-updated" class="text-xs text-gray-400 hidden"></span>
                         <button id="refresh-subs-btn"
@@ -100,12 +128,12 @@
                             <svg id="refresh-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            刷新
+                            鍒锋柊
                         </button>
                     </div>
                 </div>
                 <div id="subscriptions-container">
-                    <p class="text-gray-400 text-sm">加载中…</p>
+                    <p class="text-gray-400 text-sm">鍔犺浇涓€?/p>
                 </div>
             </section>
         </div>
@@ -115,92 +143,202 @@
         const BASE = window.location.pathname.replace(/\/page\/?$/, '');
         let authToken = null;
 
-        // ── 从 URL 参数或 localStorage 恢复 token ──
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('token')) {
-            authToken = params.get('token');
-            localStorage.setItem('struct_notify_token', authToken);
-            history.replaceState(null, '', window.location.pathname);
-        } else {
-            authToken = localStorage.getItem('struct_notify_token');
-        }
-        if (params.get('error')) {
-            document.getElementById('login-error').textContent = '授权失败: ' + decodeURIComponent(params.get('error'));
-            document.getElementById('login-error').classList.remove('hidden');
+        // 鈹€鈹€ UI 鐘舵€佹帶鍒?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+        function showSection(id) {
+            ['login-section', 'char-section', 'main-section'].forEach(s => {
+                document.getElementById(s).classList.toggle('hidden', s !== id);
+            });
         }
 
-        /** 构造带 token 的 API URL */
-        function apiUrl(path) {
-            const url = new URL(`${BASE}${path}`, window.location.origin);
-            if (authToken) url.searchParams.set('token', authToken);
-            return url.toString();
+        function showLoginState(state) {
+            ['vc-loading', 'vc-pending', 'vc-expired'].forEach(s => {
+                document.getElementById(s).classList.toggle('hidden', s !== `vc-${state}`);
+            });
         }
 
-        // ── 检查登录状态 ──
-        async function checkAuth() {
-            if (!authToken) { showLogin(); return; }
+        // 鈹€鈹€ 鐧诲綍楠岃瘉鐮?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+        let _loginCode = null;
+        let _pollTimer = null;
+        let _countdownTimer = null;
+
+        async function fetchLoginCode() {
+            showSection('login-section');
+            showLoginState('loading');
+            clearTimers();
+
             try {
-                const res = await fetch(apiUrl('/api/auth/me'));
-                if (!res.ok) throw new Error('unauthorized');
+                const res = await fetch(`${BASE}/api/login-code`);
                 const json = await res.json();
                 if (json.code !== 200) throw new Error(json.msg);
-                showMain(json.data);
-            } catch {
-                localStorage.removeItem('struct_notify_token');
-                authToken = null;
-                showLogin();
+                _loginCode = json.data.code;
+                const expiry = json.data.expires_in;
+
+                document.getElementById('vc-code').textContent = `/verify ${_loginCode}`;
+                startCountdown(expiry);
+                showLoginState('pending');
+                startLoginPoll();
+            } catch (e) {
+                showError('login-error', '鐢熸垚楠岃瘉鐮佸け璐? ' + e.message);
+                showLoginState('expired');
             }
         }
 
-        let _pollTimer = null;
-
-        function startPolling() {
-            stopPolling();
-            _pollTimer = setInterval(loadSubscriptions, 1000);
+        function startCountdown(seconds) {
+            let remaining = seconds;
+            const el = document.getElementById('vc-countdown');
+            el.textContent = remaining;
+            _countdownTimer = setInterval(() => {
+                remaining--;
+                el.textContent = remaining;
+                if (remaining <= 0) {
+                    clearTimers();
+                    showLoginState('expired');
+                }
+            }, 1000);
         }
 
-        function stopPolling() {
-            if (_pollTimer !== null) { clearInterval(_pollTimer); _pollTimer = null; }
+        function startLoginPoll() {
+            _pollTimer = setInterval(async () => {
+                if (!_loginCode) return;
+                try {
+                    const res = await fetch(`${BASE}/api/login-code/${_loginCode}/status`);
+                    const json = await res.json();
+                    if (json.code !== 200) return;
+                    const status = json.data?.status;
+                    if (status === 'done') {
+                        clearTimers();
+                        authToken = json.data.token;
+                        localStorage.setItem('struct_notify_token', authToken);
+                        await showCharSelect();
+                    } else if (status === 'expired') {
+                        clearTimers();
+                        showLoginState('expired');
+                    }
+                } catch { /* ignore */ }
+            }, 2000);
         }
 
-        function showLogin() {
-            stopPolling();
-            document.getElementById('login-section').classList.remove('hidden');
-            document.getElementById('main-section').classList.add('hidden');
+        function clearTimers() {
+            if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+            if (_countdownTimer) { clearInterval(_countdownTimer); _countdownTimer = null; }
         }
+
+        document.getElementById('vc-copy-area').addEventListener('click', () => {
+            const text = document.getElementById('vc-code').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const hint = document.getElementById('vc-copy-hint');
+                hint.textContent = '宸插鍒?鉁?;
+                setTimeout(() => { hint.textContent = '鐐瑰嚮澶嶅埗'; }, 1500);
+            });
+        });
+
+        document.getElementById('vc-refresh-btn').addEventListener('click', fetchLoginCode);
+
+        // 鈹€鈹€ 瑙掕壊閫夋嫨 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+        async function showCharSelect() {
+            showSection('char-section');
+            await loadCharacters();
+        }
+
+        async function loadCharacters() {
+            const container = document.getElementById('char-list');
+            container.innerHTML = '<p class="text-gray-400 text-sm">鍔犺浇涓€?/p>';
+            try {
+                const res = await fetch(apiUrl('/api/characters'));
+                const json = await res.json();
+                if (json.code !== 200) throw new Error(json.msg);
+                const chars = json.data || [];
+                if (!chars.length) {
+                    container.innerHTML = '<p class="text-gray-400 text-sm">鏆傛棤宸叉巿鏉冭鑹诧紝璇风偣鍑讳笅鏂广€屾巿鏉冩柊瑙掕壊銆?/p>';
+                    return;
+                }
+                container.innerHTML = '';
+                chars.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.className = 'w-full flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-left';
+                    btn.innerHTML = `
+                        <img src="https://images.evetech.net/characters/${c.character_id}/portrait?size=32"
+                             class="w-8 h-8 rounded-full" alt="" />
+                        <div>
+                            <p class="font-medium text-sm">${c.character_name}</p>
+                            <p class="text-xs text-gray-400">ID: ${c.character_id}</p>
+                        </div>`;
+                    btn.addEventListener('click', () => selectCharacter(c.character_id));
+                    container.appendChild(btn);
+                });
+            } catch (e) {
+                showError('char-error', '鍔犺浇瑙掕壊鍒楄〃澶辫触: ' + e.message);
+            }
+        }
+
+        async function selectCharacter(characterId) {
+            try {
+                const res = await fetch(apiUrl('/api/session/character') + `&character_id=${characterId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ character_id: characterId }),
+                });
+                const json = await res.json();
+                if (json.code !== 200) throw new Error(json.msg);
+                showMain({ character_id: json.data.character_id, character_name: json.data.character_name });
+            } catch (e) {
+                showError('char-error', '閫夋嫨瑙掕壊澶辫触: ' + e.message);
+            }
+        }
+
+        document.getElementById('add-char-btn').addEventListener('click', async () => {
+            try {
+                const res = await fetch(apiUrl('/api/auth/url'), { method: 'POST' });
+                const json = await res.json();
+                if (json.code !== 200) throw new Error(json.msg);
+                window.location.href = json.data.auth_url;
+            } catch (e) {
+                showError('char-error', '鑾峰彇鎺堟潈閾炬帴澶辫触: ' + e.message);
+            }
+        });
+
+        document.getElementById('char-logout-btn').addEventListener('click', logout);
+
+        // 鈹€鈹€ 绠＄悊闈㈡澘 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
         function showMain(user) {
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('main-section').classList.remove('hidden');
+            showSection('main-section');
             document.getElementById('char-name').textContent = user.character_name;
             document.getElementById('char-id').textContent = 'ID: ' + user.character_id;
             document.getElementById('char-portrait').src =
                 `https://images.evetech.net/characters/${user.character_id}/portrait?size=64`;
             loadCategories();
             loadSubscriptions();
-            startPolling();
         }
 
-        // ── 登录 ──
-        document.getElementById('login-btn').addEventListener('click', async () => {
-            try {
-                const res = await fetch(`${BASE}/api/auth/url`, { method: 'POST' });
-                const json = await res.json();
-                if (json.code !== 200) throw new Error(json.msg);
-                window.location.href = json.data.auth_url;
-            } catch (e) {
-                alert('获取授权链接失败: ' + e.message);
-            }
-        });
+        document.getElementById('logout-btn').addEventListener('click', () => showCharSelect());
 
-        // ── 登出 / 切换角色 ──
-        document.getElementById('logout-btn').addEventListener('click', () => {
+        // 鈹€鈹€ 宸ュ叿鍑芥暟 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+        function apiUrl(path) {
+            const url = new URL(`${BASE}${path}`, window.location.origin);
+            if (authToken) url.searchParams.set('token', authToken);
+            return url.toString();
+        }
+
+        function showError(id, msg) {
+            const el = document.getElementById(id);
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        function logout() {
+            clearTimers();
             localStorage.removeItem('struct_notify_token');
             authToken = null;
-            showLogin();
-        });
+            fetchLoginCode();
+        }
 
-        // ── 加载类别 ──
+        // 鈹€鈹€ 绫诲埆 & 璁㈤槄 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
         let categoriesData = [];
         async function loadCategories() {
             const res = await fetch(apiUrl('/api/categories'));
@@ -225,14 +363,36 @@
             return [...document.querySelectorAll('.cat-checkbox:checked')].map(el => el.value);
         }
 
-        // ── 加载订阅 ──
+        document.getElementById('create-sub-btn').addEventListener('click', async () => {
+            const cats = getSelectedCategories();
+            if (!cats.length) return alert('璇疯嚦灏戦€夋嫨涓€绉嶉€氱煡绫诲埆');
+            const msgEl = document.getElementById('create-sub-msg');
+            msgEl.textContent = '鍒涘缓涓€?;
+            msgEl.className = 'ml-3 text-sm text-gray-500';
+            msgEl.classList.remove('hidden');
+            try {
+                const res = await fetch(apiUrl('/api/subscriptions'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ categories: cats }),
+                });
+                const json = await res.json();
+                if (json.code !== 200) throw new Error(json.msg);
+                msgEl.textContent = '鉁?璁㈤槄鍒涘缓鎴愬姛';
+                msgEl.className = 'ml-3 text-sm text-green-600 dark:text-green-400';
+                loadSubscriptions();
+                setTimeout(() => { msgEl.classList.add('hidden'); }, 3000);
+            } catch (e) {
+                msgEl.textContent = '鉂?鍒涘缓澶辫触: ' + e.message;
+                msgEl.className = 'ml-3 text-sm text-red-500';
+            }
+        });
+
         async function loadSubscriptions() {
             const container = document.getElementById('subscriptions-container');
-            // 只有首次（容器为空）时才显示「加载中」，轮询时静默刷新
             if (!container.children.length) {
-                container.innerHTML = '<p class="text-gray-400 text-sm">加载中…</p>';
+                container.innerHTML = '<p class="text-gray-400 text-sm">鍔犺浇涓€?/p>';
             }
-            // 刷新图标旋转动画
             const icon = document.getElementById('refresh-icon');
             icon.classList.add('animate-spin');
             try {
@@ -240,7 +400,7 @@
                 const json = await res.json();
                 const subs = json.data || [];
                 if (!subs.length) {
-                    container.innerHTML = '<p class="text-gray-400 text-sm">暂无订阅，请先生成验证码并在聊天中绑定</p>';
+                    container.innerHTML = '<p class="text-gray-400 text-sm">鏆傛棤璁㈤槄锛岃鍏堥€夋嫨绫诲埆骞剁偣鍑汇€屽垱寤鸿闃呫€?/p>';
                     return;
                 }
                 container.innerHTML = '';
@@ -254,66 +414,38 @@
                                 <span class="font-medium">${sub.session_id}</span>
                                 <span class="text-xs text-gray-400">${sub.platform} / ${sub.session_type}</span>
                             </p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">类别: ${cats}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">绫诲埆: ${cats}</p>
                         </div>
                         <div class="flex items-center gap-2">
                             <button onclick="testPush(${sub.id})"
                                 class="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800 transition">
-                                测试推送
+                                娴嬭瘯鎺ㄩ€?
                             </button>
                             <button onclick="toggleSub(${sub.id}, ${!sub.is_enabled})"
                                 class="text-xs px-2 py-1 rounded ${sub.is_enabled
                                     ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
                                     : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}">
-                                ${sub.is_enabled ? '已启用' : '已禁用'}
+                                ${sub.is_enabled ? '宸插惎鐢? : '宸茬鐢?}
                             </button>
                             <button onclick="deleteSub(${sub.id})"
                                 class="text-xs px-2 py-1 rounded bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 transition">
-                                删除
+                                鍒犻櫎
                             </button>
                         </div>`;
                     container.appendChild(div);
                 });
             } catch (e) {
-                container.innerHTML = `<p class="text-red-500 text-sm">加载失败: ${e.message}</p>`;
+                container.innerHTML = `<p class="text-red-500 text-sm">鍔犺浇澶辫触: ${e.message}</p>`;
             } finally {
                 icon.classList.remove('animate-spin');
                 const ts = document.getElementById('subs-updated');
-                ts.textContent = '更新于 ' + new Date().toLocaleTimeString();
+                ts.textContent = '鏇存柊浜?' + new Date().toLocaleTimeString();
                 ts.classList.remove('hidden');
             }
         }
 
         document.getElementById('refresh-subs-btn').addEventListener('click', loadSubscriptions);
 
-        // ── 生成验证码 ──
-        document.getElementById('gen-code-btn').addEventListener('click', async () => {
-            const cats = getSelectedCategories();
-            if (!cats.length) return alert('请至少选择一种通知类别');
-            try {
-                const res = await fetch(apiUrl('/api/verify_code'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ categories: cats }),
-                });
-                const json = await res.json();
-                if (json.code !== 200) throw new Error(json.msg);
-                document.getElementById('verify-code-text').textContent = `/verify ${json.data.code}`;
-                document.getElementById('verify-code-display').classList.remove('hidden');
-            } catch (e) {
-                alert('生成失败: ' + e.message);
-            }
-        });
-
-        document.getElementById('copy-btn').addEventListener('click', () => {
-            const text = document.getElementById('verify-code-text').textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                document.getElementById('copy-btn').textContent = '已复制 ✓';
-                setTimeout(() => { document.getElementById('copy-btn').textContent = '复制'; }, 1500);
-            });
-        });
-
-        // ── 切换 / 删除订阅 ──
         async function toggleSub(subId, enabled) {
             await fetch(apiUrl(`/api/subscriptions/${subId}`), {
                 method: 'PUT',
@@ -324,7 +456,7 @@
         }
 
         async function deleteSub(subId) {
-            if (!confirm('确认删除该订阅?')) return;
+            if (!confirm('纭鍒犻櫎璇ヨ闃?')) return;
             await fetch(apiUrl(`/api/subscriptions/${subId}`), { method: 'DELETE' });
             loadSubscriptions();
         }
@@ -334,14 +466,52 @@
                 const res = await fetch(apiUrl(`/api/subscriptions/${subId}/test`), { method: 'POST' });
                 const json = await res.json();
                 if (json.code !== 200) throw new Error(json.msg);
-                alert('测试消息已发送，请到聊天中查看');
+                alert('娴嬭瘯娑堟伅宸插彂閫侊紝璇峰埌鑱婂ぉ涓煡鐪?);
             } catch (e) {
-                alert('测试推送失败: ' + e.message);
+                alert('娴嬭瘯鎺ㄩ€佸け璐? ' + e.message);
             }
         }
 
-        // ── 启动 ──
-        checkAuth();
+        // 鈹€鈹€ 鍚姩 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+        async function init() {
+            // 妫€鏌?URL 鍙傛暟锛堜粠 EVE OAuth 鍥炶烦鏃舵惡甯︼級
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('token')) {
+                authToken = params.get('token');
+                localStorage.setItem('struct_notify_token', authToken);
+                history.replaceState(null, '', window.location.pathname);
+            } else {
+                authToken = localStorage.getItem('struct_notify_token');
+            }
+            if (params.get('error')) {
+                showError('login-error', '鎺堟潈澶辫触: ' + decodeURIComponent(params.get('error')));
+            }
+
+            if (authToken) {
+                // 楠岃瘉 session 鏄惁鏈夋晥
+                try {
+                    const res = await fetch(apiUrl('/api/auth/me'));
+                    const json = await res.json();
+                    if (json.code === 200) {
+                        const user = json.data;
+                        if (user.character_id) {
+                            showMain(user);
+                            return;
+                        }
+                        // 宸茬櫥褰曚絾鏈€夎鑹?
+                        await showCharSelect();
+                        return;
+                    }
+                } catch { /* fall through */ }
+                localStorage.removeItem('struct_notify_token');
+                authToken = null;
+            }
+
+            await fetchLoginCode();
+        }
+
+        init();
     </script>
 </body>
 </html>

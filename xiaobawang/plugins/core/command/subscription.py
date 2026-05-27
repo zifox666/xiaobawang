@@ -24,11 +24,11 @@ start_km_listen = on_alconna(start_km_alc, use_cmd_start=True, permission=SUPERU
 
 get_sub_token = on_alconna(
     Alconna(
-        "get_sub_token",
+        "订阅",
         Args["group_id", str, "0"],
         meta=CommandMeta(
-            description="获取订阅专用Token",
-            usage="/get_sub_token [群聊群号/私聊不填]",
+            description="订阅KM",
+            usage="",
             fuzzy_match=True
         )
     ),
@@ -43,42 +43,7 @@ async def _handle_get_sub_token(
     user_info: Uninfo,
     interface: QryItrface,
 ):
-    platform = user_info.adapter
-    bot_id = user_info.self_id
-
-    if not user_info.scene.is_private:
-        await get_sub_token.finish("请加机器人好友，该命令仅支持私聊使用\nhttps://xbw.newdoublex.space/subscription")
-
-    if result.group_id != "0":
-        session_id = result.group_id
-        session_type = SceneType.GROUP.name
-    else:
-        session_id = user_info.scene.id
-        session_type = user_info.scene.type.name
-
-    if await super_admin(event):
-        logger.debug("炒鸡管理员")
-    elif session_type != SceneType.PRIVATE.name:
-        member = await interface.get_member(
-            scene_type=SceneType.GROUP,
-            scene_id=session_id,
-            user_id=user_info.user.id
-        )
-        if not member or member.role.level < 1:
-            await get_sub_token.finish("你还不是该群管理员，无法使用此功能")
-
-    token = await TokenManager().generate_token(
-        user_info={
-            "platform": platform,
-            "bot_id": bot_id,
-            "session_id": session_id,
-            "session_type": session_type,
-            "create_id": user_info.user.id,
-        }
-    )
-
-    await get_sub_token.finish(f"[{platform}]{bot_id}\n[{session_type}]{session_id}\n"
-                               f"订阅Token：{token}\n有效期一小时\nhttps://xbw.newdoublex.space/subscription")
+    await get_sub_token.finish("该功能已移至网页端管理，访问：https://xbw.newdoublex.space/subscription")
 
 
 @start_km_listen.assign("start")

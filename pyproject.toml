@@ -28,6 +28,7 @@ dependencies = [
     "nonebot2>=2.4.4",
     "nonebot_plugin_session>=0.3.2",
     "nonebot-plugin-orm>=0.8.2",
+    "qrcode[pil]>=8.2",
 ]
 name = "xiaobawang"
 version = "0.1.0"

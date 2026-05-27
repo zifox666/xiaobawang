@@ -5,7 +5,7 @@ from sqlalchemy import and_, or_, select
 from .cache import cache_result
 from .config import plugin_config
 from .db import get_session
-from .models import TC_GROUP_ID, TC_TYPES_ID, InvFlags, InvGroups, InvTypes, TrnTranslations
+from .models import TC_CATEGORY_ID, TC_GROUP_ID, TC_TYPES_ID, InvCategories, InvFlags, InvGroups, InvTypes, TrnTranslations
 from .utils import text_processor
 
 
@@ -335,6 +335,28 @@ class SDESearch:
             results.sort(key=lambda x: x["score"], reverse=True)
             total = len(results)
         return results[:limit], total
+
+    @cache_result(prefix="cat_name_", exclude_args=[0])
+    async def get_category_name(self, category_id: int, language: str | None = None) -> str:
+        """获取物品类别的本地化名称"""
+        if language is None:
+            language = self.default_lang
+        async with await get_session() as session:
+            tns_query = select(TrnTranslations.text).where(
+                and_(
+                    TrnTranslations.tcID == TC_CATEGORY_ID,
+                    TrnTranslations.keyID == category_id,
+                    TrnTranslations.languageID == language,
+                )
+            )
+            result = await session.execute(tns_query)
+            name = result.scalar_one_or_none()
+            if name:
+                return name
+            cat_query = select(InvCategories).where(InvCategories.categoryID == category_id)
+            cat_result = await session.execute(cat_query)
+            cat = cat_result.scalar_one_or_none()
+            return cat.categoryName if cat else str(category_id)
 
 
 sde_search = SDESearch()

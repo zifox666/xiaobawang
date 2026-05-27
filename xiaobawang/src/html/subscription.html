@@ -15,26 +15,33 @@
         <div v-if="!isLoggedIn" class="login-container">
             <div class="login-box">
                 <div class="login-title">EVE小霸王KM订阅管理</div>
-                
-                <el-form :model="form">
-                    <el-form-item label="TOKEN">
-                        <el-input v-model="form.token" placeholder=""></el-input>
-                    </el-form-item>
-                    <el-form-item>
-                        <el-button type="primary" @click="login" :loading="loginLoading" style="width: 100%">登录</el-button>
-                    </el-form-item>
-                </el-form>
-                
-                <!-- 帮助提示 -->
-                <div class="mt-8 pt-5 border-t border-gray-200 text-center">
-                    <div class="mb-3 text-gray-500 text-sm font-medium">不知道怎么获取 TOKEN?</div>
-                    <el-tooltip 
-                        :content="`私聊机器人发送下面的命令,如果想订阅私聊,不需要填写 QQ 群号`" 
-                        placement="top">
-                        <div class="inline-block bg-gray-50 px-3 py-2 rounded text-gray-700 font-mono text-sm mb-2 cursor-help">
-                            /get_sub_token [qq群号]
+
+                <!-- 验证码登录区域 -->
+                <div style="text-align: center; padding: 16px 0;">
+
+                    <!-- 加载中 -->
+                    <div v-if="verifyCodeStatus === 'loading'" style="padding: 24px 0; color: #909399;">
+                        正在生成验证码...
+                    </div>
+
+                    <!-- 等待验证 -->
+                    <div v-else-if="verifyCodeStatus === 'pending'">
+                        <div class="mb-3 text-gray-500 text-sm">请在需要订阅KM的会话发送以下指令完成登录</div>
+                        <div style="background:#f0f9eb; border:2px dashed #67c23a; border-radius:10px; padding:20px 16px; margin:12px 0; user-select:all; cursor:pointer;" @click="copyVerifyCode">
+                            <div style="font-size:13px; color:#909399; margin-bottom:6px;">点击复制</div>
+                            <div style="font-family:monospace; font-size:26px; font-weight:bold; color:#303133; letter-spacing:6px;">
+                                /verify {{ verifyCode }}
+                            </div>
+                            <div style="font-size:12px; color:#b0b0b0; margin-top:8px;">{{ verifyCodeExpiry }} 秒后过期</div>
                         </div>
-                    </el-tooltip>
+                        <div style="color:#909399; font-size:13px; margin-top:8px;">⏳ 等待验证中，验证后将自动登录…</div>
+                    </div>
+
+                    <!-- 已过期 -->
+                    <div v-else-if="verifyCodeStatus === 'expired'" style="padding: 24px 0;">
+                        <div style="color:#f56c6c; margin-bottom:16px;">验证码已过期，请重新获取</div>
+                        <el-button type="primary" @click="refreshVerifyCode">重新获取验证码</el-button>
+                    </div>
                 </div>
             </div>
         </div>

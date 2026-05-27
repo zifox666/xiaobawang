@@ -10,6 +10,7 @@ from ..helper.zkb.killmail import km
 from ..utils.common.cache import save_msg_cache
 from ..utils.common.emoji import emoji_action
 from ..utils.render import render_template, templates_path
+from ...bot_info import get_bot_info_data
 
 __all__ = ["km_handler", "km_sub_push_test"]
 
@@ -38,6 +39,7 @@ async def handle_km(
     kill_id = matched.group(1)
     data = await km.get(kill_id)
     data["title"] = "击毁报告"
+    data["bot_info"] = get_bot_info_data()
     pic = await render_template(
         template_path=templates_path / "killmail",
         template_name="killmail_v3.html.jinja2",

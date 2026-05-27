@@ -174,6 +174,7 @@ class KillmailProcessor:
                 "slot_list": slot_list_raw,
                 "slot_list_merged": self._merge_slot_items(slot_list_raw),
                 "zkb": killmail_data.get("zkb", {}),
+                "labels": await self._process_km_labels(zkb_data.get("labels", [])),
                 "total_value": formatted_total_value,
                 "drop_value": formatted_drop_value,
                 "total_value_abbr": _format_isk(total_value),
@@ -788,6 +789,79 @@ class KillmailProcessor:
                 }
             groups[key]["count"] += 1
         return sorted(groups.values(), key=lambda x: x["count"], reverse=True)
+
+    async def _process_km_labels(self, labels) -> list[dict]:
+        """将 zkillboard 的 killmail labels 转换为模板可用的显示列表"""
+        # 支持 list[str] 和 dict 两种格式
+        if isinstance(labels, dict):
+            label_keys: list[str] = list(labels.keys())
+        elif isinstance(labels, list):
+            label_keys = [str(x) for x in labels]
+        else:
+            return []
+
+        FIXED: dict[str, tuple[str, str]] = {
+            "solo":    ("SOLO",  "#D4AF37"),
+            "npc":     ("NPC",   "#7F8C8D"),
+            "pvp":     ("PVP",   "#C0392B"),
+            "awox":    ("AWOX",  "#2980B9"),
+            "capital": ("旗舰",  "#8E44AD"),
+            "padding": ("补刀",  "#555F6B"),
+        }
+        POP: dict[str, tuple[str, str]] = {
+            "#:1":     ("1人",    "#27AE60"),
+            "#:2+":    ("2+人",   "#5DBB38"),
+            "#:5+":    ("5+人",   "#95B830"),
+            "#:10+":   ("10+人",  "#BCAA22"),
+            "#:25+":   ("25+人",  "#CC7B22"),
+            "#:50+":   ("50+人",  "#CC4422"),
+            "#:100+":  ("100+人", "#D0262B"),
+            "#:1000+": ("1000+人","#AA1111"),
+        }
+        LOC: dict[str, tuple[str, str]] = {
+            "loc:highsec": ("高安",  "#3498DB"),
+            "loc:lowsec":  ("低安",  "#E67E22"),
+            "loc:nullsec": ("00",    "#C0392B"),
+            "loc:w-space": ("虫洞",  "#6C7A89"),
+            "loc:drifter": ("竞技场","#7D3C98"),
+            "loc:abyssal": ("深渊",  "#1A5276"),
+        }
+        ISK: dict[str, tuple[str, str]] = {
+            "isk:1b+":   ("1B+",   "#B7950B"),
+            "isk:5b+":   ("5B+",   "#CA6F1E"),
+            "isk:10b+":  ("10B+",  "#CC5500"),
+            "isk:100b+": ("100B+", "#B03A2E"),
+            "isk:1t+":   ("1T+",   "#9B1111"),
+        }
+        FW: dict[str, tuple[str, str]] = {
+            "fw:caldari":  ("卡联", "#1A6FAD"),
+            "fw:gallente": ("盖联", "#266626"),
+            "fw:amarr":    ("阿玛", "#AE8000"),
+            "fw:minmatar": ("米玛", "#8B2000"),
+            "fw:calgal":   ("卡盖", "#1A7A6A"),
+            "fw:amamin":   ("阿米", "#7A4400"),
+        }
+
+        ALL_MAPS = [FIXED, POP, LOC, ISK, FW]
+        result: list[dict] = []
+
+        for key in label_keys:
+            matched = False
+            for mapping in ALL_MAPS:
+                if key in mapping:
+                    display, color = mapping[key]
+                    result.append({"key": key, "display": display, "color": color})
+                    matched = True
+                    break
+            if not matched and key.startswith("cat:"):
+                try:
+                    cat_id = int(key.split(":", 1)[1])
+                    cat_name = await sde_search.get_category_name(cat_id)
+                    result.append({"key": key, "display": cat_name, "color": "#546E7A"})
+                except (ValueError, IndexError, Exception) as e:
+                    logger.debug(f"无法解析 cat 标签 {key!r}: {e}")
+
+        return result
 
     @classmethod
     def generate_killmail_text(cls, html_data: dict, reason: str) -> str:

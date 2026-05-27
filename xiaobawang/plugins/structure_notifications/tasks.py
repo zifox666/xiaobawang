@@ -69,8 +69,13 @@ async def _process_character(character_id: int, sub_list: list):
         cutoff = datetime.now(tz=timezone.utc) - timedelta(days=2)
         matched_records = []
         for record in new_records:
-            if record.timestamp and record.timestamp < cutoff:
-                continue
+            if record.timestamp:
+                ts = record.timestamp
+                # SQLite 返回 naive datetime，统一当作 UTC 处理后再比较
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                if ts < cutoff:
+                    continue
             cat = TYPE_TO_CATEGORY.get(record.notification_type)
             if cat and cat in sub_categories:
                 matched_records.append(record)

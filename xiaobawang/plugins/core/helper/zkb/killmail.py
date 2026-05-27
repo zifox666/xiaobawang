@@ -9,6 +9,7 @@ from ...api.killmail import get_zkb_killmail
 from ...helper.subscription_v2 import KillmailSubscriptionManagerV2
 from ...utils.render import render_template, templates_path
 from ..message_queue import queue_killmail_message
+from ....bot_info import get_bot_info_data
 from .processor import KillmailProcessor
 from .validator_v2 import KillmailValidatorV2
 
@@ -69,6 +70,7 @@ class KillmailHelper:
         html_data = await self.processor.process_killmail_data(data)
 
         # 渲染图片（限制并发数）
+        html_data["bot_info"] = get_bot_info_data()
         async with _render_semaphore:
             pic = await render_template(
                 template_path=templates_path / "killmail",

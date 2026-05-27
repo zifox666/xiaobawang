@@ -2,15 +2,20 @@
 认证路由 - 处理 Token 生成和登出
 
 端点:
-- POST /auth/login - 生成 Token
-- POST /auth/logout - 撤销 Token
+- POST /auth/login          - 生成 Token
+- POST /auth/logout         - 撤销 Token
+- GET  /auth/verify-code    - 生成网页登录验证码
+- GET  /auth/verify-code/{code}/status - 轮询验证码状态
 """
+
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from xiaobawang.plugins.core.helper.auth import TokenManager, get_current_user
+from xiaobawang.plugins.core.utils.common.cache import cache as _cache
 
 router = APIRouter(tags=["Authentication"])
 
@@ -142,3 +147,60 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         "success": True,
         "data": current_user
     }
+
+
+# ── 验证码登录（无需旧 TOKEN） ──────────────────────────────────
+
+AUTH_STATE_PREFIX = "auth_state:"
+AUTH_CODE_EXPIRE = 300  # 5 分钟
+
+
+@router.get("/auth/verify-code", summary="生成网页登录验证码")
+async def generate_login_verify_code() -> dict:
+    """
+    生成一次性登录验证码，网页展示后让用户在机器人会话发送:
+        /verify <code>
+
+    验证码 5 分钟内有效。
+    """
+    from xiaobawang.plugins.verify_code import generate_verify_code
+
+    code = secrets.token_hex(4).upper()  # 8 位大写十六进制，易读易输入
+
+    # 写入 verify_code 模块（供 /verify 命令消费）
+    await generate_verify_code(
+        code,
+        "subscription_auth",
+        {"code": code},
+        expire=AUTH_CODE_EXPIRE,
+    )
+    # 写入等待状态（供前端轮询）
+    await _cache.set(f"{AUTH_STATE_PREFIX}{code}", {"status": "pending"}, expire=AUTH_CODE_EXPIRE)
+
+    logger.debug(f"[auth] 生成登录验证码: {code}")
+    return {"code": code, "expires_in": AUTH_CODE_EXPIRE}
+
+
+@router.get("/auth/verify-code/{code}/status", summary="轮询验证码登录状态")
+async def poll_verify_code_status(code: str) -> dict:
+    """
+    轮询登录验证码状态。
+
+    Returns:
+        - status=pending  : 用户尚未验证
+        - status=done     : 验证成功，含 token 和 user 字段
+        - status=expired  : 验证码已过期或不存在
+    """
+    # 对 code 做简单校验，避免恶意枚举
+    if not code or len(code) != 8 or not code.isalnum():
+        raise HTTPException(status_code=400, detail="无效的验证码格式")
+
+    state = await _cache.get(f"{AUTH_STATE_PREFIX}{code}")
+    if state is None:
+        return {"status": "expired"}
+
+    # 验证成功后一次性读取，防止重放
+    if state.get("status") == "done":
+        await _cache.delete(f"{AUTH_STATE_PREFIX}{code}")
+
+    return state
