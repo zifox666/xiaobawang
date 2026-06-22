@@ -38,7 +38,9 @@ async def _subscription_auth_handler(payload: dict, user_info: Uninfo) -> str:
     code = payload.get("code")
 
     user_dict = {
-        "platform": user_info.scope,
+        # platform 存适配器名（如 "OneBot V11"），与 message_queue 的 get_bot(adapter=...) 对齐；
+        # 不要用 user_info.scope（如 "QQClient"），那是平台范围，alc 无法据此定位协议端
+        "platform": user_info.adapter,
         "bot_id": user_info.self_id,
         "session_id": user_info.scene.id,
         "session_type": user_info.scene.type.name,
@@ -53,7 +55,7 @@ async def _subscription_auth_handler(payload: dict, user_info: Uninfo) -> str:
             {"status": "done", "token": token, "user": user_dict},
             expire=120,  # 前端有 2 分钟时间读取结果
         )
-        logger.info(f"[auth] 验证码 {code} 已由 {user_info.scope}/{user_info.scene.id} 完成验证")
+        logger.info(f"[auth] 验证码 {code} 已由 {user_info.adapter}/{user_info.scene.id} 完成验证")
 
     return "✅ 网页登录验证成功，请返回订阅管理页面"
 

@@ -52,7 +52,8 @@ async def _on_page_login(payload: dict, user_info: Uninfo) -> str:
     bot_session = {
         "session_id": user_info.scene.id,
         "session_type": user_info.scene.type.name,
-        "platform": user_info.scope,
+        # platform 存适配器名（如 "OneBot V11"），与推送链路 get_bot(adapter=...) 对齐
+        "platform": user_info.adapter,
         "bot_id": user_info.self_id,
         "qq": user_info.user.id,
         "character_id": None,
@@ -89,7 +90,7 @@ async def _on_bind_session(payload: dict, user_info: Uninfo) -> str:
     await create_subscription(
         character_id=character_id,
         character_name=character_name,
-        platform=user_info.scope,
+        platform=user_info.adapter,
         bot_id=user_info.self_id,
         session_id=user_info.scene.id,
         session_type=user_info.scene.type.name,

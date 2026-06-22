@@ -130,6 +130,19 @@ TYPE_LABELS: dict[str, str] = {
     "SkyhookLostShields": "🟠 Skyhook 护盾消失",
     "SkyhookOnline": "✅ Skyhook 已上线",
     "SkyhookDeployed": "🔧 Skyhook 已部署",
+    "EntosisCaptureStarted": "⚠️ 主权遭到攻击"
+}
+
+
+KEY_IDS: dict[str, dict] = {
+    "charID": "角色名称",
+    "oldOwnerCorpID": "转移的军团",
+    "newOwnerCorpID": "收到的军团",
+    "solarSystemID": "星系",
+    "structureName": "建筑名称",
+    "structureTypeID" : "建筑类型",
+    "moonID": "月亮"
+
 }
 
 
