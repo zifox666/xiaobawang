@@ -303,7 +303,7 @@ class MessageQueueSender:
 
         try:
             bot = await get_bot(adapter=platform, bot_id=bot_id)
-            target = Target(id=session_id, private=(session_type == 0))
+            target = Target(id=session_id, private=(session_type == 0 or session_type == "PRIVATE"))
 
             for msg in messages:
                 content_msg = self._build_unimessage_from_message(msg)
@@ -327,8 +327,7 @@ class MessageQueueSender:
 
         try:
             bot = await get_bot(adapter="OneBot V11", bot_id=bot_id)
-            is_private = session_type == 0
-            target = Target(id=session_id, private=is_private)
+            target = Target(id=session_id, private=(session_type == 0 or session_type == "PRIVATE"))
 
             if len(messages) > 2:
                 merged_nodes = []
