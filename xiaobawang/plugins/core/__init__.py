@@ -6,6 +6,7 @@ from nonebot import get_driver, logger, require
 from .command import *  # noqa: F403
 from .command.subscription import start_km_listen_, stop_km_listen_
 from .config import plugin_config
+from .handler.group_event import *  # noqa: F403
 from .router import *  # noqa: F403
 from .utils.common.cache import cache as c
 from .utils.common.command_record import HelperExtension
