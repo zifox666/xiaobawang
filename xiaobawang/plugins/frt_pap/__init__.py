@@ -379,6 +379,8 @@ async def _handle_npc_kills(
         await npc_kills_query.finish(UniMessage.image(raw=pic), reply_to=True)
     except FinishedException:
         pass
+    except TypeError:
+        await npc_kills_query.finish("刷怪报表当月无记录 你可以使用 /刷怪报表 -m 5 -y 2026 查询其他月份")
     except Exception as e:
         logger.error(f"Error in npc kills query: {e} \n {traceback.format_exc()}")
         await npc_kills_query.finish(f"刷怪报表查询失败: {e!s}")
@@ -430,16 +432,19 @@ async def _handle_mining(
         summary_raw = stats.get("summary", {})
 
         by_type = stats.get("by_type", [])
-        for item in by_type:
-            item["quantity_fmt"] = _fmt_qty(item.get("quantity", 0))
+        if by_type:
+            for item in by_type:
+                item["quantity_fmt"] = _fmt_qty(item.get("quantity", 0))
 
         by_system = stats.get("by_system", [])
-        for item in by_system:
-            item["quantity_fmt"] = _fmt_qty(item.get("quantity", 0))
+        if by_system:
+            for item in by_system:
+                item["quantity_fmt"] = _fmt_qty(item.get("quantity", 0))
 
         trend_raw: list[dict] = stats.get("trend", [])
-        for item in trend_raw:
-            item["quantity_fmt"] = _fmt_qty(item.get("quantity", 0))
+        if trend_raw:
+            for item in trend_raw:
+                item["quantity_fmt"] = _fmt_qty(item.get("quantity", 0))
 
         template_data = {
             "year": year,
@@ -470,6 +475,8 @@ async def _handle_mining(
         await mining_query.finish(UniMessage.image(raw=pic), reply_to=True)
     except FinishedException:
         pass
+    except TypeError:
+        await mining_query.finish("挖矿报表查询失败: 当月无记录 你可以使用 /挖矿报表 -m 5 -y 2026 查询其他月份")
     except Exception as e:
         logger.error(f"Error in mining query: {e} \n {traceback.format_exc()}")
         await mining_query.finish(f"挖矿报表查询失败: {e!s}")
