@@ -9,3 +9,4 @@ from .statics import *  # noqa: F403
 from .trans import *  # noqa: F403
 from .wormhole import *  # noqa: F403
 from .zkb import *  # noqa: F403
+from .group_event import * # noqa: F403

@@ -868,7 +868,7 @@ async def render_br(
 
     # ── 7. 非 warbeacon 来源时提交到 warbeacon，获取链接 ──────────────────────
     warbeacon_url: str | None = None
-    if source_type in ("warbeacon_hash", "warbeacon_auto"):
+    if source_type in ("warbeacon_hash"):  # /auto 给出的UUID是无效的
         if unified.source_uuid:
             warbeacon_url = f"https://warbeacon.net/br/report/{unified.source_uuid}"
     else:
