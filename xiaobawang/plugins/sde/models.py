@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Float, Index, Integer, Numeric, String, Text
+from sqlalchemy import Column, Float, Index, Integer, Numeric, SmallInteger, String, Text
 
 from .db import Base
 
@@ -29,7 +29,7 @@ class InvTypes(Base):
     portionSize = Column(Integer)
     raceID = Column(Integer)
     basePrice = Column(Numeric(19, 4))
-    published = Column(Boolean)
+    published = Column(SmallInteger)
     marketGroupID = Column(Integer)
     iconID = Column(Integer)
     soundID = Column(Integer)
@@ -45,11 +45,11 @@ class InvGroups(Base):
     categoryID = Column(Integer)
     groupName = Column(String(100))
     iconID = Column(Integer)
-    useBasePrice = Column(Boolean)
-    anchored = Column(Boolean)
-    anchorable = Column(Boolean)
-    fittableNonSingleton = Column(Boolean)
-    published = Column(Boolean)
+    useBasePrice = Column(SmallInteger)
+    anchored = Column(SmallInteger)
+    anchorable = Column(SmallInteger)
+    fittableNonSingleton = Column(SmallInteger)
+    published = Column(SmallInteger)
 
     __table_args__ = (Index("ix_invGroups_categoryID", "categoryID"),)
 
@@ -60,7 +60,7 @@ class InvCategories(Base):
     categoryID = Column(Integer, primary_key=True)
     categoryName = Column(String(100))
     iconID = Column(Integer)
-    published = Column(Boolean)
+    published = Column(SmallInteger)
 
 
 class TrnTranslations(Base):
