@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from nonebot_plugin_orm import Model
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -16,7 +16,7 @@ class StructureNotificationSub(Model):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # 关联的 EVE 角色
-    character_id: Mapped[int] = mapped_column(Integer, index=True)
+    character_id: Mapped[int] = mapped_column(BigInteger, index=True)
     character_name: Mapped[str] = mapped_column(String(128), default="")
 
     # 会话信息 (通过 /verify 绑定获得)
@@ -44,10 +44,10 @@ class StructureNotificationRecord(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    notification_id: Mapped[int] = mapped_column(Integer, index=True)
-    character_id: Mapped[int] = mapped_column(Integer, index=True)
+    notification_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    character_id: Mapped[int] = mapped_column(BigInteger, index=True)
     notification_type: Mapped[str] = mapped_column(String(128))
-    sender_id: Mapped[int] = mapped_column(Integer)
+    sender_id: Mapped[int] = mapped_column(BigInteger)
     sender_type: Mapped[str] = mapped_column(String(32))
     text: Mapped[str] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime)

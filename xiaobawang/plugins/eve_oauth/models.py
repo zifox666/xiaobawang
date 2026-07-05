@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from nonebot_plugin_orm import Model
-from sqlalchemy import DateTime, Text, UniqueConstraint
+from sqlalchemy import BigInteger, DateTime, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -10,7 +10,7 @@ class EsiOAuthAuthorization(Model):
     __table_args__ = (UniqueConstraint("character_id", name="uq_esi_oauth_authorization_character_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    character_id: Mapped[int] = mapped_column(index=True, unique=True)
+    character_id: Mapped[int] = mapped_column(BigInteger, index=True, unique=True)
     character_name: Mapped[str] = mapped_column(nullable=False)
     owner_hash: Mapped[str] = mapped_column(nullable=False)
 

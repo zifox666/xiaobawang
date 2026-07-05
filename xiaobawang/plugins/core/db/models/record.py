@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from nonebot_plugin_orm import Model
-from sqlalchemy import DateTime
+from sqlalchemy import BigInteger, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -27,7 +27,7 @@ class KillmailPushRecord(Model):
     platform: Mapped[str] = mapped_column()
     session_id: Mapped[str] = mapped_column()
     session_type: Mapped[str] = mapped_column()
-    killmail_id: Mapped[int] = mapped_column()
+    killmail_id: Mapped[int] = mapped_column(BigInteger)
     time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from nonebot_plugin_orm import Model
-from sqlalchemy import Boolean, Float, String, Text
+from sqlalchemy import BigInteger, Boolean, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -64,7 +64,7 @@ class KillmailConditionSubscription(Model):
     session_type: Mapped[str] = mapped_column()
 
     target_type: Mapped[str] = mapped_column()  # character, corporation, alliance, system, inventory_type
-    target_id: Mapped[int] = mapped_column()
+    target_id: Mapped[int] = mapped_column(BigInteger)
     target_name: Mapped[str] = mapped_column()
 
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
