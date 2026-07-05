@@ -131,7 +131,7 @@ class EVEServerStatus:
                 (EVEServerStatusSub.platform == user_info.adapter)
                 & (EVEServerStatusSub.bot_id == user_info.self_id)
                 & (EVEServerStatusSub.session_id == user_info.scene.id)
-                & (EVEServerStatusSub.session_type == user_info.scene.type)
+                & (EVEServerStatusSub.session_type == user_info.scene.type.name)
             )
         )
 
@@ -143,7 +143,7 @@ class EVEServerStatus:
             platform=user_info.adapter,
             bot_id=user_info.self_id,
             session_id=user_info.scene.id,
-            session_type=user_info.scene.type,
+            session_type=user_info.scene.type.name,
             is_enabled=True,
         )
 
@@ -165,7 +165,7 @@ class EVEServerStatus:
                 (EVEServerStatusSub.platform == user_info.adapter)
                 & (EVEServerStatusSub.bot_id == user_info.self_id)
                 & (EVEServerStatusSub.session_id == user_info.scene.id)
-                & (EVEServerStatusSub.session_type == user_info.scene.type)
+                & (EVEServerStatusSub.session_type == user_info.scene.type.name)
                 & (EVEServerStatusSub.is_enabled.is_(True))
             )
         )

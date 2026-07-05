@@ -23,7 +23,8 @@ class MessageQueueSender:
             max_wait_time: int = 180,
             threshold_for_extended_wait: int = 5,
             per_queue_max_messages: int = 200,
-            immediate_flush_count: int = 30
+            immediate_flush_count: int = 30,
+            bot_send_interval: int = 5
     ):
         """
         初始化消息队列发送器
@@ -34,6 +35,7 @@ class MessageQueueSender:
             threshold_for_extended_wait: 触发延长等待的消息阈值
             per_queue_max_messages: 每个会话允许保留的最大消息数（超过则丢弃最旧）
             immediate_flush_count: 当单个队列达到该条数时立即触发发送（不等待周期）
+            bot_send_interval: 同一bot往不同会话推送的最小间隔(秒)，避免撞风控
         """
         self.check_interval = check_interval
         self.max_wait_time = max_wait_time
@@ -41,6 +43,10 @@ class MessageQueueSender:
         self.per_queue_max_messages = per_queue_max_messages
         # 到达该阈值时立即触发该会话队列的发送（仅触发一次，触发条件为 len == immediate_flush_count）
         self.immediate_flush_count = int(immediate_flush_count)
+        # 同一bot往不同会话推送的最小间隔
+        self.bot_send_interval = bot_send_interval
+        # 记录每个bot的最后发送时间 {(platform, bot_id): timestamp}
+        self._last_bot_send_time: dict[tuple[str, str], float] = {}
         # 使用有界 deque 以自动丢弃最旧消息，防止内存无限增长
         # 强制转为 int 以避免类型检查器认为为 float
         # {(platform, bot_id, session_id, session_type): deque([messages])}
@@ -109,6 +115,8 @@ class MessageQueueSender:
         message = {"content": message_content, "metadata": metadata or {}, "timestamp": time.time()}
 
         if immediate:
+            bot_key = (platform, bot_id)
+            await self._wait_for_bot_interval(bot_key)
             await self._handle_default(platform, bot_id, session_id, session_type, [message])
             logger.debug(f"立即发送消息到队列: {platform}:{session_id}")
         else:
@@ -154,7 +162,7 @@ class MessageQueueSender:
                 platform=query_key[0],
                 session_id=query_key[2],
                 session_type=query_key[3],
-                killmail_id=int(kill_id),
+                killmail_id=str(kill_id),
                 time=datetime.now(),
             )
             async with get_session() as session:
@@ -167,7 +175,7 @@ class MessageQueueSender:
                     platform=query_key[0],
                     session_id=query_key[2],
                     session_type=query_key[3],
-                    killmail_id=int(kill_id),
+                    killmail_id=str(kill_id),
                 )
         except Exception as e:
             logger.error(f"记录击杀邮件推送失败: {e}\n{traceback.format_exc()}")
@@ -211,6 +219,16 @@ class MessageQueueSender:
                 logger.error(f"处理消息队列时出错: {e}")
                 await asyncio.sleep(10)
 
+    async def _wait_for_bot_interval(self, bot_key: tuple[str, str]):
+        """等待确保同一 bot 的推送间隔达标"""
+        last_time = self._last_bot_send_time.get(bot_key, 0.0)
+        elapsed = time.time() - last_time
+        if elapsed < self.bot_send_interval:
+            wait = self.bot_send_interval - elapsed
+            logger.debug(f"Bot {bot_key} 发送间隔不足，等待 {wait:.1f}s")
+            await asyncio.sleep(wait)
+        self._last_bot_send_time[bot_key] = time.time()
+
     async def _process_selected_queues(self, queue_keys):
         """处理选定的消息队列"""
         for queue_key in queue_keys:
@@ -227,6 +245,10 @@ class MessageQueueSender:
                 del self.queue_last_active[queue_key]
 
             platform, bot_id, session_id, session_type = queue_key
+
+            # 同一bot往不同会话推送时，间隔 bot_send_interval 秒，避免撞风控
+            bot_key = (platform, bot_id)
+            await self._wait_for_bot_interval(bot_key)
 
             try:
                 handler = self.platform_handlers.get(platform)

@@ -280,15 +280,18 @@ class EsiOAuthService:
         return data
 
     async def refresh_expiring_tokens(self):
+        # 先提取角色 ID 列表，避免 session.commit() 导致模型实例过期后
+        # 在异步上下文中访问属性触发 greenlet_spawn 错误
         async with get_session() as session:
-            result = await session.execute(select(EsiOAuthAuthorization))
-            rows = result.scalars().all()
+            result = await session.execute(select(EsiOAuthAuthorization.character_id))
+            character_ids = [row[0] for row in result.fetchall()]
 
-            for row in rows:
-                try:
-                    await self.get_access_token(session, row.character_id, [])
-                except Exception as e:
-                    logger.warning(f"刷新角色 {row.character_id} token 失败: {e!s}")
+        for character_id in character_ids:
+            try:
+                async with get_session() as session:
+                    await self.get_access_token(session, character_id, [])
+            except Exception as e:
+                logger.warning(f"刷新角色 {character_id} token 失败: {e!s}")
 
 
 oauth_service = EsiOAuthService()
