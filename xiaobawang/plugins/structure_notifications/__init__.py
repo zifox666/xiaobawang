@@ -7,23 +7,31 @@ EVE 建筑通知预警模块
 - 定时拉取并推送匹配的通知
 """
 
+from datetime import datetime, timezone
+import json
 from uuid import uuid4
 
 from nonebot import get_app, logger, require
+from nonebot_plugin_orm import get_session
+from sqlalchemy import select
 
 from .config import plugin_config
 from .models import StructureNotificationRecord, StructureNotificationSub
-from .router import router, LOGIN_STATE_PREFIX, SESSION_PREFIX, SESSION_EXPIRE
+from .router import LOGIN_STATE_PREFIX, SESSION_EXPIRE, SESSION_PREFIX, router
 
 require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_uninfo")
+require("nonebot_plugin_alconna")
 
+from nonebot_plugin_alconna import Alconna, CommandMeta, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_uninfo import Uninfo
 
-from .tasks import poll_and_push
-from ..verify_code import register_handler
 from ..cache import get_cache
+from ..verify_code import register_handler
+from .categories import TYPE_TO_CATEGORY
+from .service import fetch_notifications, format_notification
+from .tasks import poll_and_push
 
 # ── 确保 ORM 发现模型 ─────────────────────────────────────
 _ = StructureNotificationSub
@@ -116,3 +124,93 @@ async def _poll_job():
         await poll_and_push()
     except Exception as e:
         logger.error(f"建筑通知定时任务异常: {e}")
+
+
+
+test_structure_notification = on_alconna(
+    Alconna(
+        "test_struct_notify", 
+        meta=CommandMeta(description="测试建筑通知推送", hide=True),
+    ),
+    use_cmd_start=True,
+)
+
+
+@test_structure_notification.handle()
+async def _test_struct_notify(uninfo: Uninfo):
+    session_id = uninfo.scene.id
+    session_type = uninfo.scene.type.name
+    platform = uninfo.adapter
+    bot_id = uninfo.self_id
+
+    async with get_session() as session:
+        result = await session.execute(
+            select(StructureNotificationSub).where(
+                StructureNotificationSub.platform == platform,
+                StructureNotificationSub.bot_id == bot_id,
+                StructureNotificationSub.session_id == session_id,
+                StructureNotificationSub.session_type == session_type,
+                StructureNotificationSub.is_enabled.is_(True),
+            )
+        )
+        subs = list(result.scalars().all())
+
+    if not subs:
+        await test_structure_notification.finish("当前会话没有启用的建筑通知订阅")
+
+    records: list[tuple[StructureNotificationRecord, str]] = []
+    for sub in subs:
+        try:
+            sub_categories = json.loads(sub.categories) if sub.categories else []
+        except (json.JSONDecodeError, TypeError):
+            sub_categories = []
+
+        notifications = await fetch_notifications(sub.character_id)
+        if not notifications:
+            continue
+
+        for notification in notifications:
+            notification_type = notification.get("type", "")
+            category = TYPE_TO_CATEGORY.get(notification_type)
+            if sub_categories and category not in sub_categories:
+                continue
+
+            records.append((
+                _build_test_record(sub.character_id, notification),
+                sub.character_name or str(sub.character_id),
+            ))
+
+    records.sort(key=lambda item: item[0].timestamp or datetime.min, reverse=True)
+    records = records[:5]
+
+    if not records:
+        await test_structure_notification.finish("已执行拉取，但没有匹配当前会话订阅分类的建筑通知")
+
+    lines = [f"📢 建筑通知测试推送 - 最新 {len(records)} 条"]
+    for record, character_name in records:
+        lines.append("─" * 10)
+        lines.append(await format_notification(record, character_name))
+
+    await UniMessage.text("\n".join(lines)).send()
+
+
+def _build_test_record(character_id: int, notification: dict) -> StructureNotificationRecord:
+    ts = notification.get("timestamp", "")
+    if isinstance(ts, str):
+        try:
+            ts_dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        except ValueError:
+            ts_dt = datetime.now(tz=timezone.utc)
+    else:
+        ts_dt = datetime.now(tz=timezone.utc)
+
+    return StructureNotificationRecord(
+        notification_id=notification.get("notification_id", 0),
+        character_id=character_id,
+        notification_type=notification.get("type", ""),
+        sender_id=notification.get("sender_id", 0),
+        sender_type=notification.get("sender_type", ""),
+        text=notification.get("text", ""),
+        timestamp=ts_dt,
+        pushed=False,
+    )

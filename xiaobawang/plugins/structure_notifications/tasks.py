@@ -8,6 +8,8 @@ import json
 from nonebot import logger
 from nonebot_plugin_alconna import Target, UniMessage
 
+from ..core.helper.billing import billing, key_from_session_fields
+from ..core.helper.billing.rules import BillingRules
 from .categories import TYPE_TO_CATEGORY
 from .service import (
     fetch_notifications,
@@ -16,9 +18,6 @@ from .service import (
     mark_pushed,
     save_notifications,
 )
-
-from ..core.helper.billing import billing, key_from_session_fields
-from ..core.helper.billing.rules import BillingRules
 
 
 async def poll_and_push():
@@ -91,7 +90,7 @@ async def _process_character(character_id: int, sub_list: list):
         lines = [f"📢 建筑通知 ({character_name}) - {len(matched_records)} 条"]
         for record in matched_records:
             lines.append("─" * 10)
-            lines.append(format_notification(record, character_name))
+            lines.append(await format_notification(record, character_name))
 
         message_text = "\n".join(lines)
 
@@ -125,7 +124,7 @@ async def _process_character(character_id: int, sub_list: list):
             logger.info(
                 f"建筑通知推送成功: 角色={character_id} 会话={sub.session_id} "
                 f"通知数={len(matched_records)}"
-            )         
+            )
             pushed_ids.extend(r.id for r in matched_records)
         except Exception as e:
             logger.error(
