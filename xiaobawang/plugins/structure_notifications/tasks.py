@@ -17,6 +17,9 @@ from .service import (
     save_notifications,
 )
 
+from ..core.helper.billing import billing, key_from_session_fields
+from ..core.helper.billing.rules import BillingRules
+
 
 async def poll_and_push():
     """
@@ -92,6 +95,23 @@ async def _process_character(character_id: int, sub_list: list):
 
         message_text = "\n".join(lines)
 
+        # 计费拦截：余额不足则跳过推送
+        session_key = key_from_session_fields(sub.platform, sub.session_id, sub.session_type)
+        cost = BillingRules.calc_charge("structure", count=len(matched_records))
+        if billing.should_bill("structure") and not await billing.precheck(session_key, cost):
+            logger.info(f"[billing] {session_key} 余额不足，跳过建筑通知推送")
+            await billing.notify_low_balance_if_needed(
+                session_key, sub.platform, sub.bot_id, sub.session_id, sub.session_type,
+                await billing.get_balance(session_key),
+            )
+            continue
+        else:
+            b_r = await billing.charge(session_key, "structure", count=len(matched_records), ref_id=str(sub.id))
+            message_text += f"\n[计费]{b_r.balance_after + b_r.charged}(-{b_r.charged})"
+            await billing.notify_low_balance_if_needed(
+                session_key, sub.platform, sub.bot_id, sub.session_id, sub.session_type, b_r.balance_after
+            )
+
         # 发送到绑定的会话
         try:
             target = Target(
@@ -105,7 +125,7 @@ async def _process_character(character_id: int, sub_list: list):
             logger.info(
                 f"建筑通知推送成功: 角色={character_id} 会话={sub.session_id} "
                 f"通知数={len(matched_records)}"
-            )
+            )         
             pushed_ids.extend(r.id for r in matched_records)
         except Exception as e:
             logger.error(

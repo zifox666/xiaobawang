@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 小霸王</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/theme-chalk/dark/css-vars.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5/index.css">
+    <link rel="stylesheet" href="/static/css/subscription.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+<div id="app">
+    <!-- 登录 -->
+    <div v-if="!isLoggedIn" class="login-container">
+        <div class="login-box">
+            <div class="login-title">管理后台</div>
+            <div class="login-subtitle">使用配置文件中的 admin_token 登录</div>
+            <div style="text-align: center; padding: 16px 0;">
+                <el-input
+                    v-model="adminToken"
+                    type="password"
+                    show-password
+                    placeholder="admin_token"
+                    @keyup.enter="login"
+                    style="margin-bottom: 14px;">
+                </el-input>
+                <el-button type="primary" @click="login" :loading="loginLoading" style="width: 100%;">登录</el-button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主界面 -->
+    <div v-else class="w-full min-h-screen">
+        <div class="container-main">
+            <div class="header-section">
+                <h1 class="header-title">管理后台 · <span class="header-brand-mark">小霸王</span></h1>
+                <el-button type="danger" @click="logout">登出</el-button>
+            </div>
+            <el-tabs v-model="activeTab" style="padding: 0 24px;">
+                <!-- 支付记录 -->
+                <el-tab-pane label="支付记录" name="orders">
+                    <div class="toolbar">
+                        <el-select v-model="orderFilter" placeholder="状态" clearable style="width:120px" @change="loadOrders">
+                            <el-option label="待支付" value="pending"></el-option>
+                            <el-option label="已完成" value="paid"></el-option>
+                        </el-select>
+                    </div>
+                    <div style="padding: 24px;">
+                        <el-table :data="orders" stripe v-loading="ordersLoading" style="width:100%">
+                            <el-table-column label="支付码" width="110"><template #default="{row}"><span class="num" style="color:var(--bn-primary);font-weight:700">{{ row.payment_code }}</span></template></el-table-column>
+                            <el-table-column label="会话" min-width="140"><template #default="{row}"><span class="num" style="font-size:12px;color:var(--bn-muted)">{{ row.session_key }}</span></template></el-table-column>
+                            <el-table-column label="ISK" width="120" align="right"><template #default="{row}"><span class="num">{{ row.isk_amount.toFixed(0) }}</span></template></el-table-column>
+                            <el-table-column label="积分" width="90" align="right"><template #default="{row}"><span class="num" style="color:var(--bn-primary)">{{ row.credit_amount }}</span></template></el-table-column>
+                            <el-table-column label="状态" width="90" align="center"><template #default="{row}"><el-tag :type="row.status==='paid'?'success':'warning'">{{ row.status==='paid'?'已完成':'待支付' }}</el-tag></template></el-table-column>
+                            <el-table-column label="创建时间" width="170"><template #default="{row}"><span class="num" style="font-size:12px;color:var(--bn-muted)">{{ row.created_at }}</span></template></el-table-column>
+                            <el-table-column label="到账时间" width="170"><template #default="{row}"><span class="num" style="font-size:12px;color:var(--bn-muted)">{{ row.paid_at || '—' }}</span></template></el-table-column>
+                            <el-table-column label="操作" width="120" align="center">
+                                <template #default="{row}">
+                                    <el-button
+                                        v-if="row.status !== 'paid'"
+                                        link
+                                        type="primary"
+                                        @click="markOrderPaid(row)"
+                                        :loading="markingOrder === row.payment_code">
+                                        标记成功
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </div>
+                </el-tab-pane>
+
+                <!-- 会话管理（模拟登录） -->
+                <el-tab-pane label="会话管理" name="sessions">
+                    <div style="padding: 24px;">
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- 左：会话列表 -->
+                            <div>
+                                <div style="margin-bottom:12px;color:var(--bn-muted-strong);font-weight:600">会话账户（点击模拟登录）</div>
+                                <el-table :data="sessions" stripe v-loading="sessionsLoading" style="width:100%" highlight-current-row @current-change="selectSession" size="small">
+                                    <el-table-column label="会话" min-width="140"><template #default="{row}"><span class="num" style="font-size:12px">{{ row.display }}</span></template></el-table-column>
+                                    <el-table-column label="余额" width="90" align="right"><template #default="{row}"><span class="num" style="color:var(--bn-primary)">{{ row.balance }}</span></template></el-table-column>
+                                    <el-table-column label="活跃" width="70" align="center"><template #default="{row}"><el-tag :type="row.is_active?'success':'info'" size="small">{{ row.is_active?'是':'否' }}</el-tag></template></el-table-column>
+                                </el-table>
+                            </div>
+                            <!-- 右：选中会话详情 -->
+                            <div>
+                                <div v-if="!selectedSession" class="tab-placeholder">选择左侧会话查看详情</div>
+                                <div v-else>
+                                    <div class="stat-card" style="margin-bottom:16px">
+                                        <div class="stat-value stat-value-accent">{{ selectedBalance }}</div>
+                                        <div class="stat-label">{{ selectedSession.display }} 余额</div>
+                                    </div>
+                                    <div class="stat-card" style="margin-bottom:16px">
+                                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                            <el-input-number v-model="manualCredit.amount" :min="1" :step="100" size="small" style="width:140px"></el-input-number>
+                                            <el-input v-model="manualCredit.description" size="small" placeholder="说明" style="width:180px"></el-input>
+                                            <el-button type="primary" size="small" @click="manualRecharge" :loading="manualCredit.loading">手动加积分</el-button>
+                                        </div>
+                                    </div>
+                                    <div style="margin-bottom:8px;color:var(--bn-muted-strong);font-weight:600;font-size:13px">订阅（{{ selectedSubs.length }}）</div>
+                                    <el-table :data="selectedSubs" stripe size="small" style="width:100%;margin-bottom:16px">
+                                        <el-table-column label="类型" width="100"><template #default="{row}"><el-tag size="small">{{ row.sub_type }}</el-tag></template></el-table-column>
+                                        <el-table-column label="单价" width="70" align="center"><template #default="{row}"><span class="num">{{ row.unit_price }}</span></template></el-table-column>
+                                        <el-table-column label="倍率" width="80" align="center"><template #default="{row}"><span class="num">x{{ row.complexity_factor.toFixed(2) }}</span></template></el-table-column>
+                                        <el-table-column label="状态" width="70" align="center"><template #default="{row}"><el-tag :type="row.is_enabled?'success':'info'" size="small">{{ row.is_enabled?'启':'禁' }}</el-tag></template></el-table-column>
+                                    </el-table>
+                                    <div style="margin-bottom:8px;color:var(--bn-muted-strong);font-weight:600;font-size:13px">最近流水</div>
+                                    <el-table :data="selectedTxns" stripe size="small" style="width:100%">
+                                        <el-table-column label="时间" width="150"><template #default="{row}"><span class="num" style="font-size:11px;color:var(--bn-muted)">{{ row.created_at }}</span></template></el-table-column>
+                                        <el-table-column label="类型" width="70" align="center"><template #default="{row}"><el-tag size="small" :type="row.txn_type==='recharge'?'success':'info'">{{ row.txn_type }}</el-tag></template></el-table-column>
+                                        <el-table-column label="变动" width="80" align="right"><template #default="{row}"><span class="num" :style="{color:row.amount>=0?'var(--bn-up)':'var(--bn-down)',fontWeight:700}">{{ row.amount>=0?'+':'' }}{{ row.amount }}</span></template></el-table-column>
+                                        <el-table-column label="说明" min-width="120"><template #default="{row}"><span style="font-size:11px;color:var(--bn-body)">{{ row.description }}</span></template></el-table-column>
+                                    </el-table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </el-tab-pane>
+
+                <!-- 支付配置 -->
+                <el-tab-pane label="支付配置" name="setting">
+                    <div style="padding: 24px; max-width: 520px;">
+                        <el-form label-width="140px" v-loading="settingLoading">
+                            <el-form-item label="钱包角色 ID">
+                                <el-input v-model="setting.wallet_character_id" placeholder="管理员绑定的 EVE 角色 ID"></el-input>
+                            </el-form-item>
+                            <el-form-item label="钱包角色名">
+                                <el-input v-model="setting.wallet_character_name" placeholder="角色名（展示给用户转账）"></el-input>
+                            </el-form-item>
+                            <el-form-item label="汇率（1亿ISK）">
+                                <el-input-number v-model="setting.isk_per_1b" :min="1" :step="100"></el-input-number>
+                                <span style="margin-left:8px;color:var(--bn-muted);font-size:12px">1 亿 ISK = {{ setting.isk_per_1b }} 积分</span>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button type="primary" @click="saveSetting" :loading="settingSaving">保存配置</el-button>
+                            </el-form-item>
+                        </el-form>
+                        <div style="color:var(--bn-muted);font-size:12px;margin-top:16px">
+                            钱包角色需先在 EVE OAuth 授权页授权 <code>esi-wallet.read_character_wallet.v1</code> scope，
+                            系统每 5 分钟拉取该角色钱包 journal 自动匹配支付码充值。
+                        </div>
+                    </div>
+                </el-tab-pane>
+            </el-tabs>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/element-plus"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+const { createApp, ref, reactive, watch } = Vue;
+const { ElMessage, ElMessageBox } = ElementPlus;
+
+createApp({
+    setup() {
+        const isLoggedIn = ref(false);
+        const loginLoading = ref(false);
+        const adminToken = ref(localStorage.getItem('xbw_admin_token') || '');
+        const activeTab = ref('orders');
+        const apiUrl = `${location.protocol}//${location.host}`;
+
+        const setAdminToken = (token) => {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            localStorage.setItem('xbw_admin_token', token);
+        };
+        if (adminToken.value) setAdminToken(adminToken.value);
+
+        const login = async () => {
+            if (!adminToken.value.trim()) { ElMessage.error('请输入 admin_token'); return; }
+            loginLoading.value = true;
+            try {
+                await axios.post(`${apiUrl}/api/admin/login`, { token: adminToken.value.trim() });
+                setAdminToken(adminToken.value.trim());
+                isLoggedIn.value = true;
+                loadOrders(); loadSessions(); loadSetting();
+                ElMessage.success('登录成功');
+            } catch(e) {
+                ElMessage.error(e.response?.data?.detail || '登录失败');
+            } finally { loginLoading.value = false; }
+        };
+        const logout = () => {
+            isLoggedIn.value = false;
+            adminToken.value = '';
+            localStorage.removeItem('xbw_admin_token');
+            delete axios.defaults.headers.common['Authorization'];
+        };
+
+        // 支付记录
+        const orders = ref([]); const ordersLoading = ref(false); const orderFilter = ref('');
+        const markingOrder = ref('');
+        const loadOrders = async () => {
+            ordersLoading.value = true;
+            try { const res = await axios.get(`${apiUrl}/api/admin/orders`, {params: orderFilter.value?{status:orderFilter.value}:{}}); orders.value = res.data.data || []; }
+            catch(e){ ElMessage.error('加载失败'); } finally { ordersLoading.value = false; }
+        };
+        const markOrderPaid = async (row) => {
+            try {
+                await ElMessageBox.confirm(`确定手动将订单 ${row.payment_code} 标记为支付成功，并给 ${row.session_key} 增加 ${row.credit_amount} 积分？`, '确认', { type: 'warning' });
+                markingOrder.value = row.payment_code;
+                await axios.post(`${apiUrl}/api/admin/orders/${row.payment_code}/mark-paid`, { description: '管理员手动确认支付' });
+                ElMessage.success('订单已标记成功');
+                await loadOrders();
+                if (selectedSession.value) await selectSession(selectedSession.value);
+            } catch(e) {
+                if (e !== 'cancel') ElMessage.error(e.response?.data?.detail || '操作失败');
+            } finally { markingOrder.value = ''; }
+        };
+
+        // 会话管理
+        const sessions = ref([]); const sessionsLoading = ref(false);
+        const selectedSession = ref(null);
+        const selectedBalance = ref(0); const selectedSubs = ref([]); const selectedTxns = ref([]);
+        const manualCredit = reactive({ amount: 1000, description: '管理员手动加积分', loading: false });
+        const loadSessions = async () => {
+            sessionsLoading.value = true;
+            try { const res = await axios.get(`${apiUrl}/api/admin/sessions`); sessions.value = res.data.data || []; }
+            catch(e){} finally { sessionsLoading.value = false; }
+        };
+        const selectSession = async (row) => {
+            if (!row) return;
+            selectedSession.value = row;
+            try {
+                const [b, s, t] = await Promise.all([
+                    axios.get(`${apiUrl}/api/admin/balance`, {params:{session_key: row.session_key}}),
+                    axios.get(`${apiUrl}/api/admin/subscriptions`, {params:{session_key: row.session_key}}),
+                    axios.get(`${apiUrl}/api/admin/transactions`, {params:{session_key: row.session_key, page:1, page_size:10}}),
+                ]);
+                selectedBalance.value = b.data.data.balance;
+                selectedSubs.value = s.data.data || [];
+                selectedTxns.value = (t.data.data && t.data.data.items) || [];
+            } catch(e){ ElMessage.error('加载会话详情失败'); }
+        };
+        const manualRecharge = async () => {
+            if (!selectedSession.value) return;
+            manualCredit.loading = true;
+            try {
+                await axios.post(`${apiUrl}/api/admin/credit/recharge`, {
+                    session_key: selectedSession.value.session_key,
+                    amount: manualCredit.amount,
+                    description: manualCredit.description || '管理员手动加积分',
+                });
+                ElMessage.success('积分已增加');
+                await loadSessions();
+                await selectSession(selectedSession.value);
+            } catch(e) {
+                ElMessage.error(e.response?.data?.detail || '加积分失败');
+            } finally { manualCredit.loading = false; }
+        };
+
+        // 支付配置
+        const setting = reactive({ wallet_character_id: null, wallet_character_name: '', isk_per_1b: 500 });
+        const settingLoading = ref(false); const settingSaving = ref(false);
+        const loadSetting = async () => {
+            settingLoading.value = true;
+            try { const res = await axios.get(`${apiUrl}/api/admin/setting`); Object.assign(setting, res.data.data); }
+            catch(e){} finally { settingLoading.value = false; }
+        };
+        const saveSetting = async () => {
+            settingSaving.value = true;
+            try {
+                await axios.post(`${apiUrl}/api/admin/setting`, {
+                    wallet_character_id: setting.wallet_character_id ? Number(setting.wallet_character_id) : null,
+                    wallet_character_name: setting.wallet_character_name,
+                    isk_per_1b: setting.isk_per_1b,
+                });
+                ElMessage.success('已保存');
+            } catch(e){ ElMessage.error('保存失败'); } finally { settingSaving.value = false; }
+        };
+
+        watch(activeTab, (t) => {
+            if (t === 'orders') loadOrders();
+            else if (t === 'sessions') loadSessions();
+            else if (t === 'setting') loadSetting();
+        });
+
+        if (adminToken.value) login();
+        return { isLoggedIn, loginLoading, adminToken, activeTab, login, logout,
+            orders, ordersLoading, orderFilter, loadOrders, markingOrder, markOrderPaid,
+            sessions, sessionsLoading, selectedSession, selectedBalance, selectedSubs, selectedTxns, selectSession, manualCredit, manualRecharge,
+            setting, settingLoading, settingSaving, saveSetting };
+    }
+}).use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>

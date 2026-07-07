@@ -1,94 +1,100 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KM订阅管理 - 小霸王</title>
-    
+    <title>订阅管理 - 小霸王</title>
+
     <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/theme-chalk/dark/css-vars.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5/index.css">
     <link rel="stylesheet" href="/static/css/subscription.css">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
     <div id="app">
-        <!-- 登录页面 -->
+        <!-- 登录页 -->
         <div v-if="!isLoggedIn" class="login-container">
             <div class="login-box">
-                <div class="login-title">EVE小霸王KM订阅管理</div>
+                <div class="login-title">订阅管理</div>
+                <div class="login-subtitle">EVE 小霸王 · 跨平台订阅聚合</div>
 
-                <!-- 验证码登录区域 -->
                 <div style="text-align: center; padding: 16px 0;">
-
                     <!-- 加载中 -->
-                    <div v-if="verifyCodeStatus === 'loading'" style="padding: 24px 0; color: #909399;">
+                    <div v-if="verifyCodeStatus === 'loading'" style="padding: 24px 0; color: var(--bn-muted);">
                         正在生成验证码...
                     </div>
 
                     <!-- 等待验证 -->
                     <div v-else-if="verifyCodeStatus === 'pending'">
-                        <div class="mb-3 text-gray-500 text-sm">请在需要订阅KM的会话发送以下指令完成登录</div>
-                        <div style="background:#f0f9eb; border:2px dashed #67c23a; border-radius:10px; padding:20px 16px; margin:12px 0; user-select:all; cursor:pointer;" @click="copyVerifyCode">
-                            <div style="font-size:13px; color:#909399; margin-bottom:6px;">点击复制</div>
-                            <div style="font-family:monospace; font-size:26px; font-weight:bold; color:#303133; letter-spacing:6px;">
-                                /verify {{ verifyCode }}
-                            </div>
-                            <div style="font-size:12px; color:#b0b0b0; margin-top:8px;">{{ verifyCodeExpiry }} 秒后过期</div>
+                        <div style="margin-bottom: 12px; color: var(--bn-muted); font-size: 13px;">在需要订阅的会话发送以下指令完成登录</div>
+                        <div class="verify-code-box" @click="copyVerifyCode">
+                            <div style="font-size: 12px; color: var(--bn-muted); margin-bottom: 6px;">点击复制</div>
+                            <div class="verify-code-text">/verify {{ verifyCode }}</div>
+                            <div style="font-size: 12px; color: var(--bn-muted); margin-top: 8px; font-family: var(--bn-font-mono);">{{ verifyCodeExpiry }}s 后过期</div>
                         </div>
-                        <div style="color:#909399; font-size:13px; margin-top:8px;">⏳ 等待验证中，验证后将自动登录…</div>
+                        <div style="color: var(--bn-muted); font-size: 13px; margin-top: 12px;">等待验证中，验证后将自动登录</div>
                     </div>
 
                     <!-- 已过期 -->
                     <div v-else-if="verifyCodeStatus === 'expired'" style="padding: 24px 0;">
-                        <div style="color:#f56c6c; margin-bottom:16px;">验证码已过期，请重新获取</div>
+                        <div style="color: var(--bn-down); margin-bottom: 16px;">验证码已过期，请重新获取</div>
                         <el-button type="primary" @click="refreshVerifyCode">重新获取验证码</el-button>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- 主界面 -->
-        <div v-else class="w-full min-h-screen bg-gray-100">
-            <!-- 主容器 -->
+        <div v-else class="w-full min-h-screen">
             <div class="container-main">
+                <!-- Header -->
                 <div class="header-section">
                     <div>
-                        <h1 style="font-size: 28px; margin-bottom: 10px;">KM 订阅管理 - 小霸王</h1>
+                        <h1 class="header-title">订阅管理 · <span class="header-brand-mark">小霸王</span></h1>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 12px; color: #ddd; margin-bottom: 8px;">当前用户[{{user.platform}}]{{user.userId}}</div>
-                        <div style="font-size: 18px; font-weight: bold;">[{{user.sessionType}}]{{user.sessionId}}</div>
-                        <el-button type="danger">登出</el-button>
+                        <div class="header-user">当前用户 [{{user.platform}}] {{user.userId}}</div>
+                        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 8px;">
+                            <span class="balance-pill">余额 {{ balance.value }}</span>
+                            <span class="header-session">[{{user.sessionType}}] {{user.sessionId}}</span>
+                        </div>
+                        <el-button type="danger" @click="logout">登出</el-button>
                     </div>
                 </div>
-                
+
+                <el-tabs v-model="activeTab" style="padding: 0 24px;">
+                <el-tab-pane label="击杀邮件" name="killmail">
+
                 <!-- 统计卡片 -->
-                <div style="padding: 24px; border-bottom: 1px solid #eee;">
+                <div style="padding: 24px 0; border-bottom: 1px solid var(--bn-hairline);">
                     <div class="grid grid-cols-5 gap-4">
                         <div class="stat-card">
                             <div class="stat-value">{{ stats.total }}</div>
                             <div class="stat-label">总订阅数</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value" style="color: #67c23a;">{{ stats.enabled }}</div>
+                            <div class="stat-value stat-value-up">{{ stats.enabled }}</div>
                             <div class="stat-label">已启用</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value" style="color: #f56c6c;">{{ stats.disabled }}</div>
+                            <div class="stat-value stat-value-down">{{ stats.disabled }}</div>
                             <div class="stat-label">已禁用</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value" style="color: #e6a23c;">{{ stats.total }}</div>
+                            <div class="stat-value" style="color: var(--bn-muted-strong);">{{ stats.total }}</div>
                             <div class="stat-label">总数</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value">Free</div>
+                            <div class="stat-value stat-value-accent">{{ balance.value }}</div>
                             <div class="stat-label">当前余额</div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 操作栏 -->
-                <div style="padding: 20px 24px; border-bottom: 1px solid #eee; background: #f5f7fa;">
+                <div class="toolbar">
                     <div style="display: flex; justify-content: space-between; gap: 12px;">
                         <div style="display: flex; gap: 12px;">
                             <el-button type="primary" @click="showCreate = true; editingId = null; resetSubForm()">+ 新建订阅</el-button>
@@ -96,18 +102,18 @@
                         </div>
                         <div style="display: flex; gap: 12px;">
                             <el-select v-model="filterEnabled" placeholder="筛选状态" style="width: 120px" clearable @change="refreshList">
-                                <el-option label="已启用" :value="true" ></el-option>
+                                <el-option label="已启用" :value="true"></el-option>
                                 <el-option label="已禁用" :value="false"></el-option>
                             </el-select>
                             <el-input v-model="searchText" placeholder="搜索..." style="width: 200px" clearable></el-input>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 订阅列表 -->
                 <div style="padding: 24px;">
                     <el-table :data="filteredSubs" stripe v-loading="loading" style="width: 100%;">
-                        <el-table-column fixed prop="name" label="名称" ></el-table-column> 
+                        <el-table-column fixed prop="name" label="名称"></el-table-column>
                         <el-table-column label="逻辑" width="80" align="center">
                             <template #default="{ row }">
                                 <el-tag type="info">{{ row.condition_groups?.logic || 'AND' }}</el-tag>
@@ -116,21 +122,22 @@
                         <el-table-column label="条件详情" min-width="280">
                             <template #default="{ row }">
                                 <div v-if="row.condition_groups?.conditions?.length">
-                                    <div v-for="(c, i) in row.condition_groups.conditions" :key="i" style="font-size: 12px; color: #606266; margin-bottom: 4px;">
+                                    <div v-for="(c, i) in row.condition_groups.conditions" :key="i" style="font-size: 12px; color: var(--bn-body); margin-bottom: 4px;">
                                         {{ summarizeConditionWrapper(c) }}
                                     </div>
                                 </div>
-                                <span v-else style="color:#909399;">无</span>
+                                <span v-else style="color: var(--bn-muted);">无</span>
                             </template>
                         </el-table-column>
                         <el-table-column label="积分倍率" width="110" align="center">
                             <template #default="{ row }">
-                                <div style="font-weight: 600; color: #409eff;">x{{ calcRuleMultiplierWrapper(row.condition_groups).toFixed(2) }}</div>
+                                <div class="num" style="font-weight: 700; color: var(--bn-primary);">x{{ calcRuleMultiplierWrapper(row.condition_groups).toFixed(2) }}</div>
                             </template>
                         </el-table-column>
-                        <el-table-column label="推送最低阈值" width="120" align="center">
+                        <el-table-column label="推送阈值" width="130" align="center">
                             <template #default="{ row }">
-                                {{ (row.min_value / 1e9).toFixed(2) }}亿 ISK
+                                <span class="num">{{ (row.min_value / 1e9).toFixed(2) }}</span>
+                                <span style="color: var(--bn-muted); font-size: 12px;"> 亿 ISK</span>
                             </template>
                         </el-table-column>
                         <el-table-column label="条件数" width="80" align="center">
@@ -153,14 +160,188 @@
                         </el-table-column>
                     </el-table>
                 </div>
+                </el-tab-pane>
+
+                <el-tab-pane label="建筑通知" name="structure">
+                    <div class="toolbar">
+                        <div style="display: flex; justify-content: space-between; gap: 12px;">
+                            <div style="display: flex; gap: 12px;">
+                                <el-button type="primary" @click="showStructCreate = true; structForm.categories = ['structure']">+ 新建订阅</el-button>
+                                <el-button @click="startStructOAuth" :loading="structAuthLoading">授权 EVE 角色</el-button>
+                                <el-button @click="loadStructSubs" :loading="structLoading">刷新</el-button>
+                            </div>
+                            <div style="color: var(--bn-muted); font-size: 12px; align-self: center;">推送 2 分/条</div>
+                        </div>
+                    </div>
+                    <div style="padding: 24px;">
+                        <el-table :data="structSubs" stripe v-loading="structLoading" style="width: 100%;">
+                            <el-table-column label="角色" min-width="180">
+                                <template #default="{ row }">
+                                    <span style="color: var(--bn-body);">{{ row.character_name }}</span>
+                                    <span class="num" style="color: var(--bn-muted); font-size: 12px; margin-left: 6px;">#{{ row.character_id }}</span>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="通知类别" min-width="240">
+                                <template #default="{ row }">
+                                    <el-tag v-for="c in row.categories" :key="c" type="info" style="margin: 2px;">{{ c }}</el-tag>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="状态" width="90" align="center">
+                                <template #default="{ row }">
+                                    <el-tag :type="row.is_enabled ? 'success' : 'info'">{{ row.is_enabled ? '启用' : '禁用' }}</el-tag>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="操作" width="170" align="center">
+                                <template #default="{ row }">
+                                    <el-button link type="primary" @click="toggleStructSub(row)">{{ row.is_enabled ? '禁用' : '启用' }}</el-button>
+                                    <el-button link type="danger" @click="delStructSub(row)">删除</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </div>
+                    <el-dialog v-model="showStructCreate" title="新建建筑通知订阅" width="520px">
+                        <el-form label-width="100px">
+                            <el-form-item label="EVE 角色">
+                                <el-select v-model="structForm.character_id" placeholder="选择已授权角色" filterable style="width: 100%">
+                                    <el-option v-for="c in structCharacters" :key="c.character_id" :label="c.character_name" :value="c.character_id"></el-option>
+                                </el-select>
+                                <div style="font-size: 11px; color: var(--bn-muted); margin-top: 6px;" v-if="!structCharacters.length">
+                                    无已授权角色，请先在当前页面完成 EVE OAuth 授权
+                                    <el-button link type="primary" @click="startStructOAuth" :loading="structAuthLoading">立即授权</el-button>
+                                </div>
+                            </el-form-item>
+                            <el-form-item label="通知类别">
+                                <el-select v-model="structForm.categories" multiple style="width: 100%" placeholder="选择类别">
+                                    <el-option v-for="c in structCategories" :key="c.key" :label="c.label" :value="c.key"></el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-form>
+                        <template #footer>
+                            <el-button @click="showStructCreate = false">取消</el-button>
+                            <el-button type="primary" @click="saveStructSub">创建</el-button>
+                        </template>
+                    </el-dialog>
+                </el-tab-pane>
+
+                <el-tab-pane label="服务器状态" name="eve_status">
+                    <div style="padding: 40px 24px;">
+                        <div class="stat-card" style="max-width: 520px; margin: 0 auto; padding: 28px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 16px; font-weight: 600; color: var(--bn-on-dark);">EVE 服务器状态推送</div>
+                                    <div style="font-size: 12px; color: var(--bn-muted); margin-top: 8px;">服务器在线/离线翻转时推送 · 1 分/次</div>
+                                </div>
+                                <el-switch :model-value="eveStatusSub.is_enabled" @change="toggleEveStatus" :loading="eveStatusSub.loading" size="large"></el-switch>
+                            </div>
+                        </div>
+                    </div>
+                </el-tab-pane>
+
+                <el-tab-pane label="账户余额" name="balance">
+                    <div style="padding: 24px;">
+                        <div class="grid grid-cols-3 gap-4" style="margin-bottom: 24px;">
+                            <div class="stat-card">
+                                <div class="stat-value stat-value-accent">{{ balance.value }}</div>
+                                <div class="stat-label">当前余额</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" style="color: var(--bn-muted-strong);">{{ txTotal }}</div>
+                                <div class="stat-label">流水笔数</div>
+                            </div>
+                            <div class="stat-card">
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <el-input-number v-model="rechargeForm.amount" :min="1" :step="1000" size="small" style="width: 130px;"></el-input-number>
+                                    <el-button type="primary" size="small" @click="doRecharge">充值</el-button>
+                                </div>
+                                <div class="stat-label" style="margin-top: 10px;">管理员充值</div>
+                            </div>
+                        </div>
+                        <el-table :data="transactions" stripe v-loading="txLoading" style="width: 100%;">
+                            <el-table-column label="时间" width="170">
+                                <template #default="{ row }"><span class="num" style="font-size: 12px; color: var(--bn-muted);">{{ row.created_at }}</span></template>
+                            </el-table-column>
+                            <el-table-column label="类型" width="90" align="center">
+                                <template #default="{ row }">
+                                    <el-tag :type="row.txn_type === 'recharge' ? 'success' : (row.txn_type === 'consume' ? 'info' : 'warning')">{{ row.txn_type }}</el-tag>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="变动" width="110" align="right">
+                                <template #default="{ row }">
+                                    <span class="num" :style="{ color: row.amount >= 0 ? 'var(--bn-up)' : 'var(--bn-down)', fontWeight: 700 }">{{ row.amount >= 0 ? '+' : '' }}{{ row.amount }}</span>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="余额" width="110" align="right">
+                                <template #default="{ row }"><span class="num">{{ row.balance_after }}</span></template>
+                            </el-table-column>
+                            <el-table-column label="说明" min-width="200">
+                                <template #default="{ row }"><span style="color: var(--bn-body); font-size: 12px;">{{ row.description }}</span></template>
+                            </el-table-column>
+                        </el-table>
+                    </div>
+                </el-tab-pane>
+
+                <el-tab-pane label="充值" name="recharge">
+                    <div style="padding: 24px; max-width: 560px;">
+                        <!-- 配置提示 -->
+                        <div v-if="!paymentSetting.wallet_character_id" class="tab-placeholder" style="padding: 24px 0;">
+                            管理员尚未绑定 ESI 钱包，充值暂不可用
+                        </div>
+                        <div v-else>
+                            <!-- 第一步：选金额创建订单 -->
+                            <div v-if="!rechargeOrder.code">
+                                <div class="stat-card" style="margin-bottom: 16px;">
+                                    <div style="font-size: 14px; font-weight: 600; color: var(--bn-on-dark); margin-bottom: 12px;">ESI 钱包充值</div>
+                                    <div style="font-size: 12px; color: var(--bn-muted); margin-bottom: 16px;">
+                                        向 <span style="color: var(--bn-primary);">{{ paymentSetting.wallet_character_name }}</span> 转账 ISK，备注支付码，到账自动充值积分<br>
+                                        汇率: 1 亿 ISK = <span class="num" style="color: var(--bn-primary);">{{ paymentSetting.isk_per_1b }}</span> 积分
+                                    </div>
+                                    <el-form label-width="100px">
+                                        <el-form-item label="快捷金额">
+                                            <div style="display: flex; gap: 8px;">
+                                                <el-button v-for="amt in [1e9, 5e9, 10e9]" :key="amt" size="small" @click="rechargeIsk = amt">{{ amt / 1e9 }} 亿</el-button>
+                                            </div>
+                                        </el-form-item>
+                                        <el-form-item label="充值金额">
+                                            <el-input-number v-model="rechargeIsk" :min="1e9" :step="1e9" :step-strictly="true" style="width: 200px"></el-input-number>
+                                            <span style="margin-left: 10px; color: var(--bn-muted); font-size: 13px;">ISK（{{ (rechargeIsk / 1e9).toFixed(0) }} 亿 = <span class="num" style="color: var(--bn-primary);">{{ Math.round(rechargeIsk / 1e9 * paymentSetting.isk_per_1b) }}</span> 积分）</span>
+                                        </el-form-item>
+                                        <el-form-item>
+                                            <el-button type="primary" @click="createRechargeOrder" :loading="rechargeCreating">生成支付码</el-button>
+                                        </el-form-item>
+                                    </el-form>
+                                </div>
+                            </div>
+
+                            <!-- 第二步：转账指引 + 我已支付 -->
+                            <div v-else>
+                                <div class="verify-code-box" style="text-align: center; padding: 24px;">
+                                    <div style="font-size: 12px; color: var(--bn-muted); margin-bottom: 8px;">支付码（点击复制，转账时备注此码）</div>
+                                    <div class="verify-code-text" style="font-size: 32px; margin-bottom: 12px; cursor: pointer;" @click="copyText(rechargeOrder.code, '支付码')">{{ rechargeOrder.code }}</div>
+                                    <div style="color: var(--bn-body); font-size: 13px; line-height: 1.8;">
+                                        请在游戏内向 <span style="color: var(--bn-primary); font-weight: 600; cursor: pointer; border-bottom: 1px dashed var(--bn-primary);" @click="copyText(rechargeOrder.wallet_character_name, '角色名')">{{ rechargeOrder.wallet_character_name }}</span> 转账<br>
+                                        <span class="num">{{ rechargeOrder.isk_amount.toFixed(0) }}</span> ISK → <span class="num" style="color: var(--bn-primary);">{{ rechargeOrder.credit_amount }}</span> 积分
+                                    </div>
+                                </div>
+                                <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center;">
+                                    <el-button v-if="rechargeOrder.status !== 'paid'" type="primary" @click="verifyRecharge" :loading="rechargeVerifying">我已支付，查询到账</el-button>
+                                    <el-button @click="rechargeOrder.code = ''; rechargeOrder.status = ''">重新生成</el-button>
+                                </div>
+                                <div v-if="rechargeOrder.status === 'paid'" class="stat-card" style="margin-top: 16px; text-align: center; border-left-color: var(--bn-up);">
+                                    <div class="stat-value stat-value-up">充值成功</div>
+                                    <div class="stat-label">+{{ rechargeOrder.credit_amount }} 积分已到账</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </el-tab-pane>
+                </el-tabs>
             </div>
         </div>
-        
+
         <!-- 创建/编辑对话框 -->
         <el-dialog v-model="showCreate" :title="editingId ? '编辑订阅' : '新建订阅'" width="900px" @close="resetSubForm">
             <el-scrollbar style="height: 600px">
                 <div style="padding-right: 20px;">
-                    <!-- 基础信息 -->
                     <el-divider>基础信息</el-divider>
                     <el-form :model="subForm" label-width="120px">
                         <el-form-item label="名称">
@@ -170,10 +351,10 @@
                             <el-input v-model="subForm.description" type="textarea" rows="2"></el-input>
                         </el-form-item>
                         <el-form-item label="推送最低阈值">
-                            <el-input 
-                                v-model="minValueInput.formatted" 
-                                placeholder="请输入金额" 
-                                @input="minValueHandler.handleInput" 
+                            <el-input
+                                v-model="minValueInput.formatted"
+                                placeholder="请输入金额"
+                                @input="minValueHandler.handleInput"
                                 @blur="minValueHandler.handleBlur"
                                 style="width: 100%">
                             </el-input>
@@ -181,8 +362,7 @@
                         <el-form-item label="启用">
                             <el-switch v-model="subForm.is_enabled"></el-switch>
                         </el-form-item>
-                        
-                        <!-- 使用模板 -->
+
                         <el-form-item label="快速模板">
                             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                                 <el-button
@@ -190,14 +370,13 @@
                                     :key="tpl.key || tpl.name"
                                     :title="tpl.description"
                                     @click="applyTemplate(tpl)">
-                                    📋 {{ tpl.name }}
+                                    {{ tpl.name }}
                                 </el-button>
-                                <span v-if="!templates.length" style="color: #909399; font-size: 12px;">暂无可用模板</span>
+                                <span v-if="!templates.length" style="color: var(--bn-muted); font-size: 12px;">暂无可用模板</span>
                             </div>
                         </el-form-item>
                     </el-form>
-                    
-                    <!-- 条件组 -->
+
                     <el-divider>筛选条件</el-divider>
                     <el-form label-width="120px">
                         <el-form-item label="逻辑">
@@ -207,22 +386,20 @@
                             </el-select>
                         </el-form-item>
                     </el-form>
-                    
-                    <!-- 条件列表 -->
-                    <div v-if="subForm.condition_groups.conditions.length === 0" style="text-align: center; color: #909399; padding: 20px;">
+
+                    <div v-if="subForm.condition_groups.conditions.length === 0" style="text-align: center; color: var(--bn-muted); padding: 20px;">
                         暂无条件 (点击下方按钮添加)
                     </div>
-                    
+
                     <div v-for="(cond, idx) in subForm.condition_groups.conditions" :key="idx" class="condition-item">
                         <div class="condition-type-badge">{{ getCondTypeLabel(cond.type) }}</div>
                         <div style="flex: 1;">
-                            <!-- Entity条件 -->
                             <div v-if="cond.type === 'entity'" style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px;">
                                 <el-select v-model="cond.entity_type" placeholder="实体类型">
-                                    <el-option v-for="t in ENTITY_TYPES" :key="t.value" :label="`${t.label} (x${scoreRules.entity_scores[t.value] || 1})`" :value="t.value" ></el-option>
+                                    <el-option v-for="t in ENTITY_TYPES" :key="t.value" :label="`${t.label} (x${scoreRules.entity_scores[t.value] || 1})`" :value="t.value"></el-option>
                                 </el-select>
-                                <el-autocomplete 
-                                    v-model="cond.entity_name" 
+                                <el-autocomplete
+                                    v-model="cond.entity_name"
                                     :fetch-suggestions="queryEntityWrapper"
                                     placeholder="输入实体名称(大于2个字符)"
                                     @select="handleEntitySelect($event, cond)"
@@ -232,31 +409,30 @@
                                             <img :src="item.image" style="width: 24px; height: 24px;" />
                                             <div>
                                                 <div>{{ item.name }}</div>
-                                                <div style="font-size: 12px; color: #909399;">#{{ item.id }} ({{ item.type }})</div>
+                                                <div class="num" style="font-size: 12px; color: var(--bn-muted);">#{{ item.id }} ({{ item.type }})</div>
                                             </div>
                                         </div>
                                     </template>
                                 </el-autocomplete>
-                                <el-select 
-                                    v-if="['character', 'corporation', 'alliance'].includes(cond.entity_type)" 
-                                    v-model="cond.role" 
+                                <el-select
+                                    v-if="['character', 'corporation', 'alliance'].includes(cond.entity_type)"
+                                    v-model="cond.role"
                                     placeholder="角色">
-                                    <el-option v-for="r in ENTITY_ROLES" :key="r.value" :label="r.label" :value="r.value" ></el-option> 
+                                    <el-option v-for="r in ENTITY_ROLES" :key="r.value" :label="r.label" :value="r.value"></el-option>
                                 </el-select>
-                                <el-select 
-                                    v-else-if="cond.entity_type === 'ship'" 
-                                    v-model="cond.ship_role" 
+                                <el-select
+                                    v-else-if="cond.entity_type === 'ship'"
+                                    v-model="cond.ship_role"
                                     placeholder="舰船角色">
-                                    <el-option v-for="r in SHIP_ROLES" :key="r.value" :label="r.label" :value="r.value" ></el-option>
+                                    <el-option v-for="r in SHIP_ROLES" :key="r.value" :label="r.label" :value="r.value"></el-option>
                                 </el-select>
                                 <div v-else></div>
                             </div>
-                            
-                            <!-- Value条件 -->
+
                             <div v-else-if="cond.type === 'value'" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                                 <div>
-                                    <label style="font-size: 12px; color: #606266;">最小价值 (ISK)</label>
-                                    <el-input 
+                                    <label style="font-size: 12px; color: var(--bn-muted-strong);">最小价值 (ISK)</label>
+                                    <el-input
                                         :model-value="formatNumberWithComma(cond.min || 0)"
                                         @input="value => { cond.min = parseNumberWithComma(value); }"
                                         placeholder="请输入最小价值"
@@ -264,8 +440,8 @@
                                     </el-input>
                                 </div>
                                 <div>
-                                    <label style="font-size: 12px; color: #606266;">最大价值 (ISK)</label>
-                                    <el-input 
+                                    <label style="font-size: 12px; color: var(--bn-muted-strong);">最大价值 (ISK)</label>
+                                    <el-input
                                         :model-value="formatNumberWithComma(cond.max || 0)"
                                         @input="value => { cond.max = parseNumberWithComma(value); }"
                                         placeholder="请输入最大价值"
@@ -273,60 +449,55 @@
                                     </el-input>
                                 </div>
                             </div>
-                            
-                            <!-- Label条件 -->
+
                             <div v-else-if="cond.type === 'label'" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                                 <div>
-                                    <label style="font-size: 12px; color: #606266;">包含标签 (至少一个)</label>
+                                    <label style="font-size: 12px; color: var(--bn-muted-strong);">包含标签 (至少一个)</label>
                                     <el-select v-model="cond.required_labels" multiple style="width: 100%" filterable placeholder="选择标签">
                                         <el-option v-for="l in scoreRules.labels" :key="l" :label="`${l} (x${scoreRules.label_scores[l] || 1})`" :value="l"></el-option>
                                     </el-select>
                                 </div>
                                 <div>
-                                    <label style="font-size: 12px; color: #606266;">排除标签</label>
+                                    <label style="font-size: 12px; color: var(--bn-muted-strong);">排除标签</label>
                                     <el-select v-model="cond.excluded_labels" multiple style="width: 100%" filterable placeholder="选择标签">
                                         <el-option v-for="l in scoreRules.labels" :key="l" :label="`${l} (x${scoreRules.label_scores[l] || 1})`" :value="l"></el-option>
                                     </el-select>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <el-button type="danger" text @click="delCondition(idx)">删除</el-button>
                     </div>
-                    
-                    <!-- 添加条件按钮 -->
+
                     <div style="margin-top: 15px;">
                         <el-button @click="showConditionSelector = true">+ 添加条件</el-button>
                     </div>
                 </div>
             </el-scrollbar>
-            
+
             <template #footer>
                 <el-button @click="showCreate = false">取消</el-button>
                 <el-button type="primary" @click="saveSub" :loading="saving">保存</el-button>
             </template>
         </el-dialog>
-        
+
         <!-- 条件选择对话框 -->
         <el-dialog v-model="showConditionSelector" title="选择条件类型" width="500px">
             <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                <div v-for="ctype in CONDITION_TYPES" :key="ctype.value" 
-                     @click="addCondition(ctype.value); showConditionSelector = false"
-                     style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 15px; cursor: pointer; transition: all 0.3s;"
-                     @mouseenter="$event.target.style.background = '#f5f7fa'"
-                     @mouseleave="$event.target.style.background = 'white'">
-                    <div style="font-weight: bold; color: #333;">{{ ctype.label }}</div>
-                    <div style="font-size: 12px; color: #909399; margin-top: 5px;">{{ ctype.desc }}</div>
+                <div v-for="ctype in CONDITION_TYPES" :key="ctype.value"
+                     class="cond-type-card"
+                     @click="addCondition(ctype.value); showConditionSelector = false">
+                    <div style="font-weight: 600; color: var(--bn-body);">{{ ctype.label }}</div>
+                    <div style="font-size: 12px; color: var(--bn-muted); margin-top: 5px;">{{ ctype.desc }}</div>
                 </div>
             </div>
         </el-dialog>
     </div>
-    
+
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/element-plus"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    
-    <!-- 外部脚本文件 -->
+
     <script src="/static/js/constants.js"></script>
     <script src="/static/js/utils.js"></script>
     <script src="/static/js/app.js"></script>

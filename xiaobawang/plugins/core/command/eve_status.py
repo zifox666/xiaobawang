@@ -31,9 +31,10 @@ async def get_eve_status():
 @eve_status_sub.handle()
 async def set_eve_status_sub(result: Arparma, session: async_scoped_session, user_info: Uninfo):
     remove = True if result.options.get("remove") else False
+    tip = "\n\n💡 也可在订阅管理页统一管理: https://xbw.newdoublex.space/subscription"
     if remove:
         await eve_server_status.remove_sub(session=session, user_info=user_info)
-        await eve_status_sub.finish("已移除EVE状态订阅")
+        await eve_status_sub.finish("已移除EVE状态订阅" + tip)
     else:
         await eve_server_status.add_sub(session=session, user_info=user_info)
-        await eve_status_sub.finish("已添加EVE状态订阅")
+        await eve_status_sub.finish("已添加EVE状态订阅" + tip)

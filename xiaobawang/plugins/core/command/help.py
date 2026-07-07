@@ -106,6 +106,12 @@ help_data = {
                     "new": False,
                     "hot": False,
                     "commands": ["/dt订阅"],
+                },
+                {
+                    "title": "EVE黄历",
+                    "new": True,
+                    "hot": False,
+                    "commands": ["EVE老黄历"],
                 }
             ],
         },
@@ -220,7 +226,7 @@ async def _(event: Event):
         data = help_en_data
     await help.send(
         UniMessage.text(
-            "Documents: https://zifox666.github.io/xiaobawang/",
+            "文档：https://zifox666.github.io/xiaobawang/ \n订阅管理：https://xbw.newdoublex.space/subcribtion",
         )
     )
     await help.finish(

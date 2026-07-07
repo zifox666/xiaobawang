@@ -12,6 +12,8 @@ from ..api.esi.universe import esi_client
 from ..config import plugin_config
 from ..db.models.event_sub import EVEServerStatusSub
 from ..utils.common.http_client import get_client
+from .billing import billing, key_from_session_fields
+from .billing.rules import BillingRules
 from .message_queue import queue_common
 
 require("nonebot_plugin_apscheduler")
@@ -105,12 +107,26 @@ class EVEServerStatus:
 
                 for sub in subs:
                     try:
+                        session_key = key_from_session_fields(sub.platform, sub.session_id, sub.session_type)
+                        if billing.should_bill("eve_status"):
+                            cost = BillingRules.calc_charge("eve_status")
+                            if not await billing.precheck(session_key, cost):
+                                logger.info(f"[billing] {session_key} 余额不足，跳过 eve_status 推送")
+                                await billing.notify_low_balance_if_needed(
+                                    session_key, sub.platform, sub.bot_id, sub.session_id, sub.session_type,
+                                    await billing.get_balance(session_key),
+                                )
+                                continue
                         await queue_common(
                             platform=sub.platform,
                             bot_id=sub.bot_id,
                             session_id=sub.session_id,
                             session_type=sub.session_type,
                             msg=UniMessage(status_message),
+                        )
+                        b_r = await billing.charge(session_key, "eve_status", ref_id=str(sub.id))
+                        await billing.notify_low_balance_if_needed(
+                            session_key, sub.platform, sub.bot_id, sub.session_id, sub.session_type, b_r.balance_after
                         )
                         logger.debug(f"向订阅 {sub.platform}:{sub.session_id} 推送状态变化成功")
                     except Exception as e:

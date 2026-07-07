@@ -1,4 +1,4 @@
-const { createApp, ref, reactive, computed, onMounted } = Vue;
+const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
 const { ElMessage, ElMessageBox } = ElementPlus;
 
 createApp({
@@ -61,6 +61,8 @@ createApp({
                             await loadScoreRules();
                             await loadTemplates();
                             await refreshList();
+                            await loadBalance();
+                            await loadActiveTabData();
                             ElMessage.success('验证成功，已自动登录');
                         } else if (r.data.status === 'expired') {
                             _stopPolling();
@@ -99,6 +101,34 @@ createApp({
             enabled: 0,
             disabled: 0
         });
+
+        // ── 聚合页 Tab + 积分余额 ───────────────────────────────────
+        const activeTab = ref('killmail');
+        const balance = reactive({ value: 0, loading: false });
+
+        // ── structure / eve_status / 流水 ──────────────────────────
+        const structSubs = ref([]);
+        const structCharacters = ref([]);
+        const structCategories = ref([]);
+        const showStructCreate = ref(false);
+        const structForm = reactive({ character_id: null, character_name: '', categories: ['structure'] });
+        const eveStatusSub = reactive({ exists: false, is_enabled: false, loading: false });
+        const transactions = ref([]);
+        const txPage = ref(1);
+        const txTotal = ref(0);
+        const rechargeForm = reactive({ amount: 1000, description: '管理员充值' });
+        const isAdmin = ref(false);
+        const structLoading = ref(false);
+        const structAuthLoading = ref(false);
+        const txLoading = ref(false);
+        let structAuthPopup = null;
+
+        // ── 充值（ESI 钱包） ────────────────────────────────────
+        const paymentSetting = reactive({ wallet_character_name: '', wallet_character_id: null, isk_per_1b: 500 });
+        const rechargeOrder = reactive({ code: '', isk_amount: 0, credit_amount: 0, status: '', wallet_character_name: '' });
+        const rechargeIsk = ref(1e9);
+        const rechargeCreating = ref(false);
+        const rechargeVerifying = ref(false);
         
         const subForm = reactive({
             id: null,
@@ -200,7 +230,231 @@ createApp({
                 loading.value = false;
             }
         };
-        
+
+        // 加载积分余额
+        const loadBalance = async () => {
+            balance.loading = true;
+            try {
+                const res = await axios.get(`${apiUrl}/api/credit/balance`);
+                balance.value = res.data?.data?.balance ?? 0;
+            } catch (e) {
+                console.error('加载余额失败:', e);
+                balance.value = 0;
+            } finally {
+                balance.loading = false;
+            }
+        };
+
+        // ── structure 订阅 ──────────────────────────────────────
+        const loadStructSubs = async () => {
+            structLoading.value = true;
+            try {
+                const res = await axios.get(`${apiUrl}/api/subscriptions/structure`);
+                structSubs.value = res.data?.data || [];
+            } catch (e) { console.error('加载建筑订阅失败:', e); }
+            finally { structLoading.value = false; }
+        };
+
+        const loadStructCharacters = async () => {
+            try {
+                const res = await axios.get(`${apiUrl}/api/subscriptions/structure/characters`);
+                structCharacters.value = res.data?.data || [];
+            } catch (e) { console.error('加载角色失败:', e); }
+        };
+
+        const loadStructCategories = async () => {
+            try {
+                const res = await axios.get(`${apiUrl}/api/subscriptions/structure/categories`);
+                structCategories.value = res.data?.data || [];
+            } catch (e) { console.error('加载类别失败:', e); }
+        };
+
+        const startStructOAuth = async () => {
+            structAuthLoading.value = true;
+            try {
+                const res = await axios.post(`${apiUrl}/api/subscriptions/structure/auth/url`);
+                const authUrl = res.data?.data?.auth_url;
+                if (!authUrl) {
+                    ElMessage.error('创建授权链接失败');
+                    return;
+                }
+                structAuthPopup = window.open(authUrl, 'xbw_structure_oauth', 'width=720,height=820');
+                if (!structAuthPopup) {
+                    ElMessage.warning('浏览器拦截了弹窗，请允许弹窗后重试');
+                    return;
+                }
+                ElMessage.info('请在弹出的 EVE 登录窗口完成授权');
+            } catch (e) {
+                ElMessage.error('创建授权链接失败: ' + (e.response?.data?.detail || e.message));
+            } finally {
+                structAuthLoading.value = false;
+            }
+        };
+
+        const handleStructOAuthMessage = async (event) => {
+            if (event.origin !== window.location.origin) return;
+            const payload = event.data || {};
+            if (payload.type !== 'structure-oauth-complete') return;
+            if (payload.success) {
+                ElMessage.success(`EVE 角色授权成功: ${payload.character_name || payload.character_id || ''}`);
+                await loadStructCharacters();
+                if (payload.character_id) {
+                    structForm.character_id = Number(payload.character_id);
+                }
+                showStructCreate.value = true;
+            } else {
+                ElMessage.error('EVE 授权失败: ' + (payload.error || '未知错误'));
+            }
+        };
+
+        const saveStructSub = async () => {
+            if (!structForm.character_id) { ElMessage.error('请选择 EVE 角色'); return; }
+            if (!structForm.categories.length) { ElMessage.error('请选择通知类别'); return; }
+            const char = structCharacters.value.find(c => c.character_id === structForm.character_id);
+            try {
+                await axios.post(`${apiUrl}/api/subscriptions/structure`, {
+                    character_id: structForm.character_id,
+                    character_name: char?.character_name || '',
+                    categories: structForm.categories,
+                });
+                ElMessage.success('创建成功');
+                showStructCreate.value = false;
+                structForm.categories = ['structure'];
+                await loadStructSubs();
+            } catch (e) {
+                ElMessage.error('创建失败: ' + (e.response?.data?.detail || e.message));
+            }
+        };
+
+        const toggleStructSub = async (row) => {
+            try {
+                await axios.put(`${apiUrl}/api/subscriptions/structure/${row.id}`, { is_enabled: !row.is_enabled });
+                row.is_enabled = !row.is_enabled;
+            } catch (e) { ElMessage.error('更新失败'); }
+        };
+
+        const delStructSub = async (row) => {
+            try {
+                await ElMessageBox.confirm('确定删除该角色的建筑订阅?', '确认', { type: 'warning' });
+                await axios.delete(`${apiUrl}/api/subscriptions/structure/${row.id}`);
+                ElMessage.success('已删除');
+                await loadStructSubs();
+            } catch (e) { if (e !== 'cancel') ElMessage.error('删除失败'); }
+        };
+
+        // ── eve_status ──────────────────────────────────────────
+        const loadEveStatus = async () => {
+            eveStatusSub.loading = true;
+            try {
+                const res = await axios.get(`${apiUrl}/api/subscriptions/eve_status`);
+                const d = res.data?.data || {};
+                eveStatusSub.exists = d.exists || false;
+                eveStatusSub.is_enabled = d.is_enabled || false;
+            } catch (e) { console.error('加载状态订阅失败:', e); }
+            finally { eveStatusSub.loading = false; }
+        };
+
+        const toggleEveStatus = async (val) => {
+            try {
+                await axios.put(`${apiUrl}/api/subscriptions/eve_status`, { is_enabled: val });
+                eveStatusSub.is_enabled = val;
+                eveStatusSub.exists = true;
+                ElMessage.success(val ? '已启用服务器状态推送' : '已禁用');
+            } catch (e) { ElMessage.error('操作失败'); }
+        };
+
+        // ── 流水 + 充值 ─────────────────────────────────────────
+        const loadTransactions = async () => {
+            txLoading.value = true;
+            try {
+                const res = await axios.get(`${apiUrl}/api/credit/transactions`, { params: { page: txPage.value, page_size: 20 } });
+                const d = res.data?.data || {};
+                transactions.value = d.items || [];
+                txTotal.value = d.total || 0;
+            } catch (e) { console.error('加载流水失败:', e); }
+            finally { txLoading.value = false; }
+        };
+
+        const doRecharge = async () => {
+            if (rechargeForm.amount <= 0) { ElMessage.error('金额需大于 0'); return; }
+            try {
+                await axios.post(`${apiUrl}/api/credit/recharge`, {
+                    amount: rechargeForm.amount,
+                    description: rechargeForm.description,
+                });
+                ElMessage.success('充值成功');
+                await loadBalance();
+                await loadTransactions();
+            } catch (e) {
+                ElMessage.error('充值失败: ' + (e.response?.data?.detail || e.message));
+            }
+        };
+
+        // ── 充值（ESI 钱包） ────────────────────────────────────
+        const loadPaymentSetting = async () => {
+            try {
+                const res = await axios.get(`${apiUrl}/api/payment/setting`);
+                Object.assign(paymentSetting, res.data?.data || {});
+            } catch (e) { console.error('加载支付配置失败:', e); }
+        };
+
+        const createRechargeOrder = async () => {
+            rechargeCreating.value = true;
+            try {
+                const res = await axios.post(`${apiUrl}/api/payment/order`, { isk_amount: rechargeIsk.value });
+                const d = res.data?.data || {};
+                rechargeOrder.code = d.payment_code;
+                rechargeOrder.isk_amount = d.isk_amount;
+                rechargeOrder.credit_amount = d.credit_amount;
+                rechargeOrder.status = d.status;
+                rechargeOrder.wallet_character_name = d.wallet_character_name || paymentSetting.wallet_character_name;
+                ElMessage.success('订单已创建，请按指引转账');
+            } catch (e) {
+                ElMessage.error('创建订单失败: ' + (e.response?.data?.detail || e.message));
+            } finally { rechargeCreating.value = false; }
+        };
+
+        const verifyRecharge = async () => {
+            if (!rechargeOrder.code) return;
+            rechargeVerifying.value = true;
+            try {
+                const res = await axios.post(`${apiUrl}/api/payment/order/${rechargeOrder.code}/verify`);
+                const d = res.data?.data || {};
+                if (res.data?.success) {
+                    ElMessage.success(`充值成功 +${d.credit_amount} 积分`);
+                    rechargeOrder.status = 'paid';
+                    await loadBalance();
+                } else {
+                    ElMessage.warning(d.reason || '未到账，请稍后重试');
+                }
+            } catch (e) {
+                ElMessage.error('核销失败: ' + (e.response?.data?.detail || e.message));
+            } finally { rechargeVerifying.value = false; }
+        };
+
+        const copyText = (text, label = '内容') => {
+            navigator.clipboard.writeText(text).then(
+                () => ElMessage.success(`已复制${label}`),
+                () => ElMessage.warning('复制失败，请手动复制')
+            );
+        };
+
+        const loadActiveTabData = async () => {
+            if (!isLoggedIn.value) return;
+            if (activeTab.value === 'structure') {
+                await Promise.all([loadStructSubs(), loadStructCharacters(), loadStructCategories()]);
+            } else if (activeTab.value === 'eve_status') {
+                await loadEveStatus();
+            } else if (activeTab.value === 'balance') {
+                await Promise.all([loadTransactions(), loadBalance()]);
+            } else if (activeTab.value === 'recharge') {
+                await loadPaymentSetting();
+            }
+        };
+
+        // ── Tab 切换懒加载 ──────────────────────────────────────
+        watch(activeTab, () => { loadActiveTabData(); });
+
         const resetSubForm = () => {
             subForm.id = null;
             subForm.name = '';
@@ -361,17 +615,29 @@ createApp({
         };
 
         onMounted(async () => {
+            const params = new URLSearchParams(window.location.search);
+            const initialTab = params.get('tab');
+            if (initialTab && ['killmail', 'structure', 'eve_status', 'balance', 'recharge'].includes(initialTab)) {
+                activeTab.value = initialTab;
+            }
+            window.addEventListener('message', handleStructOAuthMessage);
             await fetchVerifyCode();
         });
         
         return {
             isLoggedIn, loginLoading, loading, saving, showCreate, showConditionSelector, editingId,
-            user, subs, templates, stats, subForm, searchText, filterEnabled, filteredSubs,
+            user, subs, templates, stats, subForm, searchText, filterEnabled, filteredSubs, activeTab, balance,
+            structSubs, structCharacters, structCategories, showStructCreate, structForm, structLoading, structAuthLoading,
+            eveStatusSub, transactions, txPage, txTotal, txLoading, rechargeForm,
+            paymentSetting, rechargeOrder, rechargeIsk, rechargeCreating, rechargeVerifying,
             CONDITION_TYPES, ENTITY_TYPES, ENTITY_ROLES, SHIP_ROLES, scoreRules,
             verifyCode, verifyCodeExpiry, verifyCodeStatus, fetchVerifyCode, refreshVerifyCode, copyVerifyCode,
             logout, refreshList, resetSubForm, editSub, applyTemplate, addCondition, delCondition,
             getCondTypeLabel, getConditionCount, summarizeConditionWrapper, calcRuleMultiplierWrapper,
-            saveSub, delSub, queryEntityWrapper, handleEntitySelect, loadScoreRules, loadTemplates,
+            saveSub, delSub, queryEntityWrapper, handleEntitySelect, loadScoreRules, loadTemplates, loadBalance,
+            loadStructSubs, loadStructCharacters, loadStructCategories, startStructOAuth, saveStructSub, toggleStructSub, delStructSub,
+            loadEveStatus, toggleEveStatus, loadTransactions, doRecharge,
+            loadPaymentSetting, createRechargeOrder, verifyRecharge, copyText,
             formatNumberWithComma, parseNumberWithComma,
             minValueInput, minValueHandler, createNumberInputHandler
         };

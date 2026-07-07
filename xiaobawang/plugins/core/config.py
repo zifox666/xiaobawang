@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from nonebot import get_plugin_config
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Config(BaseModel):
@@ -28,6 +28,20 @@ class Config(BaseModel):
     low_memory_mode: bool = False
     max_queue_size: int = 20
     max_total_messages: int = 50
+
+    billing_enabled: bool = True
+    billing_enabled_modules: list[str] = Field(
+        default_factory=lambda: ["killmail", "eve_status", "structure"], description="启用计费的模块"
+    )
+    billing_initial_credit: int = 100  # 新账户初始积分
+    billing_migrate_credit: int = 100  # 存量 session 迁移积分
+    billing_low_balance_threshold: int = 10  # 低余额预警线
+    billing_pause_after_nsf: int = 3  # 连续 N 次余额不足后暂停订阅
+    billing_unit_price: dict = Field(
+        default_factory=lambda: {"eve_status": 1, "structure": 2, "killmail": 5}
+    )
+    billing_key_with_platform: bool = False  # session_key 是否带 platform 前缀防撞
+    admin_token: str | None = None  # 管理后台登录 token；配置后 /admin 使用该 token 登录
 
 
 plugin_config = get_plugin_config(Config)
