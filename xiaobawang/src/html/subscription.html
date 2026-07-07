@@ -248,13 +248,6 @@
                                 <div class="stat-value" style="color: var(--bn-muted-strong);">{{ txTotal }}</div>
                                 <div class="stat-label">流水笔数</div>
                             </div>
-                            <div class="stat-card">
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                    <el-input-number v-model="rechargeForm.amount" :min="1" :step="1000" size="small" style="width: 130px;"></el-input-number>
-                                    <el-button type="primary" size="small" @click="doRecharge">充值</el-button>
-                                </div>
-                                <div class="stat-label" style="margin-top: 10px;">管理员充值</div>
-                            </div>
                         </div>
                         <el-table :data="transactions" stripe v-loading="txLoading" style="width: 100%;">
                             <el-table-column label="时间" width="170">

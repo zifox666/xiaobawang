@@ -375,21 +375,6 @@ createApp({
             finally { txLoading.value = false; }
         };
 
-        const doRecharge = async () => {
-            if (rechargeForm.amount <= 0) { ElMessage.error('金额需大于 0'); return; }
-            try {
-                await axios.post(`${apiUrl}/api/credit/recharge`, {
-                    amount: rechargeForm.amount,
-                    description: rechargeForm.description,
-                });
-                ElMessage.success('充值成功');
-                await loadBalance();
-                await loadTransactions();
-            } catch (e) {
-                ElMessage.error('充值失败: ' + (e.response?.data?.detail || e.message));
-            }
-        };
-
         // ── 充值（ESI 钱包） ────────────────────────────────────
         const loadPaymentSetting = async () => {
             try {

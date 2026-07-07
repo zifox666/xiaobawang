@@ -157,45 +157,6 @@ async def list_transactions(
     }
 
 
-@router.post("/recharge", summary="充值（仅 SUPERUSER）")
-async def recharge(
-    req: RechargeRequest,
-    current_user: dict = Depends(get_current_user),
-) -> dict:
-    if not _is_admin(current_user):
-        raise HTTPException(status_code=403, detail="仅 SUPERUSER 可充值")
-
-    if req.session_type and req.session_id:
-        target = make_session_key(req.session_type, req.session_id, req.platform)
-    else:
-        target = key_from_current_user(current_user)
-
-    # 确保目标账户存在
-    await billing.get_or_create_account(
-        target,
-        platform=req.platform or "",
-        session_id=req.session_id or "",
-        session_type=req.session_type or "",
-    )
-
-    result = await billing.recharge(target, req.amount, req.description)
-    if not result.success:
-        raise HTTPException(status_code=400, detail=result.reason)
-
-    logger.info(
-        f"[credit] {current_user.get('qq')} 充值 {target} +{req.amount} → {result.balance_after}"
-    )
-    return {
-        "success": True,
-        "message": "充值成功",
-        "data": {
-            "session_key": short_key(target),
-            "charged": result.charged,
-            "balance_after": result.balance_after,
-        },
-    }
-
-
 @router.get("/rules", summary="计费规则")
 async def get_rules() -> dict:
     return {"success": True, "data": BillingRules.to_dict()}
