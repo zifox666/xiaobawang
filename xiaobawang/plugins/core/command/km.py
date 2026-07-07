@@ -5,7 +5,7 @@ from nonebot.internal.adapter import Event
 from nonebot.params import RegexStr
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, UniMessage, on_alconna
 
-from ..api.killmail import get_zkb_killmail
+from ..api.killmail import KillmailFetchError, KillmailNotFoundError, get_zkb_killmail
 from ..helper.zkb.killmail import km
 from ..utils.common.cache import save_msg_cache
 from ..utils.common.emoji import emoji_action
@@ -37,7 +37,13 @@ async def handle_km(
         logger.debug(f"URL不匹配: {url}")
         return
     kill_id = matched.group(1)
-    data = await km.get(kill_id)
+    try:
+        data = await km.get(kill_id)
+    except KillmailNotFoundError:
+        await km_handler.finish("暂时没有从 zKillboard 获取到这封击杀邮件，可能还没同步或已不可用。")
+    except KillmailFetchError:
+        await km_handler.finish("获取击毁报告失败，请稍后再试。")
+
     data["title"] = "击毁报告"
     data["bot_info"] = get_bot_info_data()
     pic = await render_template(
@@ -55,4 +61,7 @@ async def handle_km(
 
 @km_sub_push_test.handle()
 async def _(result: Arparma):
-    await km.check(await get_zkb_killmail(result["kill_id"]))
+    try:
+        await km.check(await get_zkb_killmail(result["kill_id"]))
+    except KillmailFetchError as e:
+        await km_sub_push_test.finish(f"获取击毁报告失败: {e}")
