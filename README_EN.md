@@ -1,54 +1,48 @@
-[中文](README.md) | English
+**Chinese** | [English](README_EN.md)
 
 <div style="text-align:center">
 
-## XiaoBaWang Bot
+## Xiaobawang Bot
 
 </div>
 
 <div style="text-align:center">
 
 "A cross-platform EVE information query and subscription bot"<br>
-[Online Experience](https://xbw.newdoublex.space/chat) | [Documentation](https://zifox666.github.io/xiaobawang/)
+[Online Demo](https://xbw.newdoublex.space/chat) | [Documentation](https://zifox666.github.io/xiaobawang/)
 
-This project is built on [Alconna](https://github.com/nonebot/plugin-alconna) and supports multiple platforms. It can interact with the following projects, bot frameworks, and platforms:
+This project is built on [Alconna](https://github.com/nonebot/plugin-alconna) to support multi-platform interaction, and provides web-based subscription management and admin capabilities.
 
 > [!NOTE]
-> Support for protocols other than Milky will be phased out in upcoming releases.
+> In upcoming versions, support for protocols other than Milky will be gradually phased out.
 
-| Project URL | Platform | Note |
-|:---------------------------------------------------------------:|:----------:|:--------:|
-| [LuckyLilliaBot](https://github.com/LLOneBot/LuckyLilliaBot) | NTQQ | Available |
-| [Napcat](https://github.com/NapNeko/NapCatQQ) | NTQQ | Basically available |
-| [Telegram](https://github.com/nonebot/adapter-telegram) | Telegram | Basically available |
-| [Discord](https://github.com/nonebot/adapter-discord) | Discord | Untested |
+|                          Project Link                           |   Platform   |   Status   |
+|:-------------------------------------------------------------:|:------------:|:----------:|
+|       [LuckyLilliaBot](https://github.com/LLOneBot/LuckyLilliaBot)        | OneBot V11   | Available  |
+|         [Napcat](https://github.com/NapNeko/NapCatQQ)         | OneBot V11   | Basically Available |
+|    [Telegram](https://github.com/nonebot/adapter-telegram)    | Telegram     | Basically Available |
 
 </div>
 
-## 🛠️ Quick Deployment
+## 🛠️ Simple Deployment
 
-### Docker deployment
+### DOCKER Deployment
 
-- Local build
+- The current version depends on **PostgreSQL + Redis**. The `docker-compose.yml` file provides Bot, Redis, and Playwright by default. PostgreSQL must be prepared separately and configured in `.env.local`.
+- Start locally:
 
-```bash
-docker compose up -d
-```
+    ```bash
+    docker compose up -d
+    ```
 
-- Pull and run
-
-```bash
-docker run newdoublex/xiaobawang:latest -d
-```
-
-### Command line
+### Command Line
 
 ```bash
 git clone https://github.com/zifox666/xiaobawang.git
 
 cd xiaobawang
 
-pip install uv
+pip install uv      
 uv sync --frozen
 
 uv tool install nb-cli
@@ -58,85 +52,108 @@ uv run nb orm upgrade
 uv run nb run
 ```
 
-## 📝 Simple configuration
+### Database Migration
 
-Fill in your bot configuration items in the `.env.dev` file.
+- Both the main database and the SDE database use PostgreSQL by default (see `SQLALCHEMY_DATABASE_URL` and `SDE_DATABASE_URL` in `.env.example`).
+- If you are upgrading from an older SQLite version, refer to `migrations/sqlite2pgsql.py` for data migration.
+
+## 📝 Simple Configuration
+
+Fill in your bot configuration items in `.env.local` or the corresponding `.env.*` file for your environment.<br>
+
+It is recommended to verify the following configuration items first:
+
+- `SQLALCHEMY_DATABASE_URL`: Main database connection string (PostgreSQL)
+- `SDE_DATABASE_URL`: SDE database connection string (PostgreSQL)
+- `REDIS_URL`: Redis connection string
+- `user_agent`: Required identifier for EVE-related requests
+- `zkb_listener_method`: `r2z2` (recommended) or `redisQ`
+- `admin_token`: Enables login to the `/admin` management backend
+- `billing_enabled` / `billing_unit_price`: Subscription credit billing and unit price configuration
 
 > [!NOTE]
-> The zkillboard WSS killmail stream subscription has been migrated to [RedisQ](https://github.com/zKillboard/RedisQ).<br>
-> zkillboard KM push has migrated again to [R2Z2](https://github.com/zKillboard/zKillboard/wiki/API-(R2Z2)).
+> The zkillboard WSS killmail stream subscription has been migrated to [RedisQ](https://github.com/zKillboard/RedisQ)<br>
+> The zkillboard KM push has been migrated again to [R2Z2](https://github.com/zKillboard/zKillboard/wiki/API-(R2Z2))
 
-
-## 📋 Feature list
+## 📋 Feature List
 
 > [!NOTE]
-> This bot is in rapid development — we build features piece by piece.
+> This bot is under rapid development. Features are being added step by step.
 
-### 🔧 Basic support levels
+### 🆕 Recent Updates
+
+- **Web Subscription Center**: Added `/subscription` page for unified management of KM subscriptions, structure notification subscriptions, and EVE server status subscriptions; some legacy chat commands have been migrated to the web interface.
+- **Subscription Credit Gateway**: Added account credits, low-balance alerts, automatic suspension on insufficient balance, and per-subscription-type billing mechanisms.
+- **ISK Recharge Flow**: Supports generating payment codes; after transferring ISK to a designated character, credits are automatically added to the session.
+- **Admin Backend**: Added `/admin` page to view sessions, orders, subscriptions, transaction records, with support for manually adding credits and manually confirming received payments.
+- **Structure Notification Enhancements**: Structure notifications now support character authorization, category-based subscription, and finer event filtering.
+- **Database Upgrade**: The project has been migrated from SQLite to PostgreSQL, with Alembic migrations and an SQLite-to-PostgreSQL migration script provided.
+
+### 🔧 Basic Features
 
 - ✅: Fully supported
 - 📝: Partially supported
-- ❌: Plugin/adapter not supported
-- 🚫: Protocol not supported
-- 🚧: Planned / partially supported / experimental
+- ❌: Not supported by plugin/adapter
+- 🚫: Not supported by protocol
+- 🚧: Planned, partially supported, or experimental
 
 > [!WARNING]
-> Protocol names in italics indicate the protocol or its adapter is stale or unmaintained.
+> Protocol names in *italics* indicate that the protocol or its adapter has been unmaintained for a long time or is no longer functional.
 
-| Feature \ Adapter | ONEBOT V11 | Telegram | QQ-API | Console | Kaiheila | Discord |
-|---------------------|:----------:|:--------:|:------:|:-------:|:--------:|:-------:|
-| Price query (ojita) |     ✅     |    ✅    |   ✅   |    ✅   |    ✅    |    ✅   |
-| Stats query (zkb)   |     ✅     |    ✅    |   ✅   |    ✅   |    ✅    |    ✅   |
-| Term translation (trans) | ✅    |    ✅    |   ✅   |    ✅   |    ✅    |    ✅   |
-| Wormhole query (wormhole) | ✅   |    ✅    |   ✅   |    ✅   |    ✅    |    ✅   |
-| KM subscription (sub) |    ✅   |    ✅    |   🚫   |    ✅   |    ✅    |    ✅   |
-| Link preview         |     ✅     |    ✅    |   📝   |    📝   |    📝    |    ✅   |
-| Jump Drive Calculator (JDC) | 🚧  |    🚧    |   🚧   |    🚧   |    🚧    |    🚧  |
-| Contract appraisal (Janice) | ✅ |    ✅    |   📝   |    📝   |    📝   |    ✅   |
-| Abyss equipment appraisal (Abyss) | 🚧 | 🚧 |  🚧  |   🚧  |   🚧   |   🚧  |
-| SDE update           |     ✅     |    ✅    |   ✅   |    ✅   |    ✅    |    ✅   |
-| Currency query       |     ✅     |    ✅    |   ✅   |    ✅   |    ✅    |    ✅   |
-| EVE server status    |     ✅     |    ✅    |   ✅   |    ✅   |    ✅    |    ✅   |
+| Feature \ Adapter          |  ONEBOT V11  |  Telegram  |
+|----------------------------|:------------:|:----------:|
+| Price Query (ojita)        |      ✅       |     ✅      |
+| Query Statistics (zkb)     |      ✅       |     ✅      |
+| Terminology Translation (trans) |      ✅  |     ✅      |
+| Wormhole Query (wormhole)  |      ✅       |     ✅      |
+| KM Subscription (sub)      |      ✅       |     ✅      |
+| Link Preview               |      ✅       |     ✅      |
+| Capital Navigation Planning (JDC) |  🚧  |     🚧     |
+| Contract Valuation (Janice)|      ✅       |     ✅      |
+| Abyssal Equipment Valuation (Abyss) | 🚧 |     🚧     |
+| SDE Update                 |      ✅       |     ✅      |
+| Exchange Rate Query (currency) |   ✅   |     ✅      |
+| EVE Server Status (eve status) |  ✅   |     ✅      |
 
+> [!TIP]
+> Subscription-related features are now recommended for use via the web interface: `/subscription` for user self-management, and `/admin` for backend operations and payment processing.
 
-## 📊 Statistics collection
+## 📊 Data Statistics
 
-This project collects basic command usage statistics to help us improve features and user experience. Collected data includes but is not limited to:
+This project collects basic command usage statistics to help us improve functionality and user experience. The data collected includes but is not limited to:
 
 <details>
 
-<summary>Collected data</summary>
+<summary>Collected Data</summary>
 
 ```text
 - Bot ID
 - Adapter platform
 - Command source
-- Original command
+- Raw command
 - Event type
 - Session ID
 ```
 
 </details>
 
-**How to disable**: If you do not want to share this data, add the following to your `.env` file:
+**How to Disable**: If you do not wish to share this data, add the following configuration to your `.env` file:
 
 `upload_statistics=false`
 
+## 🙏 Acknowledgments
 
-## 🙏 Thanks
+[nonebot / nonebot2](https://github.com/nonebot/nonebot2): Cross-platform Python asynchronous bot framework  
+[nonenot / plugin-alconna](https://github.com/nonebot/plugin-alconna): Multi-platform command parsing adapter
 
-[nonebot / nonebot2](https://github.com/nonebot/nonebot2): Cross-platform Python async bot framework  
-[nonebot / plugin-alconna](https://github.com/nonebot/plugin-alconna): Multi-platform command parsing adapter
-
-
-## 📜 Copyright
+## 📜 Copyright Notice
 
 All EVE related materials are property of [CCP Games](https://www.ccpgames.com/)
 
 ### CCP GAMES Copyright Notice
 
-EVE Online and the EVE logo are registered trademarks of CCP hf. All rights are reserved worldwide. All other trademarks are the property of their respective owners. EVE Online, the EVE logo, EVE and all associated logos and designs are the intellectual property of CCP hf. All artwork, screenshots, characters, vehicles, storylines, world facts or other recognizable features related to these trademarks are likewise the intellectual property of CCP hf.
-This project follows CCP GAMES' terms of use and is intended only for information query and non-commercial use. This project is not affiliated with or endorsed by CCP hf. CCP is not responsible for the content or functionality of this project and shall not be liable for any damages arising from its use.
+EVE Online and the EVE logo are registered trademarks of CCP hf. All rights reserved worldwide. All other trademarks are the property of their respective owners. EVE Online, the EVE logo, EVE, and all associated logos and designs are the intellectual property of CCP hf. All artwork, screenshots, characters, vehicles, storylines, world facts, or other recognizable intellectual property features associated with these trademarks are likewise the intellectual property of CCP hf.
+This project is subject to the CCP GAMES usage license terms and is intended solely for information inquiry and non-commercial use. This project is not affiliated with or endorsed by CCP hf. CCP accepts no responsibility for the content or functionality of this project, nor for any damages arising from its use.
 
 ### License
 

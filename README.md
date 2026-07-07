@@ -11,17 +11,16 @@
 “可跨平台 EVE 信息查询与订阅机器人”<br>
 [在线体验](https://xbw.newdoublex.space/chat) | [文档](https://zifox666.github.io/xiaobawang/)
 
-本项目基于 [Alconna](https://github.com/nonebot/plugin-alconna) 支持多个平台，可基于以下项目与机器人框架/平台进行交互
+本项目基于 [Alconna](https://github.com/nonebot/plugin-alconna) 支持多平台交互，并提供网页化订阅管理与后台能力。
 
 > [!NOTE]
 > 在接下来的版本中 将会逐步停止对除Milky协议以外的支持
 
-|                             项目地址                              |    平台    |  备注  |
-|:-------------------------------------------------------------:|:--------:|:----:|
-|       [LuckyLilliaBot](https://github.com/LLOneBot/LuckyLilliaBot)        |   NTQQ   |  可用  |
-|         [Napcat](https://github.com/NapNeko/NapCatQQ)         |   NTQQ   | 基本可用 |
-|    [Telegram](https://github.com/nonebot/adapter-telegram)    | Telegram | 基本可用 |
-|     [Discord](https://github.com/nonebot/adapter-discord)     | Discord  | 未测试  |
+|                           项目地址                           |    平台    |   备注   |
+| :----------------------------------------------------------: | :--------: | :------: |
+| [LuckyLilliaBot](https://github.com/LLOneBot/LuckyLilliaBot) | OneBot V11 |   可用   |
+|        [Napcat](https://github.com/NapNeko/NapCatQQ)         | OneBot V11 | 基本可用 |
+|   [Telegram](https://github.com/nonebot/adapter-telegram)    |  Telegram  | 基本可用 |
 
 </div>
 
@@ -29,16 +28,11 @@
 
 ### DOCKER 部署
 
-- 本地打包
-    
-    ```bash
-    docker compose up -d
-    ```
-- 一键拉取
-
-    ```bash
-    docker run newdoublex/xiaobawang:latest -d
-    ```
+- 当前版本依赖 **PostgreSQL + Redis**，`docker-compose.yml` 默认提供 Bot、Redis、Playwright，PostgreSQL 需自行准备并在 `.env.local` 中配置
+- 本地启动
+  ```bash
+  docker compose up -d
+  ```
 
 ### 命令行
 
@@ -47,7 +41,7 @@ git clone https://github.com/zifox666/xiaobawang.git
 
 cd xiaobawang
 
-pip install uv      
+pip install uv
 uv sync --frozen
 
 uv tool install nb-cli
@@ -57,18 +51,42 @@ uv run nb orm upgrade
 uv run nb run
 ```
 
+### 数据库迁移
+
+- 当前主数据库与 SDE 数据库均默认使用 PostgreSQL（见 `.env.example` 中的 `SQLALCHEMY_DATABASE_URL` 与 `SDE_DATABASE_URL`）
+- 若你是从旧版 SQLite 升级，可参考 `migrations/sqlite2pgsql.py` 进行数据迁移
+
 ## 📝 简单配置
 
-在 .env.dev 文件中填写你的机器人配置项<br>
+在 `.env.local` 或对应环境的 `.env.*` 文件中填写你的机器人配置项<br>
+
+推荐优先确认以下配置项：
+
+- `SQLALCHEMY_DATABASE_URL`：主数据库连接串（PostgreSQL）
+- `SDE_DATABASE_URL`：SDE 数据库连接串（PostgreSQL）
+- `REDIS_URL`：Redis 连接串
+- `user_agent`：EVE 相关请求必填标识
+- `zkb_listener_method`：`r2z2`（推荐）或 `redisQ`
+- `admin_token`：启用 `/admin` 管理后台登录
+- `billing_enabled` / `billing_unit_price`：订阅积分计费与单价配置
 
 > [!NOTE]
 > zkillboard的wss killmail stream订阅已迁移到 [RedisQ](https://github.com/zKillboard/RedisQ)<br>
-> zkillboard的km推送 又又又迁移到了 [R2Z2](https://github.com/zKillboard/zKillboard/wiki/API-(R2Z2))
+> zkillboard的km推送 又又又迁移到了 [R2Z2](<https://github.com/zKillboard/zKillboard/wiki/API-(R2Z2)>)
 
 ## 📋 功能列表
 
 > [!NOTE]
 > 本机器人正在快速开发状态，饼要一点一点画，饭要一点一点吃
+
+### 🆕 近期更新
+
+- **网页订阅中心**：新增 `/subscription` 页面，统一管理 KM 订阅、建筑通知订阅、EVE 服务器状态订阅；部分旧聊天命令已迁移至网页端
+- **订阅积分网关**：新增账户积分、低余额提醒、余额不足自动暂停、按订阅类型计费等机制
+- **ISK 充值流程**：支持生成支付码，向指定角色转账后自动为会话充值积分
+- **管理后台**：新增 `/admin` 页面，可查看会话、订单、订阅、交易记录，并支持手动加积分与手动确认到账
+- **建筑推送增强**：建筑通知现支持角色授权、分类订阅与更细的事件过滤
+- **数据库升级**：项目已从 SQLite 迁移至 PostgreSQL，配套 Alembic 迁移与 SQLite -> PostgreSQL 迁移脚本已提供
 
 ### 🔧 基础功能
 
@@ -81,20 +99,23 @@ uv run nb run
 > [!WARNING]
 > 斜体的协议名称意味着其协议或其适配器长时间未维护或已失效
 
-| 功能\适配器              |  ONEBOT V11  |  Telegram  |  QQ-API  |  Console  |  开黑啦  |  Discord  |
-|---------------------|:------------:|:----------:|:--------:|:---------:|:-----:|:---------:|
-| 价格查询 ojita          |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
-| 查询统计 zkb          |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
-| 专有名词翻译 trans        |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
-| 虫洞查询 wormhole       |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
-| KM订阅  sub           |      ✅       |     ✅      |    🚫    |     ✅     |   ✅   |     ✅     |
-| 链接预览 link preview   |      ✅       |     ✅      |    📝    |    📝     |  📝   |     ✅     |
-| 旗舰导航规划      JDC     |      🚧      |     🚧     |    🚧    |    🚧     |  🚧   |    🚧     | 🚧       |
-| 合同估价 Janice         |      ✅       |     ✅      |    📝    |    📝     |  📝   |     ✅     |
-| 深渊装备估价 Abyss        |      🚧      |     🚧     |    🚧    |    🚧     |  🚧   |    🚧     | 🚧       |
-| SDE更新               |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
-| 汇率查询 currency       |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
-| EVE服务器状态 eve status |      ✅       |     ✅      |    ✅     |     ✅     |   ✅   |     ✅     |
+| 功能\适配器              | ONEBOT V11 | Telegram |
+| ------------------------ | :--------: | :------: |
+| 价格查询 ojita           |     ✅     |    ✅    |
+| 查询统计 zkb             |     ✅     |    ✅    |
+| 专有名词翻译 trans       |     ✅     |    ✅    |
+| 虫洞查询 wormhole        |     ✅     |    ✅    |
+| KM订阅 sub               |     ✅     |    ✅    |
+| 链接预览 link preview    |     ✅     |    ✅    |
+| 旗舰导航规划 JDC         |     🚧     |    🚧    |
+| 合同估价 Janice          |     ✅     |    ✅    |
+| 深渊装备估价 Abyss       |     🚧     |    🚧    |
+| SDE更新                  |     ✅     |    ✅    |
+| 汇率查询 currency        |     ✅     |    ✅    |
+| EVE服务器状态 eve status |     ✅     |    ✅    |
+
+> [!TIP]
+> 订阅相关能力目前更推荐通过网页端使用：`/subscription` 用于用户自助管理，`/admin` 用于后台运营与支付处理
 
 ## 📊 数据统计
 
