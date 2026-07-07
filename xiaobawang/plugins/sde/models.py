@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, Index, Integer, Numeric, SmallInteger, String, Text
+from sqlalchemy import Boolean, Column, Float, Index, Integer, Numeric, SmallInteger, String, Text
 
 from .db import Base
 
@@ -29,7 +29,7 @@ class InvTypes(Base):
     portionSize = Column(Integer)
     raceID = Column(Integer)
     basePrice = Column(Numeric(19, 4))
-    published = Column(SmallInteger)
+    published = Column(Boolean)
     marketGroupID = Column(Integer)
     iconID = Column(Integer)
     soundID = Column(Integer)

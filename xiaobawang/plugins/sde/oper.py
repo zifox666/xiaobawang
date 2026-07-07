@@ -42,7 +42,7 @@ class SDESearch:
             types_query = select(InvTypes).where(InvTypes.typeID.in_(matched_type_ids))
 
             if market:
-                types_query = types_query.where(and_(InvTypes.marketGroupID.is_not(None), InvTypes.published == 1))
+                types_query = types_query.where(and_(InvTypes.marketGroupID.is_not(None), InvTypes.published.is_(True)))
 
             types_results = await session.execute(types_query)
             types = types_results.scalars().all()
@@ -307,8 +307,7 @@ class SDESearch:
             target_map = {trans.keyID: trans.text for trans in target_translations}
 
             types_query = select(InvTypes).where(
-                # and_(InvTypes.typeID.in_(matched_type_ids), InvTypes.published.is True)
-                and_(InvTypes.typeID.in_(matched_type_ids), InvTypes.published == 1)
+                and_(InvTypes.typeID.in_(matched_type_ids), InvTypes.published.is_(True))
             )
             types_results = await session.execute(types_query)
             types = types_results.scalars().all()
