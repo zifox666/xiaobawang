@@ -416,6 +416,14 @@ html.dark {
     color: var(--bn-muted) !important;
 }
 
+.number-scale-hint {
+    margin-top: 4px;
+    color: var(--bn-muted);
+    font-family: var(--bn-font-mono);
+    font-size: 11px;
+    line-height: 1.2;
+}
+
 /* ── 对话框 ─────────────────────────────────────────────────── */
 .el-dialog {
     background: var(--bn-surface) !important;

@@ -67,7 +67,7 @@ def _generate_code() -> str:
 async def create_payment_order(session_key: str, isk_amount: float) -> PaymentOrder:
     """创建支付订单：生成 8 位码，按汇率换算积分"""
     setting = await get_or_create_setting()
-    credit_amount = int(isk_amount / 1e9 * setting.isk_per_1b)
+    credit_amount = int(isk_amount / 1e8 * setting.isk_per_1b)
     if credit_amount <= 0:
         raise ValueError("金额过小，兑换积分为 0")
 

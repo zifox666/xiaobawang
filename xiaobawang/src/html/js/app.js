@@ -126,7 +126,7 @@ createApp({
         // ── 充值（ESI 钱包） ────────────────────────────────────
         const paymentSetting = reactive({ wallet_character_name: '', wallet_character_id: null, isk_per_1b: 500 });
         const rechargeOrder = reactive({ code: '', isk_amount: 0, credit_amount: 0, status: '', wallet_character_name: '' });
-        const rechargeIsk = ref(1e9);
+        const rechargeIsk = ref(ISK_YI);
         const rechargeCreating = ref(false);
         const rechargeVerifying = ref(false);
         
@@ -623,7 +623,7 @@ createApp({
             loadStructSubs, loadStructCharacters, loadStructCategories, startStructOAuth, saveStructSub, toggleStructSub, delStructSub,
             loadEveStatus, toggleEveStatus, loadTransactions, 
             loadPaymentSetting, createRechargeOrder, verifyRecharge, copyText,
-            formatNumberWithComma, parseNumberWithComma,
+            formatNumberWithComma, parseNumberWithComma, formatIskYi, formatShortScale, ISK_YI,
             minValueInput, minValueHandler, createNumberInputHandler
         };
     }

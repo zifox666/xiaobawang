@@ -1,5 +1,8 @@
 // 工具函数集合
 
+const ISK_YI = 100000000;
+const ISK_BILLION = 1000000000;
+
 /**
  * 数字格式化 - 添加千分位分隔符
  * 移除所有非数字和小数点,然后添加千分位分隔符
@@ -32,6 +35,28 @@ function parseNumberWithComma(value) {
     let cleanValue = String(value).replace(/,/g, '');
     // 返回数值
     return Number(cleanValue) || 0;
+}
+
+function formatIskYi(value, digits = 2) {
+    const num = Number(value) || 0;
+    return (num / ISK_YI).toFixed(digits);
+}
+
+function formatShortScale(value) {
+    if (value === null || value === undefined || value === '') return '';
+    const num = Number(value) || 0;
+    if (!num) return '0';
+
+    const abs = Math.abs(num);
+    const trim = (n) => {
+        const fixed = n >= 100 ? n.toFixed(0) : n >= 10 ? n.toFixed(1) : n.toFixed(2);
+        return fixed.replace(/\.?0+$/, '');
+    };
+
+    if (abs >= ISK_BILLION) return `${trim(num / ISK_BILLION)}b`;
+    if (abs >= 1000000) return `${trim(num / 1000000)}m`;
+    if (abs >= 1000) return `${trim(num / 1000)}k`;
+    return String(num);
 }
 
 /**
@@ -98,8 +123,8 @@ function summarizeCondition(cond, scoreRules) {
     }
     
     if (cond.type === 'value') {
-        const min = cond.min ? (cond.min/1e9).toFixed(2)+'亿' : '不限';
-        const max = cond.max ? (cond.max/1e9).toFixed(2)+'亿' : '不限';
+        const min = cond.min ? formatShortScale(cond.min) : '不限';
+        const max = cond.max ? formatShortScale(cond.max) : '不限';
         return `价值 ${min} - ${max}`;
     }
     

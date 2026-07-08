@@ -136,8 +136,8 @@
                         </el-table-column>
                         <el-table-column label="推送阈值" width="130" align="center">
                             <template #default="{ row }">
-                                <span class="num">{{ (row.min_value / 1e9).toFixed(2) }}</span>
-                                <span style="color: var(--bn-muted); font-size: 12px;"> 亿 ISK</span>
+                                <span class="num">{{ formatShortScale(row.min_value) }}</span>
+                                <span style="color: var(--bn-muted); font-size: 12px;"> ISK</span>
                             </template>
                         </el-table-column>
                         <el-table-column label="条件数" width="80" align="center">
@@ -291,12 +291,13 @@
                                     <el-form label-width="100px">
                                         <el-form-item label="快捷金额">
                                             <div style="display: flex; gap: 8px;">
-                                                <el-button v-for="amt in [1e9, 5e9, 10e9]" :key="amt" size="small" @click="rechargeIsk = amt">{{ amt / 1e9 }} 亿</el-button>
+                                                <el-button v-for="amt in [ISK_YI, 5 * ISK_YI, 10 * ISK_YI]" :key="amt" size="small" @click="rechargeIsk = amt">{{ formatIskYi(amt, 0) }} 亿</el-button>
                                             </div>
                                         </el-form-item>
                                         <el-form-item label="充值金额">
-                                            <el-input-number v-model="rechargeIsk" :min="1e9" :step="1e9" :step-strictly="true" style="width: 200px"></el-input-number>
-                                            <span style="margin-left: 10px; color: var(--bn-muted); font-size: 13px;">ISK（{{ (rechargeIsk / 1e9).toFixed(0) }} 亿 = <span class="num" style="color: var(--bn-primary);">{{ Math.round(rechargeIsk / 1e9 * paymentSetting.isk_per_1b) }}</span> 积分）</span>
+                                            <el-input-number v-model="rechargeIsk" :min="ISK_YI" :step="ISK_YI" :step-strictly="true" style="width: 200px"></el-input-number>
+                                            <span style="margin-left: 10px; color: var(--bn-muted); font-size: 13px;">ISK（{{ formatIskYi(rechargeIsk, 0) }} 亿 = <span class="num" style="color: var(--bn-primary);">{{ Math.round(rechargeIsk / ISK_YI * paymentSetting.isk_per_1b) }}</span> 积分）</span>
+                                            <div class="number-scale-hint">{{ formatShortScale(rechargeIsk) }}</div>
                                         </el-form-item>
                                         <el-form-item>
                                             <el-button type="primary" @click="createRechargeOrder" :loading="rechargeCreating">生成支付码</el-button>
@@ -351,6 +352,7 @@
                                 @blur="minValueHandler.handleBlur"
                                 style="width: 100%">
                             </el-input>
+                            <div class="number-scale-hint">{{ formatShortScale(minValueInput.original) }}</div>
                         </el-form-item>
                         <el-form-item label="启用">
                             <el-switch v-model="subForm.is_enabled"></el-switch>
@@ -431,6 +433,7 @@
                                         placeholder="请输入最小价值"
                                         style="width: 100%">
                                     </el-input>
+                                    <div class="number-scale-hint">{{ formatShortScale(cond.min) }}</div>
                                 </div>
                                 <div>
                                     <label style="font-size: 12px; color: var(--bn-muted-strong);">最大价值 (ISK)</label>
@@ -440,6 +443,7 @@
                                         placeholder="请输入最大价值"
                                         style="width: 100%">
                                     </el-input>
+                                    <div class="number-scale-hint">{{ formatShortScale(cond.max) }}</div>
                                 </div>
                             </div>
 
@@ -491,8 +495,8 @@
     <script src="https://unpkg.com/element-plus"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
-    <script src="/static/js/constants.js"></script>
-    <script src="/static/js/utils.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/constants.js?v=1.0.0"></script>
+    <script src="/static/js/utils.js?v=1.0.2"></script>
+    <script src="/static/js/app.js?v=1.0.2"></script>
 </body>
 </html>

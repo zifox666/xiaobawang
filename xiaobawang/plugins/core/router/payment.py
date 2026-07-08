@@ -23,7 +23,7 @@ router = APIRouter()
 
 
 class CreateOrderRequest(BaseModel):
-    isk_amount: float = Field(..., gt=0, description="充值 ISK 金额（1e9 = 1 亿）")
+    isk_amount: float = Field(..., gt=0, description="充值 ISK 金额（1e8 = 1 亿）")
 
 
 @router.post("/order", summary="创建充值订单")
