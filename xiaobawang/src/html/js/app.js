@@ -621,7 +621,7 @@ createApp({
             getCondTypeLabel, getConditionCount, summarizeConditionWrapper, calcRuleMultiplierWrapper,
             saveSub, delSub, queryEntityWrapper, handleEntitySelect, loadScoreRules, loadTemplates, loadBalance,
             loadStructSubs, loadStructCharacters, loadStructCategories, startStructOAuth, saveStructSub, toggleStructSub, delStructSub,
-            loadEveStatus, toggleEveStatus, loadTransactions, doRecharge,
+            loadEveStatus, toggleEveStatus, loadTransactions, 
             loadPaymentSetting, createRechargeOrder, verifyRecharge, copyText,
             formatNumberWithComma, parseNumberWithComma,
             minValueInput, minValueHandler, createNumberInputHandler
