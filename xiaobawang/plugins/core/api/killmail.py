@@ -35,7 +35,9 @@ async def get_zkb_killmail(
     if not zkb_list:
         try:
             r = await client.get(url=f"https://warbeacon.net/api/killmail/{kill_id}")
-            zkb_list = r.json().get("data", {})
+            r.raise_for_status()
+            zkb_list = r.json()
+            zkb_list[0] = zkb_list.get("data", {})
         except Exception as e:
             logger.error(f"[{kill_id}] 获取 killmail 数据失败: {e}")
 
