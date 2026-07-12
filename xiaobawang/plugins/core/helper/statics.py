@@ -29,21 +29,23 @@ class DataAnalysisHelper:
                 start_date = datetime.now() - timedelta(days=days)
 
                 if group_by == "day":
+                    day_expression = func.to_char(CommandRecord.time, "YYYY-MM-DD")
                     query = (
-                        select(func.strftime("%Y-%m-%d", CommandRecord.time).label("day"), func.count().label("count"))
+                        select(day_expression.label("day"), func.count().label("count"))
                         .where(CommandRecord.time >= start_date)
-                        .group_by(text("day"))
-                        .order_by(text("day"))
+                        .group_by(day_expression)
+                        .order_by(day_expression)
                     )
                     result = await session.execute(query)
                     data = [{"日期": row.day, "命令数": row.count} for row in result.fetchall()]
 
                 elif group_by == "hour":
+                    hour_expression = func.to_char(CommandRecord.time, "HH24")
                     query = (
-                        select(func.strftime("%H", CommandRecord.time).label("hour"), func.count().label("count"))
+                        select(hour_expression.label("hour"), func.count().label("count"))
                         .where(CommandRecord.time >= start_date)
-                        .group_by(text("hour"))
-                        .order_by(text("hour"))
+                        .group_by(hour_expression)
+                        .order_by(hour_expression)
                     )
                     result = await session.execute(query)
                     data = [{"小时": f"{int(row.hour)}时", "命令数": row.count} for row in result.fetchall()]
@@ -94,13 +96,12 @@ class DataAnalysisHelper:
                 start_date = datetime.now() - timedelta(days=days)
 
                 if group_by == "day":
+                    day_expression = func.to_char(KillmailPushRecord.time, "YYYY-MM-DD")
                     query = (
-                        select(
-                            func.strftime("%Y-%m-%d", KillmailPushRecord.time).label("day"), func.count().label("count")
-                        )
+                        select(day_expression.label("day"), func.count().label("count"))
                         .where(KillmailPushRecord.time >= start_date)
-                        .group_by(text("day"))
-                        .order_by(text("day"))
+                        .group_by(day_expression)
+                        .order_by(day_expression)
                     )
                     result = await session.execute(query)
                     data = [{"日期": row.day, "推送数": row.count} for row in result.fetchall()]
@@ -124,7 +125,11 @@ class DataAnalysisHelper:
                             func.count().label("count"),
                         )
                         .where(KillmailPushRecord.time >= start_date)
-                        .group_by(KillmailPushRecord.session_id, KillmailPushRecord.session_type)
+                        .group_by(
+                            KillmailPushRecord.session_id,
+                            KillmailPushRecord.session_type,
+                            KillmailPushRecord.platform,
+                        )
                         .order_by(text("count DESC"))
                         .limit(10)
                     )
@@ -189,20 +194,22 @@ class DataAnalysisHelper:
             async with get_session() as session:
                 start_date = datetime.now() - timedelta(days=days)
 
+                cmd_day_expression = func.to_char(CommandRecord.time, "YYYY-MM-DD")
                 cmd_query = (
-                    select(func.strftime("%Y-%m-%d", CommandRecord.time).label("day"), func.count().label("count"))
+                    select(cmd_day_expression.label("day"), func.count().label("count"))
                     .where(CommandRecord.time >= start_date)
-                    .group_by(text("day"))
-                    .order_by(text("day"))
+                    .group_by(cmd_day_expression)
+                    .order_by(cmd_day_expression)
                 )
                 cmd_result = await session.execute(cmd_query)
                 cmd_data = {row.day: row.count for row in cmd_result.fetchall()}
 
+                km_day_expression = func.to_char(KillmailPushRecord.time, "YYYY-MM-DD")
                 km_query = (
-                    select(func.strftime("%Y-%m-%d", KillmailPushRecord.time).label("day"), func.count().label("count"))
+                    select(km_day_expression.label("day"), func.count().label("count"))
                     .where(KillmailPushRecord.time >= start_date)
-                    .group_by(text("day"))
-                    .order_by(text("day"))
+                    .group_by(km_day_expression)
+                    .order_by(km_day_expression)
                 )
                 km_result = await session.execute(km_query)
                 km_data = {row.day: row.count for row in km_result.fetchall()}
@@ -379,15 +386,18 @@ class DataAnalysisHelper:
                 active_users_result = await session.execute(active_users_query)
                 active_users = active_users_result.scalar() or 0
 
-                new_users_query = (
-                    select(func.count(func.distinct(CommandRecord.sender)))
-                    .select_from(CommandRecord)
-                    .where(
-                        CommandRecord.time >= start_date,
-                        ~CommandRecord.sender.in_(
-                            select(CommandRecord.sender).where(CommandRecord.time < start_date).distinct()
-                        ),
+                first_seen_query = (
+                    select(
+                        CommandRecord.sender.label("sender"),
+                        func.min(CommandRecord.time).label("first_seen"),
                     )
+                    .group_by(CommandRecord.sender)
+                    .subquery()
+                )
+                new_users_query = (
+                    select(func.count())
+                    .select_from(first_seen_query)
+                    .where(first_seen_query.c.first_seen >= start_date)
                 )
                 new_users_result = await session.execute(new_users_query)
                 new_users = new_users_result.scalar() or 0
@@ -396,15 +406,16 @@ class DataAnalysisHelper:
                 if total_users > 0:
                     active_rate = (active_users / total_users) * 100
 
+                day_expression = func.to_char(first_seen_query.c.first_seen, "YYYY-MM-DD")
                 daily_new_users_query = (
                     select(
-                        func.strftime("%Y-%m-%d", CommandRecord.time).label("day"),
-                        func.count(func.distinct(CommandRecord.sender)).label("count"),
+                        day_expression.label("day"),
+                        func.count().label("count"),
                     )
-                    .select_from(CommandRecord)
-                    .where(CommandRecord.time >= start_date)
-                    .group_by(text("day"))
-                    .order_by(text("day"))
+                    .select_from(first_seen_query)
+                    .where(first_seen_query.c.first_seen >= start_date)
+                    .group_by(day_expression)
+                    .order_by(day_expression)
                 )
                 daily_result = await session.execute(daily_new_users_query)
                 daily_new_users = [{"日期": row.day, "新增用户": row.count} for row in daily_result.fetchall()]
@@ -420,7 +431,15 @@ class DataAnalysisHelper:
 
         except Exception as e:
             logger.error(f"获取用户统计数据失败: {e}")
-            return {"error": f"获取数据失败: {e}"}
+            return {
+                "error": f"获取数据失败: {e}",
+                "total_users": 0,
+                "active_users": 0,
+                "new_users": 0,
+                "active_rate": 0,
+                "daily_new_users": [],
+                "period": f"过去{days}天",
+            }
 
     @classmethod
     async def generate(cls, days: int = 30) -> dict | None:
