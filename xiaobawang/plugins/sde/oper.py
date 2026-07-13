@@ -1,3 +1,4 @@
+from typing import ClassVar
 
 from nonebot import logger
 from sqlalchemy import and_, or_, select
@@ -5,11 +6,35 @@ from sqlalchemy import and_, or_, select
 from .cache import cache_result
 from .config import plugin_config
 from .db import get_session
-from .models import TC_CATEGORY_ID, TC_GROUP_ID, TC_TYPES_ID, InvCategories, InvFlags, InvGroups, InvTypes, TrnTranslations
+from .models import (
+    TC_CATEGORY_ID,
+    TC_GROUP_ID,
+    TC_TYPES_ID,
+    DgmTypeAttributes,
+    InvCategories,
+    InvFlags,
+    InvGroups,
+    InvTypes,
+    TrnTranslations,
+)
 from .utils import text_processor
 
 
 class SDESearch:
+    SHIP_SLOT_ATTRIBUTES: ClassVar[dict[int, str]] = {
+        14: "high",
+        13: "med",
+        12: "low",
+        1137: "rig",
+        1367: "subsystem",
+        2056: "service",
+    }
+    SUBSYSTEM_SLOT_MODIFIERS: ClassVar[dict[int, str]] = {
+        1374: "high",
+        1375: "med",
+        1376: "low",
+    }
+
     def __init__(self):
         self.default_lang = plugin_config.sde_default_language
 
@@ -188,6 +213,36 @@ class SDESearch:
             result = await session.execute(query)
             return {row[0]: row[1] for row in result.all()}
 
+    async def get_ship_slot_counts(
+        self, ship_type_id: int | str, subsystem_type_ids: list[int | str] | None = None
+    ) -> dict[str, int]:
+        """获取舰船装配槽数量，并叠加战略巡洋舰子系统的槽位修正。"""
+        ship_type_id = int(ship_type_id)
+        subsystem_ids = {int(type_id) for type_id in (subsystem_type_ids or [])}
+        type_ids = {ship_type_id, *subsystem_ids}
+        attribute_ids = {*self.SHIP_SLOT_ATTRIBUTES, *self.SUBSYSTEM_SLOT_MODIFIERS}
+        slot_counts: dict[str, int] = dict.fromkeys(self.SHIP_SLOT_ATTRIBUTES.values(), 0)
+
+        async with await get_session() as session:
+            query = select(DgmTypeAttributes).where(
+                and_(
+                    DgmTypeAttributes.typeID.in_(type_ids),
+                    DgmTypeAttributes.attributeID.in_(attribute_ids),
+                )
+            )
+            result = await session.execute(query)
+
+            for attribute in result.scalars().all():
+                value = attribute.valueInt if attribute.valueInt is not None else attribute.valueFloat
+                count = max(0, int(value or 0))
+
+                if attribute.typeID == ship_type_id and attribute.attributeID in self.SHIP_SLOT_ATTRIBUTES:
+                    slot_counts[self.SHIP_SLOT_ATTRIBUTES[attribute.attributeID]] = count
+                elif attribute.typeID in subsystem_ids and attribute.attributeID in self.SUBSYSTEM_SLOT_MODIFIERS:
+                    slot_counts[self.SUBSYSTEM_SLOT_MODIFIERS[attribute.attributeID]] += count
+
+        return slot_counts
+
     @cache_result(prefix="type_group_", exclude_args=[0])
     async def get_type_group(self, type_id: int | str, language: str = "zh", _id: bool = False) -> str | int | None:
         """
@@ -225,9 +280,7 @@ class SDESearch:
             return group_name
 
     @cache_result(prefix="group_name_", exclude_args=[0])
-    async def get_group_name(
-        self, group_id: int, language: str | None = None
-    ) -> str | None:
+    async def get_group_name(self, group_id: int, language: str | None = None) -> str | None:
         """
         直接用 group_id 查询船型组的本地化名称。
 

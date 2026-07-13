@@ -35,10 +35,10 @@ class KillmailProcessor:
     async def process_killmail_data(self, killmail_data: dict[str, Any]) -> dict[str, Any]:
         """
         处理和格式化 killmail 数据用于渲染
-        
+
         Args:
             killmail_data: 原始击杀邮件数据
-            
+
         Returns:
             处理后的击杀邮件详细数据
         """
@@ -113,6 +113,7 @@ class KillmailProcessor:
                         entity_names[int(entity_id)] = {"category": category, "name": name}
 
             item_prices: dict[int, Any] = {}
+            flag_info = await sde_search.get_flag_info() or {}
             if type_ids_to_query:
                 item_names = await sde_search.get_type_names(list(type_ids_to_query))
                 type_categories = await sde_search.get_type_category_ids(list(type_ids_to_query))
@@ -144,8 +145,24 @@ class KillmailProcessor:
             formatted_total_value = f"{total_value:,.2f}"
             formatted_drop_value = f"{drop_value:,.2f}"
 
-            # 处理物品
-            slot_data = self._format_items(victim.get("items", []), item_names, await sde_search.get_flag_info(), item_prices, type_categories)
+            # 处理物品和舰船槽位。战略巡洋舰的高/中/低槽由已装子系统共同决定。
+            subsystem_type_ids = [
+                item.get("item_type_id")
+                for item in victim_items
+                if item.get("item_type_id")
+                and self._get_slot_type(flag_info.get(item.get("flag", 0), "")) == "subsystem"
+            ]
+            ship_slot_counts = await sde_search.get_ship_slot_counts(
+                victim_ship_type_id, subsystem_type_ids
+            )
+            slot_data = self._format_items(
+                victim_items,
+                item_names,
+                flag_info,
+                item_prices,
+                type_categories,
+                ship_slot_counts,
+            )
             slot_list_raw = slot_data.get("slotList", [])
 
             # 为每个物品添加市场价格
@@ -173,6 +190,7 @@ class KillmailProcessor:
                 "ship_stats": self._compute_ship_stats(attack_members),
                 "slot_list": slot_list_raw,
                 "slot_list_merged": self._merge_slot_items(slot_list_raw),
+                "ship_slot_counts": ship_slot_counts,
                 "zkb": killmail_data.get("zkb", {}),
                 "labels": await self._process_km_labels(zkb_data.get("labels", [])),
                 "total_value": formatted_total_value,
@@ -375,6 +393,7 @@ class KillmailProcessor:
         self, items: list[dict], item_names: dict[int, dict], flag_info: dict[int, str],
         item_prices: dict[int, Any] | None = None,
         type_categories: dict[int, int] | None = None,
+        slot_counts: dict[str, int] | None = None,
     ) -> dict[str, Any]:
         """
         格式化物品信息，按槽位类型分类并处理嵌套物品。
@@ -387,6 +406,18 @@ class KillmailProcessor:
             type_categories = {}
 
         slot_type_groups: dict[str, dict] = {}
+
+        # 即使某类槽位完全为空，也预先创建分组供 HUD 展示空槽。
+        for slot_type, slot_count in (slot_counts or {}).items():
+            if slot_count <= 0:
+                continue
+            slot_type_groups[slot_type] = {
+                "slotName": self._get_slot_display_name(slot_type),
+                "slotPng": self._get_slot_image_name(slot_type),
+                "slot_items": [],
+                "slotType": slot_type,
+                "slotCount": slot_count,
+            }
 
         # ---- 第一遍：收集武器槽（high/med/low）中的 flat 弹药 ----
         # ammo_by_flag: {flag: [ammo_item_dict, ...]}
@@ -455,6 +486,7 @@ class KillmailProcessor:
                     "slotPng": slot_image,
                     "slot_items": [],
                     "slotType": slot_type,
+                    "slotCount": (slot_counts or {}).get(slot_type, 0),
                 }
 
             item_name = item_names.get(item_type_id, {}).get("translation", f"TypeID: {item_type_id}")
@@ -520,7 +552,17 @@ class KillmailProcessor:
                     })
 
         # 按优先级排序槽位组
-        slot_order = {"high": 1, "med": 2, "low": 3, "rig": 4, "subsystem": 5, "drone": 6, "fighter": 7, "cargo": 8}
+        slot_order = {
+            "high": 1,
+            "med": 2,
+            "low": 3,
+            "rig": 4,
+            "subsystem": 5,
+            "service": 6,
+            "drone": 7,
+            "fighter": 8,
+            "cargo": 9,
+        }
         slot_list = list(slot_type_groups.values())
         slot_list.sort(key=lambda x: slot_order.get(x["slotType"], 999))
 
@@ -636,11 +678,13 @@ class KillmailProcessor:
         elif "rig" in flag_name:
             return "e/eb/Icon_fit_rig"
         elif "drone" in flag_name:
-            return "thumb/0/07/Icon_fit_drone.png/48px-Icon_fit_drone"
+            return "0/07/Icon_fit_drone"
         elif "cargo" in flag_name:
-            return "thumb/8/82/Icon_capacity.png/48px-Icon_capacity"
+            return "5/51/Icon_fit_cargo"
         elif "subsystem" in flag_name:
             return "e/eb/Icon_fit_rig"
+        elif "service" in flag_name:
+            return "5/51/Icon_fit_cargo"
         elif "fighter" in flag_name:
             return "thumb/f/f6/Icon_drone_bandwidth.png/30px-Icon_drone_bandwidth"
         else:
@@ -661,6 +705,8 @@ class KillmailProcessor:
             return "rig"
         elif flag_name.startswith("subsystem"):
             return "subsystem"
+        elif flag_name.startswith("structureserviceslot"):
+            return "service"
         elif "drone" in flag_name:
             return "drone"
         elif "fighter" in flag_name:
@@ -687,6 +733,8 @@ class KillmailProcessor:
             return "货柜仓"
         elif slot_type == "subsystem":
             return "子系统槽位"
+        elif slot_type == "service":
+            return "服务槽"
         elif slot_type == "fighter":
             return "铁骑舰载机机库"
         else:

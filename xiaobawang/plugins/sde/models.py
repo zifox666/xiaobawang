@@ -63,6 +63,17 @@ class InvCategories(Base):
     published = Column(SmallInteger)
 
 
+class DgmTypeAttributes(Base):
+    __tablename__ = "dgmTypeAttributes"
+
+    typeID = Column(Integer, primary_key=True)
+    attributeID = Column(Integer, primary_key=True)
+    valueInt = Column(Integer)
+    valueFloat = Column(Float)
+
+    __table_args__ = (Index("ix_dgmTypeAttributes_attributeID", "attributeID"),)
+
+
 class TrnTranslations(Base):
     __tablename__ = "trnTranslations"
 

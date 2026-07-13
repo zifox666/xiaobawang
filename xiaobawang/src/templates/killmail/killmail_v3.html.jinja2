@@ -19,7 +19,7 @@
 <div class="km-body">
 
   <!-- ═══════════════ LEFT COLUMN — 信息栏 ═══════════════ -->
-  <div class="col-left">
+  <div class="col-left" data-attacker-total="{{ attacker_number }}" data-min-participants="15">
 
     <!-- Character card -->
     <div class="char-card">
@@ -186,10 +186,10 @@
       <span>总伤害 {{ victim.damage_taken }}</span>
     </div>
 
-    <!-- Participant rows (max 15) -->
+    <!-- Participant rows: JS 根据中间栏实际高度动态决定展示数量 -->
     {% for attacker in attackMember %}
-    {% if loop.index <= 15 %}
-    <div class="prow{% if loop.first %} final-blow{% endif %}">
+    <div class="prow{% if loop.first %} final-blow{% endif %}{% if loop.index > 15 %} participant-hidden{% endif %}"
+         data-participant-row>
       <div class="pav">
         {% if attacker.attacker_id %}
         <img src="https://images.newdoublex.space/characters/{{ attacker.attacker_id }}/portrait?size=64"
@@ -225,14 +225,13 @@
         <div class="ppct">{{ attacker.damage_percent }}%</div>
       </div>
     </div>
-    {% endif %}
     {% endfor %}
 
-    {% if attacker_number > 15 %}
-    <div class="part-more">还有 {{ attacker_number - 15 }} 名参与者未展示</div>
-    {% elif attacker_number > attackMember|length %}
-    <div class="part-more">还有 {{ attacker_number - attackMember|length }} 名参与者未展示</div>
-    {% endif %}
+    {% set initial_visible = 15 if attackMember|length > 15 else attackMember|length %}
+    {% set initial_hidden = attacker_number - initial_visible %}
+    <div class="part-more{% if initial_hidden <= 0 %} participant-hidden{% endif %}" data-participant-more>
+      还有 {{ initial_hidden }} 名参与者未展示
+    </div>
 
   </div><!-- /col-left -->
 
@@ -251,10 +250,20 @@
         </div>
         {% set pfx_map = {'high':'h','med':'m','low':'l','rig':'r','subsystem':'ss','service':'sv'} %}
         {% set max_slots_map = {'h':8,'m':8,'l':8,'r':3,'ss':4,'sv':5} %}
+        {% set empty_slot_images = {
+          'high':'https://wiki.eveuniversity.org/images/3/3c/Icon_fit_high.png',
+          'med':'https://wiki.eveuniversity.org/images/9/9a/Icon_fit_medium.png',
+          'low':'https://wiki.eveuniversity.org/images/e/e6/Icon_fit_low.png',
+          'rig':'https://wiki.eveuniversity.org/images/e/eb/Icon_fit_rig.png',
+          'subsystem':'https://wiki.eveuniversity.org/images/e/eb/Icon_fit_rig.png',
+          'service':'https://wiki.eveuniversity.org/images/5/51/Icon_fit_cargo.png',
+          'cargo':'https://wiki.eveuniversity.org/images/5/51/Icon_fit_cargo.png',
+          'drone':'https://wiki.eveuniversity.org/images/0/07/Icon_fit_drone.png'
+        } %}
         {% for slot in slot_list %}
         {% if slot.slotType in pfx_map %}
         {% set pfx = pfx_map[slot.slotType] %}
-        {% set max_slots = max_slots_map[pfx] if pfx in max_slots_map else 8 %}
+        {% set max_slots = slot.slotCount if slot.slotCount is defined and slot.slotCount > 0 else max_slots_map[pfx] %}
         {% set ns = namespace(pos=1) %}
         {% for item in slot.slot_items %}
         {% set count = item.item_number if item.item_number is defined else 1 %}
@@ -279,6 +288,13 @@
         {% set ns.pos = ns.pos + 1 %}
         {% endfor %}
         {% endif %}
+        {% endfor %}
+        {% for _ in range(ns.pos, max_slots + 1) %}
+        {% set slot_cls = pfx ~ ns.pos %}
+        <div class="slot empty {{ slot_cls }}" title="空{{ slot.slotName }}">
+          <img src="{{ empty_slot_images[slot.slotType] }}" />
+        </div>
+        {% set ns.pos = ns.pos + 1 %}
         {% endfor %}
         {% endif %}
         {% endfor %}

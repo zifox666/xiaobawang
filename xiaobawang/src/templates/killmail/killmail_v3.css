@@ -183,6 +183,8 @@ a { color: inherit; text-decoration: none; }
   overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 .slot img { width: 32px; height: 32px; object-fit: contain; display: block; }
+.slot.empty { background: rgba(5,8,14,0.72); border-color: rgba(100,130,170,0.16); }
+.slot.empty img { opacity: 0.42; }
 .slot.drop {
   border-color: rgba(70,190,110,0.55);
   background: rgba(15,38,22,0.93);
@@ -206,8 +208,9 @@ a { color: inherit; text-decoration: none; }
 .l4{top:378px;left:210px}.l5{top:378px;left:178px}.l6{top:373px;left:146px}
 .l7{top:362px;left:116px}.l8{top:346px;left:88px}
 .r1{top:88px;left:43px}.r2{top:116px;left:26px}.r3{top:146px;left:15px}
-.ss1{top:300px;left:43px}.ss2{top:272px;left:26px}.ss3{top:242px;left:15px}.ss4{top:210px;left:10px}
-.sv1{top:194px;left:9px}.sv2{top:226px;left:12px}.sv3{top:257px;left:20px}.sv4{top:287px;left:34px}.sv5{top:313px;left:52px}
+.ss1{top:300px;left:43px}.ss2{top:272px;left:26px}.ss3{top:242px;left:15px}.ss4{top:210px;left:10px}.ss5{top:178px;left:10px}
+.sv1{top:194px;left:9px}.sv2{top:226px;left:12px}.sv3{top:257px;left:20px}.sv4{top:287px;left:34px}
+.sv5{top:313px;left:52px}.sv6{top:334px;left:72px}.sv7{top:350px;left:98px}.sv8{top:362px;left:127px}
 .slot.ammo { width:24px;height:24px;border:1px solid rgba(80,120,200,0.18);background:rgba(10,12,20,0.9); }
 .slot.ammo img { width:24px;height:24px; }
 .slot.ammo.h1{top:71px;left:109px}.slot.ammo.h2{top:58px;left:133px}.slot.ammo.h3{top:48px;left:158px}
@@ -220,7 +223,8 @@ a { color: inherit; text-decoration: none; }
 .slot.ammo.l4{top:352px;left:212px}.slot.ammo.l5{top:352px;left:184px}.slot.ammo.l6{top:348px;left:158px}
 .slot.ammo.l7{top:338px;left:133px}.slot.ammo.l8{top:325px;left:109px}
 .slot.ammo.r1{top:109px;left:71px}.slot.ammo.r2{top:133px;left:58px}.slot.ammo.r3{top:158px;left:48px}
-.slot.ammo.ss1{top:287px;left:71px}.slot.ammo.ss2{top:264px;left:58px}.slot.ammo.ss3{top:238px;left:48px}.slot.ammo.ss4{top:212px;left:44px}
+.slot.ammo.ss1{top:287px;left:71px}.slot.ammo.ss2{top:264px;left:58px}.slot.ammo.ss3{top:238px;left:48px}
+.slot.ammo.ss4{top:212px;left:44px}.slot.ammo.ss5{top:184px;left:44px}
 
 /* Equipment list */
 .fit-section {
@@ -348,6 +352,7 @@ a { color: inherit; text-decoration: none; }
   padding: 5px 10px; font-size: 10px; color: var(--text-sec);
   text-align: center; border-top: 1px solid var(--border); flex-shrink: 0;
 }
+.participant-hidden { display: none !important; }
 
 /* ===== Footer ===== */
 .km-footer {
