@@ -285,8 +285,8 @@ class KillmailProcessor:
 
     @classmethod
     def _merge_slot_items(cls, slot_list: list[dict]) -> list[dict]:
-        """将同类物品合并为单行，使用 qty_dropped + qty_destroyed 格式。
-        带 nested_items 的条目（武器/弹药）与普通条目统一按 item_id 合并。
+        """将同类且掉落状态相同的物品合并为单行。
+        带 nested_items 的条目（武器/弹药）与普通条目统一按 item_id 和掉落状态合并。
         no_merge=True 的条目（货仓容器/快递包裹）保持独立行，不与同类型合并。"""
         merged_slots = []
         for slot in slot_list:
@@ -311,7 +311,8 @@ class KillmailProcessor:
                     })
                     continue
 
-                key = (item["item_id"], item.get("blueprint", False))
+                drop_state = "drop" if item.get("drop") == "drop" else "destroyed"
+                key = (item["item_id"], item.get("blueprint", False), drop_state)
 
                 if key not in merged:
                     merged[key] = {
