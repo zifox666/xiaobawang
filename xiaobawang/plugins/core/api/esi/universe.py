@@ -84,6 +84,18 @@ class ESIClient(BaseClient):
         else:
             return None
 
+    async def get_structure_info(
+        self,
+        structure_id: int,
+        access_token: str,
+    ) -> dict[str, Any]:
+        """Get an accessible Upwell structure's details with character auth."""
+        return await self._get(
+            f"/universe/structures/{structure_id}/",
+            params={"datasource": "tranquility"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
     @cache_result(expire_time=7 * cache.TIME_DAY, prefix="esi_system_", exclude_args=[0])  # 缓存1天
     async def get_system_info(self, system_id: int) -> dict[str, Any]:
         """

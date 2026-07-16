@@ -129,7 +129,7 @@ async def _poll_job():
 
 test_structure_notification = on_alconna(
     Alconna(
-        "test_struct_notify", 
+        "test_struct_notify",
         meta=CommandMeta(description="测试建筑通知推送", hide=True),
     ),
     use_cmd_start=True,

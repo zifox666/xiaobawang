@@ -3,8 +3,8 @@ from typing import Any
 import httpx
 from nonebot import logger
 
-from ..utils.common.http_client import get_client
 from ..config import plugin_config
+from ..utils.common.http_client import get_client
 
 
 class BaseClient:
@@ -18,7 +18,12 @@ class BaseClient:
         self.headers: dict[str, str] = {}
         self.headers["user-agent"] = plugin_config.user_agent
 
-    async def _get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict:
+    async def _get(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> dict:
         """
         GET
         :param endpoint: 接口地址
@@ -28,7 +33,8 @@ class BaseClient:
         url = f"{self._base_url}{endpoint}"
 
         try:
-            response = await self._client.get(url, params=params, headers=self.headers)
+            request_headers = {**self.headers, **(headers or {})}
+            response = await self._client.get(url, params=params, headers=request_headers)
             logger.debug(f"[{endpoint}]{response.status_code} {response.url}")
             response.raise_for_status()
             return response.json()

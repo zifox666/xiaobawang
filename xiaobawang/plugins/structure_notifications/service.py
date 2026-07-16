@@ -24,6 +24,7 @@ from .models import StructureNotificationRecord, StructureNotificationSub
 # 注册本插件所需的 ESI scopes
 require_scopes("structure_notifications", [
     "esi-characters.read_notifications.v1",
+    "esi-universe.read_structures.v1",
 ])
 
 cache = get_cache("structure_notifications")
@@ -103,6 +104,11 @@ IMPLICIT_ID_KEYS = {
     "cancelledBy",
     "firedBy",
     "startedBy",
+}
+
+STRUCTURE_ID_KEYS = {
+    "structureID",
+    "structureIDs",
 }
 
 ID_KEY_RE = re.compile(r"(?:^|[A-Z_])(id|ids)$", re.IGNORECASE)
@@ -285,14 +291,14 @@ async def format_notification(record: StructureNotificationRecord, character_nam
 
     # 尝试解析 text 字段中的关键信息
     if record.text:
-        parsed = await _parse_notification_text(record.text)
+        parsed = await _parse_notification_text(record.text, record.character_id)
         if parsed:
             lines.append(parsed)
 
     return "\n".join(lines)
 
 
-async def _parse_notification_text(text: str) -> str:
+async def _parse_notification_text(text: str, character_id: int) -> str:
     """从 ESI YAML-like text 中解析全部可读字段，并批量解析 ID 名称。"""
     if not text:
         return ""
@@ -307,7 +313,9 @@ async def _parse_notification_text(text: str) -> str:
         return text.strip()
 
     ids = sorted(_collect_lookup_ids(data))
+    structure_ids = sorted(_collect_structure_ids(data))
     names = await _get_id_names(ids)
+    names.update(await _get_structure_names(structure_ids, character_id))
 
     lines: list[str] = []
     for key, value in data.items():
@@ -347,8 +355,6 @@ def _collect_lookup_ids(value: Any, key: str | None = None) -> set[int]:
         if key == "allStructureInfo":
             for item in value:
                 if isinstance(item, list):
-                    if len(item) >= 1:
-                        ids.update(_collect_lookup_ids(item[0], "structureID"))
                     if len(item) >= 3:
                         ids.update(_collect_lookup_ids(item[2], "structureTypeID"))
             return ids
@@ -361,9 +367,35 @@ def _collect_lookup_ids(value: Any, key: str | None = None) -> set[int]:
             ids.update(_collect_lookup_ids(item, key))
         return ids
 
-    if _should_lookup_id(key) and isinstance(value, int):
+    if _should_lookup_id(key) and not _is_structure_id_key(key) and isinstance(value, int):
         ids.add(value)
     return ids
+
+
+def _collect_structure_ids(value: Any, key: str | None = None) -> set[int]:
+    ids: set[int] = set()
+    if isinstance(value, dict):
+        for child_key, child_value in value.items():
+            ids.update(_collect_structure_ids(child_value, str(child_key)))
+        return ids
+
+    if isinstance(value, list):
+        if key == "allStructureInfo":
+            for item in value:
+                if isinstance(item, list) and item and isinstance(item[0], int):
+                    ids.add(item[0])
+            return ids
+        for item in value:
+            ids.update(_collect_structure_ids(item, key))
+        return ids
+
+    if _is_structure_id_key(key) and isinstance(value, int):
+        ids.add(value)
+    return ids
+
+
+def _is_structure_id_key(key: str | None) -> bool:
+    return bool(key and key in STRUCTURE_ID_KEYS)
 
 
 def _should_lookup_id(key: str | None) -> bool:
@@ -379,19 +411,62 @@ def _should_lookup_id(key: str | None) -> bool:
 async def _get_id_names(ids: list[int]) -> dict[int, str]:
     if not ids:
         return {}
+
     try:
         names_data = await esi_client.get_names(ids)
     except Exception as e:
-        logger.error(f"建筑通知 ESI 名称解析失败: {e}")
+        logger.warning(f"建筑通知 ESI 名称批量解析失败，准备拆分重试: ids={ids}, error={e}")
+        names_data = None
+
+    names: dict[int, str] = {}
+    if names_data:
+        for category_values in names_data.values():
+            if isinstance(category_values, dict):
+                for item_id, name in category_values.items():
+                    names[int(item_id)] = name
+
+    missing_ids = [item_id for item_id in ids if item_id not in names]
+    if not missing_ids:
+        return names
+    if len(ids) == 1:
+        logger.warning(f"建筑通知 ID 名称解析失败，保留原始 ID: {ids[0]}")
+        return names
+
+    midpoint = max(1, len(missing_ids) // 2)
+    names.update(await _get_id_names(missing_ids[:midpoint]))
+    names.update(await _get_id_names(missing_ids[midpoint:]))
+    return names
+
+
+async def _get_structure_names(structure_ids: list[int], character_id: int) -> dict[int, str]:
+    if not structure_ids:
+        return {}
+
+    try:
+        token_info = await get_access_token(
+            character_id,
+            required_scopes=["esi-universe.read_structures.v1"],
+        )
+    except (KeyError, TypeError, ValueError) as e:
+        logger.warning(f"建筑通知无法获取建筑查询授权，建筑名称将保留 ID: character={character_id}, error={e}")
+        return {}
+
+    access_token = token_info.get("access_token")
+    if not access_token:
+        logger.warning(f"建筑通知 access token 为空，建筑名称将保留 ID: character={character_id}")
         return {}
 
     names: dict[int, str] = {}
-    if not names_data:
-        return names
-    for category_values in names_data.values():
-        if isinstance(category_values, dict):
-            for item_id, name in category_values.items():
-                names[int(item_id)] = name
+    for structure_id in structure_ids:
+        try:
+            structure = await esi_client.get_structure_info(structure_id, access_token)
+            name = structure.get("name") if isinstance(structure, dict) else None
+            if name:
+                names[structure_id] = str(name)
+            else:
+                logger.warning(f"建筑通知建筑名称为空，保留原始 ID: {structure_id}")
+        except Exception as e:
+            logger.warning(f"建筑通知建筑名称解析失败，保留原始 ID: {structure_id}, error={e}")
     return names
 
 
@@ -449,10 +524,13 @@ def _format_list_field(label: str, key: str, value: list[Any], names: dict[int, 
                 structure_name = item[1] if len(item) >= 2 else ""
                 structure_type = item[2] if len(item) >= 3 else None
                 parts = []
-                if structure_name:
-                    parts.append(str(structure_name))
                 if isinstance(structure_id, int):
-                    parts.append(f"ID {structure_id}")
+                    resolved_name = names.get(structure_id) or structure_name
+                    parts.append(
+                        f"{resolved_name} ({structure_id})" if resolved_name else str(structure_id)
+                    )
+                elif structure_name:
+                    parts.append(str(structure_name))
                 if isinstance(structure_type, int):
                     parts.append(f"类型 {_format_scalar('structureTypeID', structure_type, names)}")
                 lines.append(f"  - {' / '.join(parts) if parts else item}")
