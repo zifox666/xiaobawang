@@ -74,6 +74,68 @@ class DgmTypeAttributes(Base):
     __table_args__ = (Index("ix_dgmTypeAttributes_attributeID", "attributeID"),)
 
 
+class DgmAttributeTypes(Base):
+    __tablename__ = "dgmAttributeTypes"
+
+    attributeID = Column(Integer, primary_key=True)
+    attributeName = Column(String(100))
+    description = Column(String(1000))
+    iconID = Column(Integer)
+    defaultValue = Column(Float)
+    published = Column(Boolean)
+    displayName = Column(String(150))
+    unitID = Column(Integer)
+    stackable = Column(Boolean)
+    highIsGood = Column(Boolean)
+    categoryID = Column(Integer)
+
+
+class DgmEffects(Base):
+    __tablename__ = "dgmEffects"
+
+    effectID = Column(Integer, primary_key=True)
+    effectName = Column(String(400))
+    effectCategory = Column(Integer)
+    published = Column(Boolean)
+    displayName = Column(String(100))
+
+
+class DgmTypeEffects(Base):
+    __tablename__ = "dgmTypeEffects"
+
+    typeID = Column(Integer, primary_key=True)
+    effectID = Column(Integer, primary_key=True)
+    isDefault = Column(Boolean)
+
+
+class EveUnits(Base):
+    __tablename__ = "eveUnits"
+
+    unitID = Column(Integer, primary_key=True)
+    unitName = Column(String(100))
+    displayName = Column(String(50))
+    description = Column(String(1000))
+
+
+class EveIcons(Base):
+    __tablename__ = "eveIcons"
+
+    iconID = Column(Integer, primary_key=True)
+    iconFile = Column(String(500))
+    description = Column(Text)
+
+
+class InvTraits(Base):
+    __tablename__ = "invTraits"
+
+    traitID = Column(Integer, primary_key=True)
+    typeID = Column(Integer)
+    skillID = Column(Integer)
+    bonus = Column(Float)
+    bonusText = Column(Text)
+    unitID = Column(Integer)
+
+
 class TrnTranslations(Base):
     __tablename__ = "trnTranslations"
 

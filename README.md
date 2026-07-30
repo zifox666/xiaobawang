@@ -113,6 +113,7 @@ uv run nb run
 | SDE更新                  |     ✅     |    ✅    |
 | 汇率查询 currency        |     ✅     |    ✅    |
 | EVE服务器状态 eve status |     ✅     |    ✅    |
+| 物品信息查询 item        |     ✅     |    ✅    |
 
 > [!TIP]
 > 订阅相关能力目前更推荐通过网页端使用：`/subscription` 用于用户自助管理，`/admin` 用于后台运营与支付处理

@@ -51,6 +51,15 @@ help_data = {
                     ],
                     "desc": "查询虫洞星系的相关信息,例如/cd J111613或/cd D792",
                 },
+                {
+                    "title": "查询物品信息",
+                    "new": True,
+                    "hot": False,
+                    "commands": [
+                        "/item 物品名称",
+                    ],
+                    "desc": "查询物品信息，包括市场价格、属性等",
+                }
             ],
         },
         {
@@ -153,6 +162,15 @@ help_en_data = {
                     ],
                     "desc": "Query information related to wormhole systems, for example /cd J111613 or /cd D792",
                 },
+                {
+                    "title": "Query Item Information",
+                    "new": True,
+                    "hot": False,
+                    "commands": [
+                        "/item item_name",
+                    ],
+                    "desc": "Query item information, including market prices, attributes, and more.",
+                }
             ],
         },
         {
