@@ -72,7 +72,7 @@ help_data = {
                     "new": False,
                     "hot": False,
                     "commands": ["访问下面网址"],
-                    "desc": "访问 https://xbw.newdoublex.space/subcribtion",
+                    "desc": "访问 https://xbw.newdoublex.space/subscription",
                 },
             ],
         },
@@ -226,7 +226,7 @@ async def _(event: Event):
         data = help_en_data
     await help.send(
         UniMessage.text(
-            "文档：https://zifox666.github.io/xiaobawang/ \n订阅管理(开服状态/km/建筑通知)：https://xbw.newdoublex.space/subcribtion",
+            "文档：https://zifox666.github.io/xiaobawang/ \n订阅管理(开服状态/km/建筑通知)：https://xbw.newdoublex.space/subscription \n",
         )
     )
     await help.finish(

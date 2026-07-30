@@ -359,7 +359,7 @@ class BillingGateway:
                 f"积分余额不足提醒\n"
                 f"当前余额: {balance}\n"
                 f"部分订阅推送可能已暂停\n"
-                f"前往 https://xbw.newdoublex.space/subcribtion 进行管理"
+                f"前往 https://xbw.newdoublex.space/subscription 进行管理"
             )
             await UniMessage.text(msg).send(target=target)
             await cache.set(notify_key, 1, expire=3600)
