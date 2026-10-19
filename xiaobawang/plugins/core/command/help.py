@@ -74,7 +74,7 @@ help_data = {
                         "/zkb 名称",
                         "/zkb 名称 -t corporation",
                     ],
-                    "desc": "查询zkb的统计信息,可以使用 -t [type] 来查询指定类型信息。目前只支持corporation, character",
+                    "desc": "查询zkb的统计信息,可以使用 -t [type] 来查询指定类型信息。类型可选 character/corporation/alliance/faction/ship/group/system/region（人物/军团/联盟/势力/舰船/类别/星系/星域）",
                 },
                 {
                     "title": "查询zkb排行榜",

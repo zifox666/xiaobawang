@@ -16,7 +16,18 @@ class ZkillboardApi(BaseClient):
         super().__init__()
         self._base_url: str = "https://zkillboard.com/api"
         self._site_url: str = "https://zkillboard.com"
-        self._allowed_types: list[str] = ["character", "corporation", "alliance"]
+        # 短类型名 -> zkillboard API 实体类型名
+        self._type_map: dict[str, str] = {
+            "character": "characterID",
+            "corporation": "corporationID",
+            "alliance": "allianceID",
+            "faction": "factionID",
+            "ship": "shipTypeID",
+            "group": "groupID",
+            "system": "solarSystemID",
+            "region": "regionID",
+        }
+        self._allowed_types: list[str] = list(self._type_map.keys())
         # Top Ranks 页面支持的实体类型（group 类型页面返回 403，不支持）
         self._rank_types: list[str] = ["character", "corporation", "alliance", "faction", "shipType"]
         # Top Ranks 支持的排序键（overallRank 为综合排名，其余为指标列）
@@ -24,6 +35,18 @@ class ZkillboardApi(BaseClient):
             "overallRank", "shipsDestroyed", "shipsLost",
             "pointsDestroyed", "pointsLost", "iskDestroyed", "iskLost",
         ]
+
+    def _resolve_type(self, type_: str) -> str:
+        """
+        解析实体类型为 zkillboard API 类型名
+        :param type_: 短类型名(character/corporation/...) 或 API 类型名(characterID/...)
+        :return: API 类型名
+        """
+        if type_ in self._type_map:
+            return self._type_map[type_]
+        if type_ in self._type_map.values():
+            return type_
+        raise ValueError(f"不支持的类型: {type_}")
 
     @cache_result(expire_time=5 * cache.TIME_MIN, prefix="zkill:get_stats", exclude_args=[0])
     async def get_stats(
@@ -41,7 +64,7 @@ class ZkillboardApi(BaseClient):
             raise ValueError(f"不支持的类型: {type_}")
 
         try:
-            endpoint = f"/stats/{type_}ID/{id_}/"
+            endpoint = f"/stats/{self._type_map[type_]}/{id_}/"
             data = await self._get(endpoint)
             return data
         except Exception as e:
@@ -56,15 +79,12 @@ class ZkillboardApi(BaseClient):
     ) -> dict[str, Any] | None:
         """
         获取击杀列表
-        :param type_:
+        :param type_: 短类型名或 API 类型名（characterID 等，stats 响应的 type 字段可直接传入）
         :param id_:
         :return:
         """
-        if type_ not in self._allowed_types:
-            raise ValueError(f"不支持的类型: {type_}")
-
         try:
-            endpoint = f"/{type_}ID/{id_}/"
+            endpoint = f"/{self._resolve_type(type_)}/{id_}/"
             data = await self._get(endpoint)
             return data
         except Exception as e:

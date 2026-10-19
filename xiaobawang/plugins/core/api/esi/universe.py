@@ -7,7 +7,8 @@ from ...utils.common.cache import cache, cache_result
 from ..base import BaseClient
 
 ALLOW_CATEGORY = Literal[
-    "agents", "corporations", "characters", "alliances", "systems", "constellations", "regions", "stations"
+    "agents", "corporations", "characters", "alliances", "systems", "constellations", "regions", "stations",
+    "factions", "inventory_types",
 ]
 
 

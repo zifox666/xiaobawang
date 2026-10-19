@@ -35,6 +35,8 @@
         html.dark .hover\:bg-gray-50:hover { background-color: rgba(55,65,81,0.5) !important; }
         html.dark .bg-indigo-100 { background-color: #312e81 !important; }
         html.dark .text-indigo-800 { color: #a5b4fc !important; }
+        html.dark .bg-blue-100 { background-color: #1e3a8a !important; }
+        html.dark .text-blue-700 { color: #93c5fd !important; }
 
         /* 暗夜模式切换按钮 */
         #dark-mode-toggle {
@@ -111,81 +113,130 @@
             </div>
             {% endif %}
 
-            {% if stats._type == "characterID" %}
-            <!-- 角色基本信息 -->
             <div class="flex flex-col md:flex-row items-start md:items-center">
                 <div class="flex-shrink-0 mb-4 md:mb-0 md:mr-6">
+                    {% if stats._type == "characterID" %}
                     <img src="https://images.evetech.net/characters/{{ stats._id }}/portrait?size=128" alt="{{ stats.name }}" class="w-32 h-32 rounded-md">
+                    {% elif stats._type == "corporationID" %}
+                    <img src="https://images.evetech.net/corporations/{{ stats._id }}/logo?size=128" alt="{{ stats.name }}" class="w-32 h-32 rounded-md">
+                    {% elif stats._type == "allianceID" %}
+                    <img src="https://images.evetech.net/alliances/{{ stats._id }}/logo?size=128" alt="{{ stats.name }}" class="w-32 h-32 rounded-md">
+                    {% elif stats._type == "shipTypeID" %}
+                    <img src="https://images.evetech.net/types/{{ stats._id }}/render?size=128" alt="{{ stats.name }}" class="w-32 h-32 rounded-md">
+                    {% else %}
+                    <div class="w-32 h-32 rounded-md bg-blue-100 flex items-center justify-center">
+                        <span class="text-5xl font-bold text-blue-700">{{ stats.name[0] if stats.name else '?' }}</span>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="flex-grow">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between">
-                        <div>
-                            <p class="text-2xl font-bold flex items-center">
-                                <span>{{ stats.name }}</span>
-                                {% if stats.title %}
-                                <span class="inline-block ml-2 px-2 py-0.5 text-xs font-semibold rounded-md bg-indigo-100 text-indigo-800 self-start mt-2">
-                                    {{ stats.title }}
-                                </span>
-                                {% endif %}
-                            </p>
-                            <div class="mt-2 flex items-center">
-                                <img src="https://images.evetech.net/corporations/{{ stats.corporation_id }}/logo?size=64" alt="{{ stats.corporation_name }}" class="w-6 h-6 mr-2">
-                                <span class="text-gray-600">军团：</span>
-                                <span class="hover:text-blue-800 ml-1">{{ stats.corporation_name }}</span>
-                            </div>
-                            {% if stats.alliance_id %}
-                            <div class="mt-2 flex items-center">
-                                <img src="https://images.evetech.net/alliances/{{ stats.alliance_id }}/logo?size=64" alt="{{ stats.alliance_name }}" class="w-6 h-6 mr-2">
-                                <span class="text-gray-600">联盟：</span>
-                                <span class="hover:text-blue-800 ml-1">{{ stats.alliance_name }}</span>
-                            </div>
-                            {% endif %}
-                            <div class="mt-1 text-gray-600">
-                                <span>出生日期：{{ stats.birthday.strftime('%Y-%m-%d') }}</span>
-                                <span class="ml-4">安等：
-                                    <span class="{% if stats.security_status < 0 %}text-red-600{% else %}text-blue-600{% endif %}">
-                                        {{ "%.2f"|format(stats.security_status) }}
-                                    </span>
-                                </span>
-                            </div>
-                        </div>
+                    <p class="text-2xl font-bold flex items-center flex-wrap">
+                        <span>{{ stats.name }}</span>
+                        {% if stats._type == "characterID" and stats.title %}
+                        <span class="inline-block ml-2 px-2 py-0.5 text-xs font-semibold rounded-md bg-indigo-100 text-indigo-800 self-start mt-2">
+                            {{ stats.title }}
+                        </span>
+                        {% endif %}
+                        {% if stats._type in ["corporationID", "allianceID"] and stats.ticker %}
+                        <span class="inline-block ml-2 px-2 py-0.5 text-xs font-semibold rounded-md bg-indigo-100 text-indigo-800 self-start mt-2">
+                            [{{ stats.ticker }}]
+                        </span>
+                        {% endif %}
+                        {% if stats._type == "shipTypeID" and stats.group_name %}
+                        <span class="inline-block ml-2 px-2 py-0.5 text-xs font-semibold rounded-md bg-indigo-100 text-indigo-800 self-start mt-2">
+                            {{ stats.group_name }}
+                        </span>
+                        {% endif %}
+                    </p>
+
+                    {% if stats._type == "characterID" %}
+                    <div class="mt-2 flex items-center">
+                        <img src="https://images.evetech.net/corporations/{{ stats.corporation_id }}/logo?size=64" alt="{{ stats.corporation_name }}" class="w-6 h-6 mr-2">
+                        <span class="text-gray-600">军团：</span>
+                        <span class="hover:text-blue-800 ml-1">{{ stats.corporation_name }}</span>
                     </div>
+                    {% if stats.alliance_id %}
+                    <div class="mt-2 flex items-center">
+                        <img src="https://images.evetech.net/alliances/{{ stats.alliance_id }}/logo?size=64" alt="{{ stats.alliance_name }}" class="w-6 h-6 mr-2">
+                        <span class="text-gray-600">联盟：</span>
+                        <span class="hover:text-blue-800 ml-1">{{ stats.alliance_name }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="mt-1 text-gray-600">
+                        <span>出生日期：{{ stats.birthday.strftime('%Y-%m-%d') }}</span>
+                        <span class="ml-4">安等：
+                            <span class="{% if stats.security_status < 0 %}text-red-600{% else %}text-blue-600{% endif %}">
+                                {{ "%.2f"|format(stats.security_status) }}
+                            </span>
+                        </span>
+                    </div>
+                    {% elif stats._type == "corporationID" %}
+                    {% if stats.alliance_id %}
+                    <div class="mt-2 flex items-center">
+                        <img src="https://images.evetech.net/alliances/{{ stats.alliance_id }}/logo?size=64" alt="{{ stats.alliance_name }}" class="w-6 h-6 mr-2">
+                        <span class="text-gray-600">联盟：</span>
+                        <span class="hover:text-blue-800 ml-1">{{ stats.alliance_name }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="mt-2 flex items-center">
+                        <img src="https://images.evetech.net/characters/{{ stats.ceo_id }}/portrait?size=64" alt="{{ stats.ceo_name }}" class="w-6 h-6 mr-2 rounded-full">
+                        <span class="text-gray-600">CEO：</span>
+                        <span class="hover:text-blue-800 ml-1">{{ stats.ceo_name }}</span>
+                    </div>
+                    <div class="mt-1">
+                        <span class="text-gray-600">成员数：{{ stats.member_count }}</span>
+                        <span class="ml-4 text-gray-600">创建日期：{{ stats.date_founded.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    {% elif stats._type == "allianceID" %}
+                    {% if stats.executor_corp_name %}
+                    <div class="mt-2 flex items-center">
+                        <img src="https://images.evetech.net/corporations/{{ stats.executor_corp_id }}/logo?size=64" alt="{{ stats.executor_corp_name }}" class="w-6 h-6 mr-2">
+                        <span class="text-gray-600">执行军团：</span>
+                        <span class="hover:text-blue-800 ml-1">{{ stats.executor_corp_name }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="mt-1">
+                        <span class="text-gray-600">成员数：{{ stats.member_count }}</span>
+                        <span class="ml-4 text-gray-600">军团数：{{ stats.corp_count }}</span>
+                        {% if stats.date_founded %}
+                        <span class="ml-4 text-gray-600">创建日期：{{ stats.date_founded.strftime('%Y-%m-%d') }}</span>
+                        {% endif %}
+                    </div>
+                    {% elif stats._type == "solarSystemID" %}
+                    <div class="mt-2 text-gray-600">
+                        <span>安等：
+                            <span class="{% if stats.security_status < 0 %}text-red-600{% else %}text-blue-600{% endif %}">
+                                {{ "%.2f"|format(stats.security_status) }}
+                            </span>
+                            <span class="ml-1">({{ stats.security_class }})</span>
+                        </span>
+                        {% if stats.region_name %}
+                        <span class="ml-4">星域：{{ stats.region_name }}</span>
+                        {% endif %}
+                        {% if stats.constellation_name %}
+                        <span class="ml-4">星座：{{ stats.constellation_name }}</span>
+                        {% endif %}
+                    </div>
+                    {% elif stats._type == "regionID" %}
+                    <div class="mt-2 text-gray-600">星域</div>
+                    {% elif stats._type == "factionID" %}
+                    <div class="mt-2 text-gray-600">帝国势力</div>
+                    {% elif stats._type == "groupID" %}
+                    <div class="mt-2 text-gray-600">舰船类别</div>
+                    {% endif %}
                 </div>
             </div>
-            {% elif stats._type == "corporationID" %}
-            <!-- 军团基本信息 -->
-            <div class="flex flex-col md:flex-row items-start md:items-center">
-                <div class="flex-shrink-0 mb-4 md:mb-0 md:mr-6">
-                    <img src="https://images.evetech.net/corporations/{{ stats._id }}/logo?size=128" alt="{{ stats.name }}" class="w-32 h-32 rounded-md">
-                </div>
-                <div class="flex-grow">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between">
-                        <div>
-                            <p class="text-2xl font-bold flex items-center">
-                                <span>{{ stats.name }}</span>
-                                <span class="inline-block ml-2 px-2 py-0.5 text-xs font-semibold rounded-md bg-indigo-100 text-indigo-800 self-start mt-2">
-                                    [{{ stats.ticker }}]
-                                </span>
-                            </p>
-                            {% if stats.alliance_id %}
-                            <div class="mt-2 flex items-center">
-                                <img src="https://images.evetech.net/alliances/{{ stats.alliance_id }}/logo?size=64" alt="{{ stats.alliance_name }}" class="w-6 h-6 mr-2">
-                                <span class="text-gray-600">联盟：</span>
-                                <a href="https://zkillboard.com/alliance/{{ stats.alliance_id }}/" class="text-blue-600 hover:text-blue-800 ml-1">{{ stats.alliance_name }}</a>
-                            </div>
-                            {% endif %}
-                            <div class="mt-2 flex items-center">
-                                <img src="https://images.evetech.net/characters/{{ stats.ceo_id }}/portrait?size=64" alt="{{ stats.alliance_name }}" class="w-6 h-6 mr-2 rounded-full">
-                                <span class="text-gray-600">CEO：</span>
-                                <a href="https://zkillboard.com/character/{{ stats.ceo_id }}/" class="text-blue-600 hover:text-blue-800 ml-1">{{ stats.ceo_name }}</a>
-                            </div>
-                            <div class="mt-1">
-                                <span class="text-gray-600">成员数：{{ stats.member_count }}</span>
-                                <span class="ml-4 text-gray-600">创建日期：{{ stats.date_founded.strftime('%Y-%m-%d') }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
+            <!-- 综合排名 -->
+            {% set rank_weekly = stats.get_rank("weekly") %}
+            {% set rank_recent = stats.get_rank("recent") %}
+            {% set rank_alltime = stats.get_rank("alltime") %}
+            {% if rank_weekly or rank_recent or rank_alltime %}
+            <div class="mt-4 pt-4 border-t border-gray-200 flex flex-wrap items-center gap-2 text-xs">
+                <span class="text-gray-600 font-semibold mr-1">综合排名</span>
+                {% if rank_weekly %}<span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">7天 #{{ "{:,}".format(rank_weekly) }}</span>{% endif %}
+                {% if rank_recent %}<span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">90天 #{{ "{:,}".format(rank_recent) }}</span>{% endif %}
+                {% if rank_alltime %}<span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">开服以来 #{{ "{:,}".format(rank_alltime) }}</span>{% endif %}
             </div>
             {% endif %}
         </div>
@@ -197,6 +248,7 @@
                 <p class="font-bold mr-2">船分比：{{ "{:,.2f}".format(stats.ship_ratio) }}</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% if stats.has_danger_ratio %}
                 <div>
                     <div class="flex justify-between mb-1">
                         <span class="text-base font-semibold">危险度</span>
@@ -208,6 +260,7 @@
                         <div class="{% if stats.danger_ratio > 75 %}bg-red-600{% elif stats.danger_ratio > 50 %}bg-orange-500{% else %}bg-yellow-500{% endif %} h-2.5 rounded-full" style="width: {{ stats.danger_ratio }}%"></div>
                     </div>
                 </div>
+                {% endif %}
                 <div>
                     <div class="flex justify-between mb-1">
                         <span class="text-base font-semibold">团伙度</span>
@@ -222,7 +275,7 @@
 
         <!-- 战斗统计 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <!-- 击杀统计 -->
+            <!-- 击毁统计 -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-xl font-bold mb-4 text-green-700">击毁记录</h2>
                 <div class="grid grid-cols-2 gap-4">
@@ -244,6 +297,7 @@
             <!-- 损失统计 -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-xl font-bold mb-4 text-red-700">损失记录</h2>
+                {% if stats.has_loss_data %}
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <p class="text-gray-600">损失船只</p>
@@ -251,19 +305,25 @@
                     </div>
                     <div>
                         <p class="text-gray-600">被SOLO</p>
-                        <p class="text-2xl font-bold">{{ "{:,.0f}".format(stats.data.get("soloLosses", 0)) }}</p>
+                        <p class="text-2xl font-bold">{{ "{:,.0f}".format(stats.solo_losses) }}</p>
                     </div>
                     <div class="col-span-2">
                         <p class="text-gray-600">损失ISK价值</p>
                         <p class="text-xl font-bold">{{ "{:,.2f}".format(stats.isk_lost) }} isk</p>
                     </div>
                 </div>
+                {% else %}
+                <div class="flex items-center justify-center h-32">
+                    <p class="text-gray-500 text-center">该实体无损失统计数据</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
-        <!-- 活动热图和常用船只 -->
+        <!-- 活动热图和常用船只/角色 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <!-- 活动热图 -->
+            {% if stats.has_activity %}
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-xl font-bold mb-4">活动热图</h2>
 
@@ -278,13 +338,13 @@
                                 {% set activity_count = 0 %}
                                 {% set day_str = day|string %}
                                 {% set hour_str = hour|string %}
-                                
+
                                 {# 获取当前日期的数据结构 #}
                                 {% set day_data = None %}
                                 {% if stats.activity is mapping and day_str in stats.activity %}
                                     {% set day_data = stats.activity[day_str] %}
                                 {% endif %}
-                                
+
                                 {# 获取活动计数 #}
                                 {% if day_data is not none %}
                                     {% if day_data is mapping %}
@@ -299,12 +359,12 @@
                                         {% endif %}
                                     {% endif %}
                                 {% endif %}
-                                
+
                                 {# 确保 activity_count 是数字 #}
                                 {% if activity_count is not number %}
                                     {% set activity_count = 0 %}
                                 {% endif %}
-                                
+
                                 {# 计算活动等级 #}
                                 {% set level = 0 %}
                                 {% if activity_count > 0 %}
@@ -337,63 +397,53 @@
                     <span class="text-xs text-gray-600 ml-1">较多</span>
                 </div>
             </div>
+            {% endif %}
 
             <!-- 常用船只 -->
+            {% if stats.top_ships and stats.top_ships|length > 0 %}
             <div class="bg-white rounded-lg shadow-md p-6">
-                {% if stats._type == "characterID" %}
                 <h2 class="text-xl font-bold mb-4">常用船只</h2>
                 <div class="space-y-3">
-                    {% if stats.top_ships and stats.top_ships|length > 0 %}
-                        {% for item in stats.top_ships[:5] %}
-                        <div class="flex items-center">
-                            <img src="https://images.newdoublex.space/types/{{ item.shipTypeID }}/icon" alt="{{ item.shipName }}" class="w-8 h-8 mr-3 rounded-full">
-                            <div class="flex-grow">
-                                <div class="flex justify-between">
-                                    <span>{{ item.shipName }}</span>
-                                    <span class="font-semibold">{{ 
-                                        item.kills }}</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                                    <div class="bg-blue-600 h-2 rounded-full" style="width: {{ (item.kills / stats.top_ships[0].kills * 100)|round }}%"></div>
-                                </div>
+                    {% for item in stats.top_ships[:5] %}
+                    <div class="flex items-center">
+                        <img src="https://images.newdoublex.space/types/{{ item.shipTypeID }}/icon" alt="{{ item.shipName }}" class="w-8 h-8 mr-3 rounded-full">
+                        <div class="flex-grow">
+                            <div class="flex justify-between">
+                                <span>{{ item.shipName }}</span>
+                                <span class="font-semibold">{{ item.kills }}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                                <div class="bg-blue-600 h-2 rounded-full" style="width: {{ (item.kills / stats.top_ships[0].kills * 100)|round }}%"></div>
                             </div>
                         </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="flex items-center justify-center h-40">
-                            <p class="text-gray-500 text-center">最近未活跃</p>
-                        </div>
-                    {% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
-
-                {% elif stats._type == "corporationID" %}
-                <h2 class="text-xl font-bold mb-4">角色签名排行</h2>
-                <div class="space-y-3">
-                    {% if stats.top_characters and stats.top_characters|length > 0 %}
-                        {% for item in stats.top_characters[:5] %}
-                        <div class="flex items-center">
-                            <img src="https://images.evetech.net/characters/{{ item.characterID }}/portrait?size=64" alt="{{ item.characterName }}" class="w-8 h-8 mr-3 rounded-full">
-                            <div class="flex-grow">
-                                <div class="flex justify-between">
-                                    <span>{{ item.characterName }}</span>
-                                    <span class="font-semibold">{{ item.kills }}</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                                    <div class="bg-blue-600 h-2 rounded-full" style="width: {{ (item.kills / stats.top_characters[0].kills * 100)|round }}%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="flex items-center justify-center h-40">
-                            <p class="text-gray-500 text-center">最近未活跃</p>
-                        </div>
-                    {% endif %}
-                </div>
-                {% endif %}
-
-
             </div>
+            {% endif %}
+
+            <!-- 角色排行 -->
+            {% if stats.top_characters and stats.top_characters|length > 0 %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold mb-4">角色排行</h2>
+                <div class="space-y-3">
+                    {% for item in stats.top_characters[:5] %}
+                    <div class="flex items-center">
+                        <img src="https://images.evetech.net/characters/{{ item.characterID }}/portrait?size=64" alt="{{ item.characterName }}" class="w-8 h-8 mr-3 rounded-full">
+                        <div class="flex-grow">
+                            <div class="flex justify-between">
+                                <span>{{ item.characterName }}</span>
+                                <span class="font-semibold">{{ item.kills }}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                                <div class="bg-blue-600 h-2 rounded-full" style="width: {{ (item.kills / stats.top_characters[0].kills * 100)|round }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- 近期击杀记录 -->
