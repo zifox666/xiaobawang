@@ -77,6 +77,17 @@ help_data = {
                     "desc": "查询zkb的统计信息,可以使用 -t [type] 来查询指定类型信息。目前只支持corporation, character",
                 },
                 {
+                    "title": "查询zkb排行榜",
+                    "new": True,
+                    "hot": False,
+                    "commands": [
+                        "/军团排行",
+                        "/人物排行 -s l -m value",
+                        "/zkbrank -t ship -e all",
+                    ],
+                    "desc": "查询zkillboard排行榜,支持人物/军团/联盟/势力/舰船。参数: -s k|l(击杀/损失) -m count|value(数量/价值) -e week|recent|all(7天/90天/开服以来) -l 条数",
+                },
+                {
                     "title": "订阅指定条件KM",
                     "new": False,
                     "hot": False,

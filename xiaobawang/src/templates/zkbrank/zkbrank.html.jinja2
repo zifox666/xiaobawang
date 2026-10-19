@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>zKillboard 排行榜 - {{ meta.type_label }} · {{ meta.side_label }} · {{ meta.metric_label }}</title>
+    <script src="../tailwindcss.js"></script>
+    <style>
+        /* 条件指示块（自定义配色，避免被 tailwind 工具类覆盖） */
+        .chip {
+            border: 1px solid #d1d5db;
+            color: #6b7280;
+        }
+        .chip-active {
+            background-color: #1d4ed8;
+            border-color: #1d4ed8;
+            color: #ffffff;
+        }
+
+        /* 暗夜模式 */
+        html.dark body { background-color: #111827; color: #e5e7eb; }
+        html.dark .bg-white { background-color: #1f2937 !important; }
+        html.dark .bg-gray-100 { background-color: #111827 !important; }
+        html.dark .text-gray-800 { color: #e5e7eb !important; }
+        html.dark .text-gray-600 { color: #9ca3af !important; }
+        html.dark .text-gray-500 { color: #6b7280 !important; }
+        html.dark .divide-gray-100 > * + * { border-color: #374151 !important; }
+        html.dark .shadow-md { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -1px rgba(0,0,0,0.3) !important; }
+        html.dark .chip { border-color: #4b5563; color: #9ca3af; }
+        html.dark .chip-active { background-color: #2563eb; border-color: #2563eb; color: #ffffff; }
+    </style>
+    <script>
+        (function () {
+            // 获取 UTC+8 当前小时
+            var now = new Date();
+            var utc8Hour = (now.getUTCHours() + 8) % 24;
+            // 18:00 ~ 次日 06:00 为暗夜模式
+            var isNight = utc8Hour >= 18 || utc8Hour < 6;
+
+            function applyDark(dark) {
+                if (dark) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }
+
+            // 初始化
+            applyDark(isNight);
+        })();
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="max-w-[550px] mx-auto px-3 py-4">
+        <!-- 标题与当前条件 -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-4">
+            <div class="flex items-center justify-between mb-3">
+                <h1 class="text-lg font-bold">zKillboard 排行榜</h1>
+                <span class="text-xs text-gray-500">{{ meta.epoch_label }}{% if meta.group == "solo" %} · 仅SOLO{% endif %}</span>
+            </div>
+            <!-- 阵营 -->
+            <div class="flex flex-wrap gap-1.5 mb-1.5">
+                <span class="chip {{ 'chip-active' if meta.side == 'l' else '' }} px-2.5 py-0.5 rounded-full text-xs">损失最多</span>
+                <span class="chip {{ 'chip-active' if meta.side == 'k' else '' }} px-2.5 py-0.5 rounded-full text-xs">击杀最多</span>
+            </div>
+            <!-- 实体类型 -->
+            <div class="flex flex-wrap gap-1.5 mb-1.5">
+                {% for t, label in [("character", "人物"), ("corporation", "军团"), ("alliance", "联盟"), ("faction", "势力"), ("shipType", "舰船")] %}
+                <span class="chip {{ 'chip-active' if meta.type == t else '' }} px-2.5 py-0.5 rounded-full text-xs">{{ label }}</span>
+                {% endfor %}
+            </div>
+            <!-- 指标 -->
+            <div class="flex flex-wrap gap-1.5">
+                <span class="chip {{ 'chip-active' if meta.metric == 'value' else '' }} px-2.5 py-0.5 rounded-full text-xs">按价值</span>
+                <span class="chip {{ 'chip-active' if meta.metric == 'count' else '' }} px-2.5 py-0.5 rounded-full text-xs">按数量</span>
+            </div>
+        </div>
+
+        <!-- 排行列表 -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            {% if rows %}
+            <ol class="divide-y divide-gray-100">
+                {% for r in rows %}
+                <li class="flex items-center px-3 py-2.5">
+                    <span class="w-7 flex-shrink-0 text-center font-bold text-sm
+                        {{ 'text-amber-500' if r.rank == 1 else ('text-gray-400' if r.rank == 2 else ('text-orange-600' if r.rank == 3 else 'text-gray-400')) }}">
+                        {{ r.rank }}
+                    </span>
+                    {% if r.avatar %}
+                    <img src="{{ r.avatar }}" alt="{{ r.name }}" class="w-9 h-9 rounded-md flex-shrink-0 ml-1"
+                         onerror="this.style.display='none'">
+                    {% else %}
+                    <span class="w-9 h-9 rounded-md flex-shrink-0 ml-1 flex items-center justify-center bg-blue-100 text-blue-700 font-bold text-sm">
+                        {{ r.name[0] if r.name else '?' }}
+                    </span>
+                    {% endif %}
+                    <div class="flex-grow min-w-0 ml-2.5">
+                        <div class="truncate text-sm font-medium">{{ r.name }}</div>
+                        <div class="text-xs text-gray-500">{{ r.secondary }}</div>
+                    </div>
+                    <div class="flex-shrink-0 ml-2 text-right">
+                        <span class="font-bold text-base">{{ r.primary }}</span>
+                    </div>
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <div class="py-10 text-center text-gray-500 text-sm">暂无数据</div>
+            {% endif %}
+        </div>
+
+        <footer class="mt-4 mb-2 text-center text-xs text-gray-500">
+            <p>数据来源：<a href="{{ meta.source_url }}" class="text-blue-600">zkillboard.com</a> · {{ meta.epoch_label }} · {{ meta.side_label }} · {{ meta.metric_label }}</p>
+            <p class="mt-1">Created by XiaoBaWang 1.1.0 | Designed by newdoublex</p>
+        </footer>
+    </div>
+</body>
+</html>

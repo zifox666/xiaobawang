@@ -4,6 +4,7 @@ from nonebot import logger
 
 from ..utils.common.cache import cache, cache_result
 from .base import BaseClient
+from .zkb_ranks import parse_ranks_html
 
 
 class ZkillboardApi(BaseClient):
@@ -14,7 +15,15 @@ class ZkillboardApi(BaseClient):
     def __init__(self):
         super().__init__()
         self._base_url: str = "https://zkillboard.com/api"
+        self._site_url: str = "https://zkillboard.com"
         self._allowed_types: list[str] = ["character", "corporation", "alliance"]
+        # Top Ranks 页面支持的实体类型（group 类型页面返回 403，不支持）
+        self._rank_types: list[str] = ["character", "corporation", "alliance", "faction", "shipType"]
+        # Top Ranks 支持的排序键（overallRank 为综合排名，其余为指标列）
+        self._rank_sorts: list[str] = [
+            "overallRank", "shipsDestroyed", "shipsLost",
+            "pointsDestroyed", "pointsLost", "iskDestroyed", "iskLost",
+        ]
 
     @cache_result(expire_time=5 * cache.TIME_MIN, prefix="zkill:get_stats", exclude_args=[0])
     async def get_stats(
@@ -61,6 +70,53 @@ class ZkillboardApi(BaseClient):
         except Exception as e:
             logger.error(f"获取Zkillboard数据失败: {e}")
             return None
+
+
+    @cache_result(expire_time=30 * cache.TIME_MIN, prefix="zkill:get_ranks", exclude_args=[0])
+    async def get_ranks(
+        self,
+        type_: str,
+        kl: str = "k",
+        epoch: str = "recent",
+        group: str = "all",
+        page: int = 1,
+        sort: str = "overallRank",
+    ) -> list[dict[str, Any]]:
+        """
+        获取 zKillboard Top Ranks 页面数据（每页最多 500 行）
+
+        页面地址: https://zkillboard.com/{type}/ranks/{kl}/{group}/{epoch}/{page}/[{sort}/{dir}/]
+        :param type_: 实体类型 character/corporation/alliance/faction/shipType
+        :param kl: 阵营 k=击杀(killers) / l=损失(losers)
+        :param epoch: 时间范围 weekly(7天)/recent(90天)/alltime(开服以来)
+        :param group: 全部(all) / 仅SOLO(solo)
+        :param page: 页码
+        :param sort: 排序键，overallRank 为综合排名（升序），指标键为降序
+        :return: 解析后的行列表，见 zkb_ranks.parse_ranks_html
+        """
+        if type_ not in self._rank_types:
+            raise ValueError(f"不支持的排行榜类型: {type_}")
+        if kl not in ("k", "l"):
+            raise ValueError(f"不支持的阵营: {kl}")
+        if epoch not in ("weekly", "recent", "alltime"):
+            raise ValueError(f"不支持的时间范围: {epoch}")
+        if group not in ("all", "solo"):
+            raise ValueError(f"不支持的分组: {group}")
+        if sort not in self._rank_sorts:
+            raise ValueError(f"不支持的排序键: {sort}")
+
+        direction = "asc" if sort == "overallRank" else "desc"
+        endpoint = f"/{type_}/ranks/{kl}/{group}/{epoch}/{page}/{sort}/{direction}/"
+
+        try:
+            html_text = await self._get_text(endpoint, base_url=self._site_url)
+            rows = parse_ranks_html(html_text)
+            if not rows:
+                logger.warning(f"zKillboard 排行榜解析为空: {endpoint}")
+            return rows
+        except Exception as e:
+            logger.error(f"获取zKillboard排行榜失败: {e}")
+            raise
 
 
 zkb_api = ZkillboardApi()

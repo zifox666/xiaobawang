@@ -41,6 +41,32 @@ class BaseClient:
         except Exception as e:
             raise e
 
+    async def _get_text(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        base_url: str | None = None,
+    ) -> str:
+        """
+        GET 并返回文本响应（用于抓取 HTML 页面）
+        :param endpoint: 接口地址
+        :param params: 查询参数
+        :param headers: 附加请求头
+        :param base_url: 覆盖默认 base_url
+        :return:
+        """
+        url = f"{base_url or self._base_url}{endpoint}"
+
+        try:
+            request_headers = {**self.headers, **(headers or {})}
+            response = await self._client.get(url, params=params, headers=request_headers)
+            logger.debug(f"[{endpoint}]{response.status_code} {response.url}")
+            response.raise_for_status()
+            return response.text
+        except Exception as e:
+            raise e
+
     async def _post(
         self,
         endpoint: str,
