@@ -64,7 +64,7 @@ class ZkillboardApi(BaseClient):
             raise ValueError(f"不支持的类型: {type_}")
 
         try:
-            endpoint = f"/stats/{self._type_map[type_]}/{id_}/"
+            endpoint = f"/stats/{self._type_map[type_]}/{id_}/kills/"
             data = await self._get(endpoint)
             return data
         except Exception as e:

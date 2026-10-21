@@ -3,6 +3,7 @@
 class ZkbLabelHelper:
     def __init__(self, zkb: dict):
         self.zkb_labels: dict = zkb.get("labels", {})
+        self.activity_tags: dict = zkb.get("activityTags", {})
         self.shipsDestroyed: int = zkb.get("shipsDestroyed", 0)
         self.danger_ratio: int = zkb.get("dangerRatio", 0)
         self.solo: int = zkb.get("soloKills", 0)
@@ -129,6 +130,13 @@ class ZkbLabelHelper:
                 self.condition_handle(key, obj)
 
         self.pvp_handle()
+
+        for tag, count in self.activity_tags.items():
+            if isinstance(count, (int, float)) and not isinstance(count, bool) and count != 0:
+                self.result[f"activity:{tag}"] = {
+                    "name": f"{tag}({count})",
+                    "color": "bg-cyan-700 text-white",
+                }
 
         if not self.result["loc"]:
             self.result.pop("loc", None)
