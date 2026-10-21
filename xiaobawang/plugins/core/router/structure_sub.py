@@ -20,11 +20,12 @@ from sqlalchemy import select
 from ...eve_oauth.models import EsiOAuthAuthorization
 from ...eve_oauth.service import oauth_service
 from ...cache import get_cache
-from ...structure_notifications.categories import CATEGORY_LABELS, NOTIFICATION_CATEGORIES
-from ...structure_notifications.models import StructureNotificationSub
-from ...structure_notifications.service import create_subscription, delete_subscription, update_subscription
 from ..helper.auth import get_current_user
 from ..helper.billing import key_from_current_user
+
+# structure_notifications is imported lazily inside the handlers below:
+# importing it here creates a circular load (structure_notifications.service
+# imports core at module level, which would re-enter this router package).
 
 router = APIRouter()
 cache = get_cache("subscription_structure_oauth")
@@ -70,6 +71,8 @@ async def _ensure_character_visible(session_key: str, character_id: int) -> None
 
 @router.get("/categories", summary="建筑通知类别")
 async def list_categories() -> dict:
+    from ...structure_notifications.categories import CATEGORY_LABELS, NOTIFICATION_CATEGORIES
+
     cats = [{"key": k, "label": CATEGORY_LABELS.get(k, k)} for k in NOTIFICATION_CATEGORIES]
     return {"success": True, "data": cats}
 
@@ -195,6 +198,8 @@ async def list_subs(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user),
 ) -> dict:
+    from ...structure_notifications.models import StructureNotificationSub
+
     result = await session.execute(
         select(StructureNotificationSub).where(
             StructureNotificationSub.session_id == current_user["session_id"],
@@ -230,6 +235,8 @@ async def create_sub(
     session_key = key_from_current_user(current_user)
     await _ensure_character_visible(session_key, req.character_id)
 
+    from ...structure_notifications.service import create_subscription
+
     sub = await create_subscription(
         character_id=req.character_id,
         character_name=req.character_name or str(req.character_id),
@@ -249,6 +256,9 @@ async def update_sub(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user),
 ) -> dict:
+    from ...structure_notifications.models import StructureNotificationSub
+    from ...structure_notifications.service import update_subscription
+
     result = await session.execute(
         select(StructureNotificationSub).where(StructureNotificationSub.id == sub_id)
     )
@@ -280,6 +290,9 @@ async def delete_sub(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user),
 ) -> dict:
+    from ...structure_notifications.models import StructureNotificationSub
+    from ...structure_notifications.service import delete_subscription
+
     result = await session.execute(
         select(StructureNotificationSub).where(StructureNotificationSub.id == sub_id)
     )
