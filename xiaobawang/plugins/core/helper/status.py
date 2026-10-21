@@ -2,7 +2,6 @@ from typing import Any
 
 import httpx
 from nonebot import logger, require
-from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_uninfo import Uninfo
 from sqlalchemy import Select, Sequence
@@ -12,9 +11,7 @@ from ..api.esi.universe import esi_client
 from ..config import plugin_config
 from ..db.models.event_sub import EVEServerStatusSub
 from ..utils.common.http_client import get_client
-from .billing import billing, key_from_session_fields
-from .billing.rules import BillingRules
-from .message_queue import queue_common
+from .push.service import push_service
 
 require("nonebot_plugin_apscheduler")
 
@@ -76,63 +73,19 @@ class EVEServerStatus:
         else:
             current_online = self.previous_server_online
 
-        if self.previous_server_online is None:
-            self.previous_server_online = current_online
-            logger.info(f"EVE服务器状态初始化: {'在线' if current_online else '离线'}")
-            return
-
-        if current_online != self.previous_server_online:
-            logger.info(
-                f"EVE服务器状态变化:"
-                f" 从{'在线' if self.previous_server_online else '离线'}变为{'在线' if current_online else '离线'}"
-            )
-            await self.notify_status_change()
+        if current_online is not None:
+            await push_service.store.status_change(current_online, {"text": str(self)})
             self.previous_server_online = current_online
 
-    async def notify_status_change(self):
-        """
-        推送服务器消息到订阅
-        :return:
-        """
-        try:
-            async with get_session() as session:
-                subs = await self.get_subs(session=session, is_enabled=True)
-
-                if not subs:
-                    logger.info("没有找到活跃的EVE服务器状态订阅")
-                    return
-
-                status_message = str(self)
-                logger.info(f"正在向{len(subs)}个订阅推送EVE服务器状态变化通知")
-
-                for sub in subs:
-                    try:
-                        session_key = key_from_session_fields(sub.platform, sub.session_id, sub.session_type)
-                        if billing.should_bill("eve_status"):
-                            cost = BillingRules.calc_charge("eve_status")
-                            if not await billing.precheck(session_key, cost):
-                                logger.info(f"[billing] {session_key} 余额不足，跳过 eve_status 推送")
-                                await billing.notify_low_balance_if_needed(
-                                    session_key, sub.platform, sub.bot_id, sub.session_id, sub.session_type,
-                                    await billing.get_balance(session_key),
-                                )
-                                continue
-                        await queue_common(
-                            platform=sub.platform,
-                            bot_id=sub.bot_id,
-                            session_id=sub.session_id,
-                            session_type=sub.session_type,
-                            msg=UniMessage(status_message),
-                        )
-                        b_r = await billing.charge(session_key, "eve_status", ref_id=str(sub.id))
-                        await billing.notify_low_balance_if_needed(
-                            session_key, sub.platform, sub.bot_id, sub.session_id, sub.session_type, b_r.balance_after
-                        )
-                        logger.debug(f"向订阅 {sub.platform}:{sub.session_id} 推送状态变化成功")
-                    except Exception as e:
-                        logger.error(f"向订阅 {sub.platform}:{sub.session_id} 推送状态变化失败: {e!s}")
-        except Exception as e:
-            logger.error(f"推送EVE服务器状态变化通知时出错: {e!s}")
+    async def notify_status_change(self, event_id: str, status_message: str):
+        async with get_session() as session:
+            subs = await self.get_subs(session=session, is_enabled=True)
+            for sub in subs:
+                await push_service.enqueue(
+                    event_id=event_id, kind="eve_status", platform=sub.platform, bot_id=sub.bot_id,
+                    session_id=sub.session_id, session_type=sub.session_type,
+                    text=status_message, priority=10,
+                )
 
     @classmethod
     async def add_sub(cls, session: AsyncSession, user_info: Uninfo) -> bool:

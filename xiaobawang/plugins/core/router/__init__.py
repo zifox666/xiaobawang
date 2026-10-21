@@ -15,6 +15,7 @@ from .payment import router as payment_router
 from .structure_sub import router as structure_sub_router
 from .sub import router as sub_router
 from .subscriptions import router as subscriptions_router
+from .push import router as push_router
 
 __all__ = ["app"]
 
@@ -30,6 +31,7 @@ app.include_router(structure_sub_router, prefix="/api/subscriptions/structure", 
 app.include_router(eve_status_sub_router, prefix="/api/subscriptions/eve_status", tags=["EVE Status Subscription"])
 app.include_router(payment_router, prefix="/api/payment", tags=["Payment"])
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
+app.include_router(push_router, prefix="/api/admin/push", tags=["Push"])
 
 # 静态资源目录：css / js 等子目录自动按路径提供
 _html_dir = Path(__file__).parent.parent.parent.parent / "src" / "html"

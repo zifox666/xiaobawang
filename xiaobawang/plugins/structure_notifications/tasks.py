@@ -1,134 +1,73 @@
-"""
-定时拉取 ESI 通知并推送到绑定会话
-"""
-
+"""Persist source events before formatting or delivery."""
 from datetime import datetime, timedelta, timezone
 import json
 
 from nonebot import logger
-from nonebot_plugin_alconna import Target, UniMessage
+from nonebot_plugin_orm import get_session
+from sqlalchemy import select
 
-from ..core.helper.billing import billing, key_from_session_fields
-from ..core.helper.billing.rules import BillingRules
+from ..core.helper.push.service import push_service
 from .categories import TYPE_TO_CATEGORY
-from .service import (
-    fetch_notifications,
-    format_notification,
-    get_all_enabled_subscriptions,
-    mark_pushed,
-    save_notifications,
-)
+from .models import StructureNotificationRecord
+from .service import fetch_notifications, format_notification, get_all_enabled_subscriptions, save_notifications
 
 
 async def poll_and_push():
-    """
-    定时任务入口:
-    1. 获取所有启用的订阅, 按角色分组
-    2. 对每个角色拉取 ESI 通知
-    3. 存入数据库, 仅对新记录进行推送
-    """
     subs = await get_all_enabled_subscriptions()
-    if not subs:
-        return
-
-    # 按角色分组
-    char_subs: dict[int, list] = {}
-    for s in subs:
-        char_subs.setdefault(s.character_id, []).append(s)
-
-    for character_id, sub_list in char_subs.items():
+    for character_id in {sub.character_id for sub in subs}:
         try:
-            await _process_character(character_id, sub_list)
-        except Exception as e:
-            logger.error(f"处理角色 {character_id} 建筑通知时出错: {e}")
+            notifications = await fetch_notifications(character_id)
+            # Ingest ALL returned notifications, including previously saved records.
+            # Delivery IDs deduplicate per target; failed work remains independently retryable.
+            for notification in notifications:
+                await push_service.store.ingest(
+                    f"structure:{character_id}:{notification['notification_id']}", "structure",
+                    {"character_id": character_id, "notification": notification},
+                )
+            # Recover pre-upgrade records that never reached a target.
+            async with get_session() as session:
+                records = await session.scalars(select(StructureNotificationRecord).where(
+                    StructureNotificationRecord.character_id == character_id,
+                    StructureNotificationRecord.pushed.is_(False),
+                    StructureNotificationRecord.timestamp >= datetime.now(timezone.utc) - timedelta(days=2),
+                ))
+                for record in records:
+                    await push_service.store.ingest(
+                        f"structure:{character_id}:{record.notification_id}", "structure",
+                        {"character_id": character_id, "notification": {
+                            "notification_id": record.notification_id, "type": record.notification_type,
+                            "text": record.text, "timestamp": record.timestamp.isoformat(),
+                            "sender_id": record.sender_id, "sender_type": record.sender_type,
+                        }},
+                    )
+        except Exception:
+            logger.exception(f"建筑通知采集失败 character={character_id}")
 
 
-async def _process_character(character_id: int, sub_list: list):
-    """处理单个角色的通知拉取和推送"""
-    notifications = await fetch_notifications(character_id)
-    if not notifications:
+async def dispatch_event(event):
+    character_id = event.payload["character_id"]
+    notification = event.payload["notification"]
+    timestamp = datetime.fromisoformat(notification["timestamp"].replace("Z", "+00:00"))
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    if timestamp < datetime.now(timezone.utc) - timedelta(days=2):
         return
-
-    new_records = await save_notifications(character_id, notifications)
-    if not new_records:
-        return
-
-    logger.info(f"角色 {character_id} 新增 {len(new_records)} 条建筑通知")
-
-    # 对每个订阅, 过滤出匹配的通知并推送
-    pushed_ids: list[int] = []
-
-    for sub in sub_list:
-        try:
-            sub_categories = json.loads(sub.categories) if sub.categories else []
-        except (json.JSONDecodeError, TypeError):
-            sub_categories = []
-
-        if not sub_categories:
-            continue
-
-        # 过滤出该订阅关心的通知, 超过 2 天的不推送
-        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=2)
-        matched_records = []
-        for record in new_records:
-            if record.timestamp:
-                ts = record.timestamp
-                # SQLite 返回 naive datetime，统一当作 UTC 处理后再比较
-                if ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
-                if ts < cutoff:
-                    continue
-            cat = TYPE_TO_CATEGORY.get(record.notification_type)
-            if cat and cat in sub_categories:
-                matched_records.append(record)
-
-        if not matched_records:
-            continue
-
-        # 构造推送消息
-        character_name = sub.character_name or str(character_id)
-        lines = [f"📢 建筑通知 ({character_name}) - {len(matched_records)} 条"]
-        for record in matched_records:
-            lines.append("─" * 10)
-            lines.append(await format_notification(record, character_name))
-
-        message_text = "\n".join(lines)
-
-        # 计费拦截：余额不足则跳过推送
-        session_key = key_from_session_fields(sub.platform, sub.session_id, sub.session_type)
-        cost = BillingRules.calc_charge("structure", count=len(matched_records))
-        if billing.should_bill("structure") and not await billing.precheck(session_key, cost):
-            logger.info(f"[billing] {session_key} 余额不足，跳过建筑通知推送")
-            await billing.notify_low_balance_if_needed(
-                session_key, sub.platform, sub.bot_id, sub.session_id, sub.session_type,
-                await billing.get_balance(session_key),
+    await save_notifications(character_id, [notification])
+    async with get_session() as session:
+        record = await session.scalar(select(StructureNotificationRecord).where(
+            StructureNotificationRecord.character_id == character_id,
+            StructureNotificationRecord.notification_id == notification["notification_id"],
+        ))
+        subs = await get_all_enabled_subscriptions()
+        for sub in subs:
+            if sub.character_id != character_id:
+                continue
+            if TYPE_TO_CATEGORY.get(record.notification_type) not in json.loads(sub.categories or "[]"):
+                continue
+            text = f"📢 建筑通知 ({sub.character_name or character_id})\n"
+            text += await format_notification(record, sub.character_name)
+            await push_service.enqueue(
+                event_id=event.id, kind="structure", platform=sub.platform, bot_id=sub.bot_id,
+                session_id=sub.session_id, session_type=sub.session_type, text=text, priority=20,
+                metadata={"record_id": record.id},
             )
-            continue
-        else:
-            b_r = await billing.charge(session_key, "structure", count=len(matched_records), ref_id=str(sub.id))
-            message_text += f"\n[计费]{b_r.balance_after + b_r.charged}(-{b_r.charged})"
-            await billing.notify_low_balance_if_needed(
-                session_key, sub.platform, sub.bot_id, sub.session_id, sub.session_type, b_r.balance_after
-            )
-
-        # 发送到绑定的会话
-        try:
-            target = Target(
-                id=sub.session_id,
-                self_id=sub.bot_id,
-                channel=True if sub.session_type.upper() in ("GROUP", "CHANNEL") else False,
-                private=sub.session_type.upper() == "PRIVATE",
-                platform=sub.platform,
-            )
-            await UniMessage.text(message_text).send(target=target)
-            logger.info(
-                f"建筑通知推送成功: 角色={character_id} 会话={sub.session_id} "
-                f"通知数={len(matched_records)}"
-            )
-            pushed_ids.extend(r.id for r in matched_records)
-        except Exception as e:
-            logger.error(
-                f"建筑通知推送失败: 角色={character_id} 会话={sub.session_id} 错误={e}"
-            )
-
-    await mark_pushed(pushed_ids)

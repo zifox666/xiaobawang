@@ -241,7 +241,7 @@ async def admin_mark_order_paid(
             raise HTTPException(status_code=400, detail=f"订单状态异常: {order.status}")
 
         account_result = await session.execute(
-            select(CreditAccount).where(CreditAccount.session_key == order.session_key)
+            select(CreditAccount).where(CreditAccount.session_key == order.session_key).with_for_update()
         )
         account = account_result.scalar_one_or_none()
         if account is None:

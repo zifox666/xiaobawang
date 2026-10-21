@@ -5,13 +5,11 @@ from typing import Any
 from nonebot import logger
 from nonebot_plugin_orm import get_session
 
+from ....bot_info import get_bot_info_data
 from ...api.killmail import get_zkb_killmail
 from ...helper.subscription_v2 import KillmailSubscriptionManagerV2
 from ...utils.render import render_template, templates_path
-from ..billing import billing, key_from_session_fields
-from ..billing.rules import BillingRules
 from ..message_queue import queue_killmail_message
-from ....bot_info import get_bot_info_data
 from .processor import KillmailProcessor
 from .validator_v2 import KillmailValidatorV2
 
@@ -22,8 +20,8 @@ _render_semaphore = asyncio.Semaphore(3)
 class KillmailHelper:
     """Killmail 主处理类，协调验证、处理和发送流程"""
 
-    def __init__(self):
-        self.session = get_session()
+    def __init__(self, session=None):
+        self.session = session if session is not None else get_session()
         self.subscription_manager = KillmailSubscriptionManagerV2(self.session)
         self.validator = KillmailValidatorV2(self.subscription_manager)
         self.processor = KillmailProcessor()
@@ -31,10 +29,10 @@ class KillmailHelper:
     async def get(self, kill_id: int) -> dict:
         """
         获取处理好的km json数据
-        
+
         Args:
             kill_id: killmail ID
-            
+
         Returns:
             处理后的 killmail 数据
         """
@@ -63,6 +61,7 @@ class KillmailHelper:
 
         except Exception as e:
             logger.exception(f"[{killmail_id}]处理 Killmail 失败: {e}")
+            raise
 
     async def _send_matched_killmail(self, killmail_id, data, matched_sessions):
         """向匹配的会话发送击杀邮件"""
@@ -91,7 +90,7 @@ class KillmailHelper:
             )
 
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            await asyncio.gather(*tasks)
 
     @classmethod
     async def send_killmail(
@@ -109,24 +108,6 @@ class KillmailHelper:
         try:
             logger.info(f"{session_type}:{session_id}: {reason}")
 
-            # 计费拦截
-            session_key = key_from_session_fields(platform, session_id, session_type)
-            if billing.should_bill("killmail"):
-                cost = BillingRules.calc_charge("killmail")
-                if not await billing.precheck(session_key, cost):
-                    logger.info(f"[billing] {session_key} 赞助余额不足，跳过 killmail {kill_id}")
-                    await billing.notify_low_balance_if_needed(
-                        session_key, platform, bot_id, session_id, session_type,
-                        await billing.get_balance(session_key),
-                    )
-                    return
-                else:
-                    b_r = await billing.charge(session_key, "killmail", count=1, ref_id=str(kill_id))
-                    reason = reason + f"\n[计费]{b_r.balance_after + b_r.charged}(-{b_r.charged})"
-                    await billing.notify_low_balance_if_needed(
-                        session_key, platform, bot_id, session_id, session_type, b_r.balance_after
-                    )
-
             await queue_killmail_message(
                 platform=platform,
                 bot_id=bot_id,
@@ -139,7 +120,8 @@ class KillmailHelper:
             )
 
         except Exception as e:
-            logger.error(f"准备发送 killmail 失败: {e}\n{traceback.format_exc()}")
+            logger.error(f"准备发送 killmail 失败: {e}\n{traceback.format_exc()}" )
+            raise
 
 
 km = KillmailHelper()

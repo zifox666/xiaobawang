@@ -29,6 +29,15 @@ class Config(BaseModel):
     max_queue_size: int = 20
     max_total_messages: int = 50
 
+    push_prepare_workers: int = Field(default=2, ge=1, le=8)
+    push_send_workers: int = Field(default=4, ge=1, le=32)
+    push_bot_interval: float = Field(default=5, ge=0.1)
+    push_merge_seconds: int = Field(default=45, ge=0)
+    push_send_timeout: int = Field(default=30, ge=1, le=60)
+    push_lease_seconds: int = Field(default=120, ge=90)
+    push_max_attempts: int = Field(default=8, ge=1, le=30)
+    push_message_ttl: int = Field(default=86400, ge=60)
+
     billing_enabled: bool = True
     billing_enabled_modules: list[str] = Field(
         default_factory=lambda: ["killmail", "eve_status", "structure"], description="启用计费的模块"

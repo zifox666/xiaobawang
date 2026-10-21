@@ -92,7 +92,7 @@ class KillmailValidatorV2:
 
         except Exception as e:
             logger.error(f"验证和匹配过程出错: {e}")
-            return None
+            raise
 
     def _check_killmail_value(self, data: dict) -> bool:
         """检查killmail价值"""

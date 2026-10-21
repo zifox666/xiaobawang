@@ -93,6 +93,9 @@ async def init():
 
     add_global_extension(HelperExtension())
 
+    from .helper.push.service import push_service
+
+    await push_service.start()
     await start_km_listen_()
 
     if not os.getenv("DOCKER", "").lower() == "true":
@@ -101,6 +104,9 @@ async def init():
 
 @driver.on_shutdown
 async def shutdown():
+    from .helper.push.service import push_service
+
     await stop_km_listen_()
+    await push_service.stop()
     await close_client()
     await c.close()

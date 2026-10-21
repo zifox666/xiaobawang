@@ -409,7 +409,9 @@ async def test_push(sub_id: int, token: str = Query(None)):
     if sub is None:
         return failure("无权操作该订阅", code=403)
 
-    from nonebot_plugin_alconna import Target, UniMessage
+    from uuid import uuid4
+
+    from ..core.helper.push.service import push_service
 
     character_name = sub.character_name or str(sub.character_id)
     message_text = (
@@ -421,16 +423,12 @@ async def test_push(sub_id: int, token: str = Query(None)):
     )
 
     try:
-        target = Target(
-            id=sub.session_id,
-            self_id=sub.bot_id,
-            channel=True if sub.session_type.upper() in ("GROUP", "CHANNEL") else False,
-            private=sub.session_type.upper() == "PRIVATE",
-            platform=sub.platform,
+        await push_service.enqueue(
+            event_id="test:" + uuid4().hex, kind="test", platform=sub.platform, bot_id=sub.bot_id,
+            session_id=sub.session_id, session_type=sub.session_type, text=message_text, priority=10,
         )
-        await UniMessage.text(message_text).send(target=target)
     except Exception as e:
         logger.error(f"测试推送失败: sub_id={sub_id} 错误={e}")
         return failure(f"推送失败: {e}", code=500)
 
-    return success(msg="测试消息已发送")
+    return success(msg="测试消息已进入持久化推送队列")

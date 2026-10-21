@@ -49,5 +49,6 @@ class CreditTransaction(Model):
     balance_after: Mapped[int] = mapped_column()  # 操作后余额快照
     ref_type: Mapped[str | None] = mapped_column(String(32), nullable=True)  # killmail/structure/eve_status
     ref_id: Mapped[str | None] = mapped_column(String(64), nullable=True)  # 关联推送/订阅 ID
+    push_delivery_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     description: Mapped[str] = mapped_column(String(255), default="")
     created_at: Mapped[datetime] = mapped_column(default=datetime.now, index=True)

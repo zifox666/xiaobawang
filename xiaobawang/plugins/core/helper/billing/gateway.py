@@ -66,7 +66,7 @@ class BillingGateway:
     async def get_account(self, session_key: str) -> CreditAccount | None:
         async with get_session() as session:
             result = await session.execute(
-                select(CreditAccount).where(CreditAccount.session_key == session_key)
+                select(CreditAccount).where(CreditAccount.session_key == session_key).with_for_update()
             )
             return result.scalar_one_or_none()
 
@@ -81,7 +81,7 @@ class BillingGateway:
         """获取或创建账户；新账户发放初始积分"""
         async with get_session() as session:
             result = await session.execute(
-                select(CreditAccount).where(CreditAccount.session_key == session_key)
+                select(CreditAccount).where(CreditAccount.session_key == session_key).with_for_update()
             )
             account = result.scalar_one_or_none()
             if account is not None:
@@ -117,14 +117,9 @@ class BillingGateway:
             return account
 
     async def get_balance(self, session_key: str) -> int:
-        """查询余额（先走缓存）"""
-        cached = await self._read_cached_balance(session_key)
-        if cached is not None:
-            return int(cached)
+        """Read authoritative spendable balance, excluding push reservations."""
         account = await self.get_account(session_key)
-        balance = account.balance if account else 0
-        await self._cache_balance(session_key, balance)
-        return balance
+        return account.balance if account else 0
 
     # ── 充值 ────────────────────────────────────────────────
     async def recharge(
@@ -134,7 +129,7 @@ class BillingGateway:
             return ChargeResult(False, 0, 0, "充值金额必须 > 0")
         async with get_session() as session:
             result = await session.execute(
-                select(CreditAccount).where(CreditAccount.session_key == session_key)
+                select(CreditAccount).where(CreditAccount.session_key == session_key).with_for_update()
             )
             account = result.scalar_one_or_none()
             if account is None:
@@ -200,7 +195,7 @@ class BillingGateway:
         try:
             async with get_session() as session:
                 result = await session.execute(
-                    select(CreditAccount).where(CreditAccount.session_key == session_key)
+                    select(CreditAccount).where(CreditAccount.session_key == session_key).with_for_update()
                 )
                 account = result.scalar_one_or_none()
                 if account is None:
@@ -346,22 +341,20 @@ class BillingGateway:
             pass
 
         try:
-            from nonebot_plugin_alconna import Target, UniMessage
+            import time
+            from ..push.service import push_service
 
-            target = Target(
-                id=str(session_id),
-                self_id=str(bot_id),
-                channel=session_type.upper() in ("GROUP", "CHANNEL"),
-                private=session_type.upper() == "PRIVATE",
-                platform=platform,
-            )
             msg = (
                 f"积分余额不足提醒\n"
                 f"当前余额: {balance}\n"
                 f"部分订阅推送可能已暂停\n"
                 f"前往 https://xbw.newdoublex.space/subscription 进行管理"
             )
-            await UniMessage.text(msg).send(target=target)
+            await push_service.enqueue(
+                event_id=f"low_balance:{session_key}:{int(time.time() // 3600)}", kind="billing_notice",
+                platform=platform, bot_id=bot_id, session_id=session_id, session_type=session_type,
+                text=msg, priority=10,
+            )
             await cache.set(notify_key, 1, expire=3600)
             logger.info(f"[billing] 低余额提醒已发送 {session_key} 余额 {balance}")
         except Exception as e:

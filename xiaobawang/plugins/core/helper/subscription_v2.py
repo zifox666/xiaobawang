@@ -69,7 +69,7 @@ class KillmailSubscriptionManagerV2:
             return subscription_data
         except Exception as e:
             logger.error(f"获取订阅列表失败: {e}")
-            return []
+            raise
 
     @cache_result(expire_time=30 * cache.TIME_SECOND, prefix="sub_get_subscription_by_id")
     async def get_subscription_by_id(self, subscription_id: int) -> dict[str, Any] | None:
