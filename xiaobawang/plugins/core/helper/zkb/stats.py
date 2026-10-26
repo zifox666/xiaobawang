@@ -85,6 +85,10 @@ class ZkbStats:
 
         self.query_names: dict[int, str] = {}
 
+        # 低活跃实体 activepvp 为空时会跳过 KM 处理，需提前初始化
+        self.killmail_data: list = []
+        self.recent_killmails: list = []
+
         self.labels: dict = ZkbLabelHelper(data).make()
 
         # ---- 各实体类型的专属信息 ----
@@ -131,13 +135,19 @@ class ZkbStats:
         获取指定范围的排名
         :param scope: weekly / recent / alltime
         :param key: 排名键，默认 overall（综合排名）
+        :return: 无数据时返回 None（部分实体的 scope 可能是空列表而非字典）
         """
-        return (
-            self.rankings.get(scope, {})
-            .get("all", {})
-            .get("ranks", {})
-            .get(key)
-        )
+        scope_data = self.rankings.get(scope)
+        if not isinstance(scope_data, dict):
+            return None
+        all_data = scope_data.get("all")
+        if not isinstance(all_data, dict):
+            return None
+        ranks = all_data.get("ranks")
+        if not isinstance(ranks, dict):
+            return None
+        rank = ranks.get(key)
+        return int(rank) if isinstance(rank, (int, float)) else None
 
     async def _query_names(self, query_ids: set[int]):
         data = await esi_client.get_names(list(query_ids))
