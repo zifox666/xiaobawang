@@ -18,5 +18,5 @@ async def disable_group_subscriptions(session, models, bot_id, group_id) -> dict
             .values(is_enabled=False)
         )
         if result.rowcount:
-            disabled[model.__tablename__] = result.rowcount
+            disabled[model.__table__.name] = result.rowcount
     return disabled
