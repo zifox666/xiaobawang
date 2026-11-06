@@ -1,3 +1,4 @@
+import asyncio
 import traceback
 from typing import Any, Literal
 
@@ -66,7 +67,13 @@ class ESIClient(BaseClient):
             batch_ids = ids[i : i + self.batch_size]
             data = batch_ids
             try:
-                r = await self._post(endpoint, data)
+                try:
+                    r = await self._post(endpoint, data)
+                except Exception as e:
+                    # ESI 偶发瞬时 404/5xx，同一批 ID 稍后即可成功
+                    logger.warning(f"获取名称失败，1 秒后重试: {e}")
+                    await asyncio.sleep(1)
+                    r = await self._post(endpoint, data)
 
                 for item in r:
                     category = item["category"]

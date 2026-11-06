@@ -22,6 +22,10 @@ class Config(BaseModel):
 
     tq_status_url: str = None
 
+    # 渲染图片时使用的地址，必须能被 playwright 容器访问
+    eve_type_image_url: str = "https://images.newdoublex.space"  # 物品图标（/types/...）
+    eve_entity_image_url: str = "https://images.evetech.net"  # 角色、军团、联盟
+
     upload_statistics: bool = True
     upload_statistics_url: str = "https://xbw.newdoublex.space/statics"
 

@@ -54,6 +54,7 @@ store_module = load_module("push_test.core.helper.push.store", "xiaobawang/plugi
 load_module("push_test.core.helper.status_debounce", "xiaobawang/plugins/core/helper/status_debounce.py")
 load_module("push_test.core.helper.push.errors", "xiaobawang/plugins/core/helper/push/errors.py")
 load_module("push_test.core.helper.group_leave", "xiaobawang/plugins/core/helper/group_leave.py")
+load_module("push_test.core.utils.render.image_urls", "xiaobawang/plugins/core/utils/render/image_urls.py")
 
 
 @pytest_asyncio.fixture

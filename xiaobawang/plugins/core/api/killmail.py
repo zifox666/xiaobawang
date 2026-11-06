@@ -30,7 +30,8 @@ async def get_zkb_killmail(
         r.raise_for_status()
         zkb_list = r.json()
     except Exception as e:
-        raise e
+        logger.error(f"[{kill_id}] 获取 zKillboard 数据失败: {e!r}")
+        raise KillmailFetchError(f"获取 zKillboard 数据失败: {kill_id}") from e
 
     if not zkb_list:
         try:
@@ -55,10 +56,10 @@ async def get_zkb_killmail(
     try:
         r = await client.get(esi_url, headers={"X-Compatibility-Date": "2025-12-16"})
         r.raise_for_status()
+        data = r.json()
     except Exception as e:
-        logger.error(f"[{kill_id}] 获取 ESI killmail 失败: {e}")
+        logger.error(f"[{kill_id}] 获取 ESI killmail 失败: {e!r}")
         raise KillmailFetchError(f"获取 ESI killmail 失败: {kill_id}") from e
-    data = r.json()
     data["zkb"] = zkb
 
     return data

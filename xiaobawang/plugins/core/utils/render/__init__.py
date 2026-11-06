@@ -4,11 +4,14 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+import jinja2
 from nonebot import logger, require
 from PIL import Image
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from ...config import SRC_PATH
+from ...config import SRC_PATH, plugin_config
 from ..common.cache import cache as redis_cache
+from .image_urls import rewrite_image_urls
 from .killmailapp import html2pic_kmapp
 from .utils import (
     expand_scrollable_containers,
@@ -20,10 +23,13 @@ from .utils import (
 
 require("nonebot_plugin_htmlrender")
 
-from nonebot_plugin_htmlrender import get_new_page, template_to_pic
+from nonebot_plugin_htmlrender import get_new_page
 
 # 定义模板路径
 templates_path = SRC_PATH / "templates"
+
+# 等待页面图片加载的上限，超过后用已加载的内容截图，避免个别慢图拖垮整次渲染
+_TEMPLATE_LOAD_TIMEOUT_MS = 25_000
 
 # 同时只允许一个 War Beacon 截图任务
 _WAR_BEACON_SEMAPHORE = asyncio.Semaphore(1)
@@ -184,15 +190,19 @@ async def render_template(
     height: int = 10,
 ) -> bytes | str:
     """通用模板渲染函数"""
-    return await template_to_pic(
-        template_path=str(template_path),
-        template_name=template_name,
-        templates=data,
-        pages={
-            "viewport": {"width": width, "height": height},
-            "base_url": f"file://{template_path}",
-        },
-    )
+    environment = jinja2.Environment(loader=jinja2.FileSystemLoader(str(template_path)), enable_async=True)
+    html = await environment.get_template(template_name).render_async(**data)
+    html = rewrite_image_urls(html, plugin_config.eve_type_image_url, plugin_config.eve_entity_image_url)
+
+    async with get_new_page(
+        2, viewport={"width": width, "height": height}, base_url=f"file://{template_path}"
+    ) as page:
+        await page.goto(f"file://{template_path}")
+        try:
+            await page.set_content(html, wait_until="networkidle", timeout=_TEMPLATE_LOAD_TIMEOUT_MS)
+        except PlaywrightTimeoutError:
+            logger.warning(f"模板 {template_name} 的资源未在时限内加载完，使用已加载内容截图")
+        return await page.screenshot(full_page=True, type="png", timeout=30_000)
 
 
 async def html2pic_br(

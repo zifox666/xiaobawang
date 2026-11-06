@@ -187,25 +187,27 @@
     </div>
 
     <!-- Participant rows: JS 根据中间栏实际高度动态决定展示数量 -->
+    {# 隐藏行的图片同样会被下载：第 15 行之后用 data-src，由 JS 只加载实际展示的行 #}
     {% for attacker in attackMember %}
+    {% set _src = 'src' if loop.index <= 15 else 'data-src' %}
     <div class="prow{% if loop.first %} final-blow{% endif %}{% if loop.index > 15 %} participant-hidden{% endif %}"
          data-participant-row>
       <div class="pav">
         {% if attacker.attacker_id %}
-        <img src="https://images.newdoublex.space/characters/{{ attacker.attacker_id }}/portrait?size=64"
+        <img {{ _src }}="https://images.newdoublex.space/characters/{{ attacker.attacker_id }}/portrait?size=64"
              onerror="this.onerror=null;this.src='https://images.newdoublex.space/corporations/{{ attacker.attacker_corp_id }}/logo?size=64'" />
         {% else %}
-        <img src="https://images.newdoublex.space/corporations/{{ attacker.attacker_corp_id }}/logo?size=64"
+        <img {{ _src }}="https://images.newdoublex.space/corporations/{{ attacker.attacker_corp_id }}/logo?size=64"
              onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=64'" />
         {% endif %}
       </div>
       <div class="pship">
         {% if attacker.ship_type_id %}
-        <img src="https://images.newdoublex.space/types/{{ attacker.ship_type_id }}/icon?size=32"
+        <img {{ _src }}="https://images.newdoublex.space/types/{{ attacker.ship_type_id }}/icon?size=32"
              onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
         {% endif %}
         {% if attacker.weapon_type_id %}
-        <img src="https://images.newdoublex.space/types/{{ attacker.weapon_type_id }}/icon?size=32"
+        <img {{ _src }}="https://images.newdoublex.space/types/{{ attacker.weapon_type_id }}/icon?size=32"
              onerror="this.onerror=null;this.src='https://images.newdoublex.space/types/670/icon?size=32'" />
         {% endif %}
       </div>

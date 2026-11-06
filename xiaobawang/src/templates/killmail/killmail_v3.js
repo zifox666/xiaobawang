@@ -53,6 +53,10 @@
 
     rows.slice(0, visible).forEach(function(row) {
       row.classList.remove('participant-hidden');
+      row.querySelectorAll('img[data-src]').forEach(function(img) {
+        img.src = img.dataset.src;
+        img.removeAttribute('data-src');
+      });
     });
 
     var hidden = Math.max(0, total - visible);
