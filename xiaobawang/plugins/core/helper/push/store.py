@@ -29,12 +29,14 @@ async def insert_once(session, model, values):
 
 
 class PushStore:
-    def __init__(self, sessions, initial_credit=0, max_attempts=8, lease_seconds=120, bot_interval=5):
+    def __init__(self, sessions, initial_credit=0, max_attempts=8, lease_seconds=120, bot_interval=5,
+                 status_ttl=1800):
         self.sessions = sessions
         self.initial_credit = initial_credit
         self.max_attempts = max_attempts
         self.lease_seconds = lease_seconds
         self.bot_interval = bot_interval
+        self.status_ttl = status_ttl
 
     async def ingest(self, event_id, kind, payload, cursor=None):
         async with self.sessions() as session, session.begin():
@@ -135,6 +137,10 @@ class PushStore:
                 .limit(1).with_for_update(skip_locked=True))
             if first is None:
                 return []
+            if first.kind == "eve_status":
+                await self._drop_stale_status(session, first, now)
+                if first.state not in READY:
+                    return []
             query = select(PushDelivery).where(PushDelivery.bot_key == bot.id, PushDelivery.state.in_(READY))
             if first.batch_id:
                 query = query.where(PushDelivery.batch_id == first.batch_id)
@@ -178,6 +184,20 @@ class PushStore:
             for row in selected:
                 session.expunge(row)
             return selected
+
+    async def _drop_stale_status(self, session, delivery, now):
+        """A status message only matters while current: keep the newest per target, if still recent."""
+        newest, *older = (await session.scalars(select(PushDelivery).where(
+            PushDelivery.bot_key == delivery.bot_key, PushDelivery.session_id == delivery.session_id,
+            PushDelivery.session_type == delivery.session_type, PushDelivery.kind == delivery.kind,
+            PushDelivery.state.in_(READY),
+        ).order_by(PushDelivery.created_at.desc(), PushDelivery.id).with_for_update())).all()
+        for row in older:
+            await self._release(session, row)
+            row.state, row.completed_at, row.error = "cancelled", now, "已被更新的状态消息取代"
+        if newest.created_at + self.status_ttl <= now:
+            await self._release(session, newest)
+            newest.state, newest.completed_at, newest.error = "expired", now, "状态消息已过时"
 
     async def begin_send(self, rows):
         async with self.sessions() as session, session.begin():

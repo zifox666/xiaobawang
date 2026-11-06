@@ -51,6 +51,7 @@ finally:
         sys.modules["nonebot_plugin_orm"] = original_orm
 
 store_module = load_module("push_test.core.helper.push.store", "xiaobawang/plugins/core/helper/push/store.py")
+load_module("push_test.core.helper.status_debounce", "xiaobawang/plugins/core/helper/status_debounce.py")
 
 
 @pytest_asyncio.fixture

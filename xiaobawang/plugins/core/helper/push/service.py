@@ -45,7 +45,7 @@ class PushService:
     def __init__(self):
         self.store = PushStore(
             get_session, plugin_config.billing_migrate_credit, plugin_config.push_max_attempts,
-            plugin_config.push_lease_seconds, plugin_config.push_bot_interval,
+            plugin_config.push_lease_seconds, plugin_config.push_bot_interval, plugin_config.push_status_ttl,
         )
         self.tasks = []
         self.running = False

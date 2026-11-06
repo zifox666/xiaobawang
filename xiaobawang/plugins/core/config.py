@@ -37,6 +37,7 @@ class Config(BaseModel):
     push_lease_seconds: int = Field(default=120, ge=90)
     push_max_attempts: int = Field(default=8, ge=1, le=30)
     push_message_ttl: int = Field(default=86400, ge=60)
+    push_status_ttl: int = Field(default=1800, ge=60)
 
     billing_enabled: bool = True
     billing_enabled_modules: list[str] = Field(

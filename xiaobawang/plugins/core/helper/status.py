@@ -12,10 +12,18 @@ from ..config import plugin_config
 from ..db.models.event_sub import EVEServerStatusSub
 from ..utils.common.http_client import get_client
 from .push.service import push_service
+from .status_debounce import StatusDebouncer
 
 require("nonebot_plugin_apscheduler")
 
 from nonebot_plugin_apscheduler import scheduler
+
+OFFLINE_STATUS = {
+    "players": 0,
+    "server_version": "0",
+    "start_time": "2000-01-01T00:00:00Z",
+    "vip": False,
+}
 
 
 class EVEServerStatus:
@@ -27,7 +35,7 @@ class EVEServerStatus:
         self.status: dict[str, Any] | None = None
         self.api_status: dict[str, Any] | None = None
 
-        self.previous_server_online: bool | None = None
+        self._debouncer = StatusDebouncer()
         self._client: httpx.AsyncClient | None = get_client()
 
         scheduler.add_job(self.check, "cron", second="*/30", id="eve_server_status_check")
@@ -37,18 +45,14 @@ class EVEServerStatus:
         Check the server status.
         """
         self.api_status = await esi_client.get_api_status()
+        esi_failure = False
         try:
             if not plugin_config.tq_status_url:
                 r = await self._client.get("https://esi.evetech.net/latest/status/?datasource=tranquility")
                 if r.status_code == 200:
                     self.status = r.json()
                 elif r.status_code // 100 == 5:
-                    self.status = {
-                        "players": 0,
-                        "server_version": "0",
-                        "start_time": "2000-01-01T00:00:00Z",
-                        "vip": False,
-                    }
+                    esi_failure = True
                 else:
                     r.raise_for_status()
             else:
@@ -61,21 +65,28 @@ class EVEServerStatus:
                         "server_version": data.get("server_version", ""),
                         "vip": data.get("vip", False),
                     }
+                else:
+                    return
         except Exception as e:
             logger.error(f"获取EVE服务器状态失败: {e!s}")
             raise e
 
-        if self.status:
-            players_count = self.status.get("players", 0)
-            current_online = players_count > 100
+        # ESI 5xx 未确认前保留上次状态，避免 /dt 随网络抖动显示离线
+        if esi_failure and self.status is None:
+            self.status = dict(OFFLINE_STATUS)
+        players_count = 0 if esi_failure else self.status.get("players", 0)
+        observed_online = players_count > 100
+        confirmed_online = self._debouncer.observe(observed_online, esi_failure=esi_failure)
+        logger.debug(
+            f"EVE服务器状态: 玩家数={players_count}, 在线={observed_online}, "
+            f"ESI故障={esi_failure}, 已确认={confirmed_online}"
+        )
 
-            logger.debug(f"EVE服务器状态: 玩家数={players_count}, 在线={current_online}")
-        else:
-            current_online = self.previous_server_online
-
-        if current_online is not None:
-            await push_service.store.status_change(current_online, {"text": str(self)})
-            self.previous_server_online = current_online
+        if confirmed_online is None:
+            return
+        if esi_failure:
+            self.status = dict(OFFLINE_STATUS)
+        await push_service.store.status_change(confirmed_online, {"text": str(self)})
 
     async def notify_status_change(self, event_id: str, status_message: str):
         async with get_session() as session:
