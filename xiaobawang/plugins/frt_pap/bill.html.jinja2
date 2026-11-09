@@ -1,0 +1,162 @@
+{% extends "base.html.jinja2" %}
+{% set period = (year ~ "年" ~ month ~ "月") if month else (year ~ "年") %}
+{% block title %}钱包账单 - {{ period }}{% endblock %}
+{% macro category_list(lines, bar_class, text_class, empty_text) %}
+  <div class="space-y-4">
+    {% for line in lines[:8] %}
+    <div>
+      <div class="flex justify-between items-baseline mb-1">
+        <div class="font-medium text-sm">
+          {{ line.name }}
+          {% if line.netted %}<span class="text-xs opacity-40 ml-1">轧差</span>{% endif %}
+        </div>
+        <div class="text-right whitespace-nowrap">
+          <span class="font-bold {{ text_class }}">{{ line.amount_fmt }}</span>
+          <span class="text-xs opacity-40 ml-2">{{ line.percent }}%</span>
+        </div>
+      </div>
+      <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+        <div class="{{ bar_class }} h-1.5 rounded-full" style="width: {{ line.percent }}%"></div>
+      </div>
+      {% if line['items'] | length > 1 %}
+      <div class="mt-1.5 text-xs opacity-50 flex flex-wrap gap-x-3">
+        {% for item in line['items'][:4] %}
+        <span>{{ item.name }} {{ item.amount_fmt }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% if not lines %}
+    <div class="text-center opacity-50 py-8">{{ empty_text }}</div>
+    {% endif %}
+  </div>
+{% endmacro %}
+{% block content %}
+<div class="container mx-auto px-6 py-8 max-w-5xl">
+  <!-- 标题 -->
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center gap-4">
+      {% if main_character_id %}
+      <img
+        src="https://images.evetech.net/characters/{{ main_character_id }}/portrait?size=64"
+        alt="{{ main_character }}"
+        class="w-14 h-14 rounded-full ring-2 ring-gray-400 dark:ring-gray-600"
+      />
+      {% endif %}
+      <div>
+        <div class="text-2xl font-bold">{{ main_character }}</div>
+        <div class="text-sm opacity-50">{{ period }}</div>
+      </div>
+    </div>
+    <h1 class="text-3xl font-bold tracking-wide opacity-80">
+      {{ "月 度 账 单" if month else "年 度 账 单" }}
+    </h1>
+  </div>
+  {% if not coverage_complete %}
+  <div class="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 rounded-xl px-5 py-3 mb-6 text-sm">
+    {% if coverage_since %}
+    完整钱包流水自 {{ coverage_since }} 起开始记录，此前仅统计刷怪赏金和 ESS 收入，支出数据不完整。
+    {% else %}
+    尚未采集到完整钱包流水，当前仅统计刷怪赏金和 ESS 收入，支出数据不完整。
+    {% endif %}
+  </div>
+  {% endif %}
+  <!-- 汇总卡片 -->
+  <div class="grid grid-cols-4 gap-3 mb-6">
+    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center">
+      <div class="text-xs opacity-50 mb-2">总收入 (ISK)</div>
+      <div class="text-2xl font-bold text-green-500 dark:text-green-400">{{ summary.income }}</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center">
+      <div class="text-xs opacity-50 mb-2">总支出 (ISK)</div>
+      <div class="text-2xl font-bold text-red-500 dark:text-red-400">{{ summary.expense }}</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center">
+      <div class="text-xs opacity-50 mb-2">净收入 (ISK)</div>
+      <div class="text-2xl font-bold {{ 'text-red-500 dark:text-red-400' if summary.is_loss else 'text-emerald-500 dark:text-emerald-400' }}">{{ summary.net }}</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-4 text-center">
+      <div class="text-xs opacity-50 mb-2">赏金税 (到账前已扣)</div>
+      <div class="text-2xl font-bold opacity-70">{{ summary.bounty_tax }}</div>
+    </div>
+  </div>
+  <!-- 收支分类 -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-6">
+      <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
+        <span class="w-1 h-6 bg-gradient-to-b from-green-500 to-emerald-600 rounded"></span>
+        收入分类
+      </h2>
+      {{ category_list(income_lines, "bg-green-500", "text-green-500 dark:text-green-400", "本期无收入") }}
+    </div>
+    <div class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-6">
+      <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
+        <span class="w-1 h-6 bg-gradient-to-b from-red-500 to-orange-500 rounded"></span>
+        支出分类
+      </h2>
+      {{ category_list(expense_lines, "bg-red-500", "text-red-500 dark:text-red-400", "本期无支出") }}
+    </div>
+  </div>
+  <!-- 收支趋势 -->
+  <div class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-6 mb-6">
+    <h2 class="text-xl font-bold mb-5 flex items-center gap-3">
+      <span class="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-600 rounded"></span>
+      收支趋势
+      <span class="text-xs font-normal opacity-50 ml-auto">
+        <span class="inline-block w-2 h-2 rounded-sm bg-green-500 mr-1"></span>收入
+        <span class="inline-block w-2 h-2 rounded-sm bg-red-500 ml-3 mr-1"></span>支出
+      </span>
+    </h2>
+    <div class="flex items-stretch gap-1">
+      {% for point in trend %}
+      <div class="flex-1 min-w-0">
+        <div class="h-20 flex items-end justify-center">
+          <div class="w-3/4 max-w-6 bg-green-500 rounded-t-sm" style="height: {{ point.income_height | round(1) }}%"></div>
+        </div>
+        <div class="h-20 flex items-start justify-center border-t border-gray-300 dark:border-gray-600">
+          <div class="w-3/4 max-w-6 bg-red-500 rounded-b-sm" style="height: {{ point.expense_height | round(1) }}%"></div>
+        </div>
+        <div class="text-center text-xs opacity-40 mt-1">{{ point.label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <!-- 角色明细 -->
+  {% if characters | length > 1 %}
+  <div class="bg-white dark:bg-gray-800 shadow dark:shadow-none rounded-xl p-6">
+    <h2 class="text-xl font-bold mb-4 flex items-center gap-3">
+      <span class="w-1 h-6 bg-gradient-to-b from-amber-500 to-yellow-500 rounded"></span>
+      角色收支
+    </h2>
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-gray-200 dark:border-gray-700">
+          <th class="text-left pb-2 text-xs opacity-50 font-normal">角色</th>
+          <th class="text-right pb-2 text-xs opacity-50 font-normal">收入</th>
+          <th class="text-right pb-2 text-xs opacity-50 font-normal">支出</th>
+          <th class="text-right pb-2 text-xs opacity-50 font-normal">净收入</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for character in characters %}
+        <tr class="border-b border-gray-100 dark:border-gray-700/40">
+          <td class="py-2 text-sm font-medium">{{ character.character_name or character.character_id }}</td>
+          <td class="py-2 text-sm text-right text-green-500 dark:text-green-400">{{ character.income_fmt }}</td>
+          <td class="py-2 text-sm text-right text-red-500 dark:text-red-400">{{ character.expense_fmt }}</td>
+          <td class="py-2 text-sm text-right font-bold">{{ character.net_fmt }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if more_characters %}
+    <div class="text-xs opacity-40 mt-3">其余 {{ more_characters }} 个角色未显示</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  <!-- 页脚 -->
+  <div class="text-center mt-8 opacity-30 text-xs">
+    <p>小号互转已剔除 · 时间按 UTC 统计 · Powered by 小霸王机器人</p>
+  </div>
+</div>
+{% endblock %}

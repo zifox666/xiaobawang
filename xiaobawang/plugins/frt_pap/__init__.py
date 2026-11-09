@@ -82,6 +82,31 @@ mining_query = on_alconna(
     use_cmd_start=True
 )
 
+monthly_bill_query = on_alconna(
+    Alconna(
+        "月度账单",
+        Option("-m|--month", Args["month", str], default="0"),
+        Option("-y|--year", Args["year", str], default="0"),
+        CommandMeta(
+            description="查询月度钱包收支账单",
+            usage="/月度账单 -m <month> -y <year>",
+        )
+    ),
+    use_cmd_start=True
+)
+
+yearly_bill_query = on_alconna(
+    Alconna(
+        "年度账单",
+        Option("-y|--year", Args["year", str], default="0"),
+        CommandMeta(
+            description="查询年度钱包收支账单",
+            usage="/年度账单 -y <year>",
+        )
+    ),
+    use_cmd_start=True
+)
+
 srp_query = on_alconna(
     Alconna(
         "srp",
@@ -480,6 +505,157 @@ async def _handle_mining(
     except Exception as e:
         logger.error(f"Error in mining query: {e} \n {traceback.format_exc()}")
         await mining_query.finish(f"挖矿报表查询失败: {e!s}")
+
+
+def _fmt_isk_short(value: float) -> str:
+    """把 ISK 金额格式化为带 亿/万 单位的短文本。"""
+    sign = "-" if value < 0 else ""
+    amount = abs(value)
+    if amount >= 100_000_000:
+        return f"{sign}{amount / 100_000_000:,.2f}亿"
+    if amount >= 10_000:
+        return f"{sign}{amount / 10_000:,.1f}万"
+    return f"{sign}{amount:,.0f}"
+
+
+def _bill_trend_points(bill: dict, year: int, month: int) -> list[dict]:
+    """补全统计周期内没有流水的日期，并换算柱状图高度。"""
+    by_period = {point["period"]: point for point in bill.get("trend", [])}
+    if month:
+        days = calendar.monthrange(year, month)[1]
+        slots = [(f"{year}-{month:02d}-{day:02d}", str(day)) for day in range(1, days + 1)]
+    else:
+        slots = [(f"{year}-{m:02d}", f"{m}月") for m in range(1, 13)]
+
+    peak = max(
+        (max(p.get("income", 0), p.get("expense", 0)) for p in by_period.values()),
+        default=0,
+    ) or 1
+    return [
+        {
+            "label": label,
+            "income_height": by_period.get(period, {}).get("income", 0) / peak * 100,
+            "expense_height": by_period.get(period, {}).get("expense", 0) / peak * 100,
+        }
+        for period, label in slots
+    ]
+
+
+def _bill_template_data(data: dict, year: int, month: int) -> dict:
+    """把 /api/bill 的响应整理成模板数据。"""
+    bill = data.get("bill", {})
+    summary = bill.get("summary", {})
+
+    def lines(key: str) -> list[dict]:
+        result = bill.get(key, [])
+        for line in result:
+            line["amount_fmt"] = _fmt_isk_short(line.get("amount", 0))
+            for item in line.get("items", []):
+                item["amount_fmt"] = _fmt_isk_short(item.get("amount", 0))
+        return result
+
+    characters = bill.get("by_character", [])
+    for character in characters:
+        character["income_fmt"] = _fmt_isk_short(character.get("income", 0))
+        character["expense_fmt"] = _fmt_isk_short(character.get("expense", 0))
+        character["net_fmt"] = _fmt_isk_short(character.get("net", 0))
+
+    coverage = bill.get("coverage", {})
+    since = coverage.get("full_ledger_since")
+
+    return {
+        "year": year,
+        "month": month,
+        "main_character": data.get("main_character", ""),
+        "main_character_id": data.get("main_character_id", ""),
+        "summary": {
+            "income": _fmt_isk_short(summary.get("income", 0)),
+            "expense": _fmt_isk_short(summary.get("expense", 0)),
+            "net": _fmt_isk_short(summary.get("net", 0)),
+            "is_loss": summary.get("net", 0) < 0,
+            "bounty_tax": _fmt_isk_short(summary.get("bounty_tax", 0)),
+            "entries": summary.get("income_entries", 0) + summary.get("expense_entries", 0),
+        },
+        "income_lines": lines("income_by_category"),
+        "expense_lines": lines("expense_by_category"),
+        "trend": _bill_trend_points(bill, year, month),
+        "characters": characters[:8],
+        "more_characters": max(len(characters) - 8, 0),
+        "coverage_complete": coverage.get("complete", False),
+        "coverage_since": since[:10] if since else None,
+    }
+
+
+async def _send_bill(matcher: type, user_id: str, year: int, month: int) -> None:
+    """查询账单并发送图片；month 为 0 时查询年度账单。"""
+    name = "月度账单" if month else "年度账单"
+    url = f"{plugin_config.pap_track_url}/api/bill?qq={user_id}&year={year}"
+    if month:
+        url += f"&month={month}"
+
+    try:
+        async with httpx.AsyncClient(
+            headers={"x-api-key": f"{plugin_config.api_key}"},
+            timeout=120,
+        ) as client:
+            r = await client.get(url)
+            if r.status_code == 404:
+                await matcher.finish(
+                    f"未找到账单数据，可能是因为没有授权。\n"
+                    f"请前往 {plugin_config.pap_track_url}/oauth/login 进行授权"
+                )
+            r.raise_for_status()
+            data = r.json()
+
+        template_data = _bill_template_data(data, year, month)
+        if template_data["summary"]["entries"] == 0:
+            await matcher.finish(f"{name}当期无记录 你可以指定其他时间，例如 /年度账单 -y {year}")
+
+        pic = await template_to_pic(
+            template_path=str(__file__).replace("__init__.py", ""),
+            template_name="bill.html.jinja2",
+            templates=template_data,
+            pages={
+                "viewport": {"width": 1000, "height": 100},
+                "base_url": f"file://{__file__.replace('__init__.py', '')}",
+            },
+        )
+        await matcher.finish(UniMessage.image(raw=pic), reply_to=True)
+    except FinishedException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bill query: {e} \n {traceback.format_exc()}")
+        await matcher.finish(f"{name}查询失败: {e!s}")
+
+
+@monthly_bill_query.handle()
+async def _handle_monthly_bill(
+    arp: Arparma,
+    user_info: Uninfo,
+):
+    month = arp.other_args.get("month", "0")
+    year = arp.other_args.get("year", "0")
+    if not month.isdigit() or not year.isdigit():
+        await monthly_bill_query.finish("月份和年份必须为数字")
+    month = int(month) or datetime.now(UTC).month
+    year = int(year) or datetime.now(UTC).year
+    if not 1 <= month <= 12:
+        await monthly_bill_query.finish("月份必须在 1 到 12 之间")
+
+    await _send_bill(monthly_bill_query, user_info.user.id, year, month)
+
+
+@yearly_bill_query.handle()
+async def _handle_yearly_bill(
+    arp: Arparma,
+    user_info: Uninfo,
+):
+    year = arp.other_args.get("year", "0")
+    if not year.isdigit():
+        await yearly_bill_query.finish("年份必须为数字")
+    year = int(year) or datetime.now(UTC).year
+
+    await _send_bill(yearly_bill_query, user_info.user.id, year, 0)
 
 
 @srp_query.handle()
