@@ -518,6 +518,16 @@ def _fmt_isk_short(value: float) -> str:
     return f"{sign}{amount:,.0f}"
 
 
+def _mask_name(name: str) -> str:
+    """角色名只保留首尾字符，例如 c***r。"""
+    name = (name or "").strip()
+    if not name:
+        return "***"
+    if len(name) == 1:
+        return f"{name}***"
+    return f"{name[0]}***{name[-1]}"
+
+
 def _bill_trend_points(bill: dict, year: int, month: int) -> list[dict]:
     """补全统计周期内没有流水的日期，并换算柱状图高度。"""
     by_period = {point["period"]: point for point in bill.get("trend", [])}
@@ -556,6 +566,7 @@ def _bill_template_data(data: dict, year: int, month: int) -> dict:
 
     characters = bill.get("by_character", [])
     for character in characters:
+        character["character_name"] = _mask_name(character.get("character_name", ""))
         character["income_fmt"] = _fmt_isk_short(character.get("income", 0))
         character["expense_fmt"] = _fmt_isk_short(character.get("expense", 0))
         character["net_fmt"] = _fmt_isk_short(character.get("net", 0))

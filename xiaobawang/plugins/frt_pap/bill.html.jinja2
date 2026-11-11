@@ -141,7 +141,7 @@
       <tbody>
         {% for character in characters %}
         <tr class="border-b border-gray-100 dark:border-gray-700/40">
-          <td class="py-2 text-sm font-medium">{{ character.character_name or character.character_id }}</td>
+          <td class="py-2 text-sm font-medium">{{ character.character_name }}</td>
           <td class="py-2 text-sm text-right text-green-500 dark:text-green-400">{{ character.income_fmt }}</td>
           <td class="py-2 text-sm text-right text-red-500 dark:text-red-400">{{ character.expense_fmt }}</td>
           <td class="py-2 text-sm text-right font-bold">{{ character.net_fmt }}</td>
