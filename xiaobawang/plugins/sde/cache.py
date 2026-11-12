@@ -159,6 +159,15 @@ class RedisCache:
 cache = RedisCache()
 
 
+def _is_empty_result(result: Any) -> bool:
+    """判断结果是否为空（None、空容器，或 total 为 0 的搜索结果）"""
+    if result is None:
+        return True
+    if isinstance(result, dict) and result.get("total") == 0 and not result.get("items"):
+        return True
+    return isinstance(result, list | tuple | set | dict | str) and len(result) == 0
+
+
 def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclude_args: list | None = None):
     """
     简化版缓存装饰器，用于缓存函数调用结果
@@ -206,7 +215,9 @@ def cache_result(expire_time: int = DEFAULT_EXPIRE_TIME, prefix: str = "", exclu
 
             # 执行函数并缓存结果
             result = await func(*args, **kwargs)
-            await cache.set(cache_key, result, expire_time)
+            # 不缓存空结果，避免数据库暂时为空/导入期间的“未找到”被固化数天
+            if not _is_empty_result(result):
+                await cache.set(cache_key, result, expire_time)
             return result
 
         return wrapper
